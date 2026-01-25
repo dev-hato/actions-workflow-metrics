@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "scripts": {
     "build": "bun run fix && tsc && bun run scripts/build.ts",
     "fix": "prettier --write ."
