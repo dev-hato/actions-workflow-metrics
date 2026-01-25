@@ -5,7 +5,6 @@ const result: BuildOutput = await Bun.build({
   outdir: "dist",
   target: "node",
   sourcemap: "linked",
-  external: ["@actions/core"],
 });
 
 if (!result.success) {

@@ -112,7 +112,7 @@ bun test --coverage
 
 - Build artifacts output to dist/ directory (must be committed to repository)
 - ES module format (`"type": "module"` in package.json)
-- `@actions/core` is excluded from bundle (`--external=@actions/core`) as it's provided by GitHub Actions runtime
+- All dependencies including `@actions/core` are bundled into dist files
 
 ## Writing Tests
 
