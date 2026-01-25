@@ -18228,7 +18228,6 @@ import { createServer } from "node:http";
 
 // src/main/metrics.ts
 var import_systeminformation = __toESM(require_lib(), 1);
-import * as core from "@actions/core";
 
 class Metrics {
   data;
@@ -18236,7 +18235,7 @@ class Metrics {
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [] };
     this.intervalMs = 5 * 1000;
-    const intervalSecondsInput = core.getInput("interval_seconds");
+    const intervalSecondsInput = process.env.METRICS_INTERVAL_SECONDS;
     if (intervalSecondsInput) {
       const intervalSecondsVal = parseInt(intervalSecondsInput);
       if (Number.isInteger(intervalSecondsVal)) {
@@ -22296,5 +22295,5 @@ async function server() {
 }
 await server();
 
-//# debugId=E0C25861BD811E7A64756E2164756E21
+//# debugId=B4DFD93D28CC787564756E2164756E21
 //# sourceMappingURL=server.js.map

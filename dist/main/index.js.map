@@ -2,9 +2,9 @@
   "version": 3,
   "sources": ["../src/main/index.ts"],
   "sourcesContent": [
-    "import { spawn } from \"node:child_process\";\nimport { dirname, join } from \"node:path\";\nimport { fileURLToPath } from \"node:url\";\nimport type { ChildProcess } from \"node:child_process\";\n\nconst __dirname: string = dirname(fileURLToPath(import.meta.url));\n\nasync function index(): Promise<void> {\n  // Start server in background\n  const serverProcess: ChildProcess = spawn(\n    \"node\",\n    [join(__dirname, \"server.js\")],\n    { detached: true, stdio: \"ignore\" },\n  );\n\n  // Unref to allow parent process to exit\n  serverProcess.unref();\n\n  console.log(`Server started with PID: ${serverProcess.pid}`);\n}\n\nawait index();\n"
+    "import * as core from \"@actions/core\";\nimport { spawn } from \"node:child_process\";\nimport { dirname, join } from \"node:path\";\nimport { fileURLToPath } from \"node:url\";\nimport type { ChildProcess } from \"node:child_process\";\n\nconst __dirname: string = dirname(fileURLToPath(import.meta.url));\n\nasync function index(): Promise<void> {\n  // Start server in background with interval passed via environment variable\n  const serverProcess: ChildProcess = spawn(\n    \"node\",\n    [join(__dirname, \"server.js\")],\n    {\n      detached: true,\n      stdio: \"ignore\",\n      env: {\n        ...process.env,\n        METRICS_INTERVAL_SECONDS: core.getInput(\"interval_seconds\") || \"5\",\n      },\n    },\n  );\n\n  // Unref to allow parent process to exit\n  serverProcess.unref();\n\n  console.log(`Server started with PID: ${serverProcess.pid}`);\n}\n\nawait index();\n"
   ],
-  "mappings": ";AAAA;AACA;AACA;AAGA,IAAM,aAAoB,QAAQ,cAAc,YAAY,GAAG,CAAC;AAEhE,eAAe,KAAK,GAAkB;AAAA,EAEpC,MAAM,gBAA8B,MAClC,QACA,CAAC,KAAK,YAAW,WAAW,CAAC,GAC7B,EAAE,UAAU,MAAM,OAAO,SAAS,CACpC;AAAA,EAGA,cAAc,MAAM;AAAA,EAEpB,QAAQ,IAAI,4BAA4B,cAAc,KAAK;AAAA;AAG7D,MAAM,MAAM;",
-  "debugId": "D1E4E5642781339364756E2164756E21",
+  "mappings": ";AAAA;AACA;AACA;AACA;AAGA,IAAM,aAAoB,QAAQ,cAAc,YAAY,GAAG,CAAC;AAEhE,eAAe,KAAK,GAAkB;AAAA,EAEpC,MAAM,gBAA8B,MAClC,QACA,CAAC,KAAK,YAAW,WAAW,CAAC,GAC7B;AAAA,IACE,UAAU;AAAA,IACV,OAAO;AAAA,IACP,KAAK;AAAA,SACA,QAAQ;AAAA,MACX,0BAA+B,cAAS,kBAAkB,KAAK;AAAA,IACjE;AAAA,EACF,CACF;AAAA,EAGA,cAAc,MAAM;AAAA,EAEpB,QAAQ,IAAI,4BAA4B,cAAc,KAAK;AAAA;AAG7D,MAAM,MAAM;",
+  "debugId": "8CC66553D1EA641164756E2164756E21",
   "names": []
 }

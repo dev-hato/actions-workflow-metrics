@@ -1,4 +1,3 @@
-import * as core from "@actions/core";
 import { currentLoad, mem } from "systeminformation";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
@@ -11,7 +10,8 @@ export class Metrics {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [] };
 
     this.intervalMs = 5 * 1000;
-    const intervalSecondsInput: string = core.getInput("interval_seconds");
+    const intervalSecondsInput: string | undefined =
+      process.env.METRICS_INTERVAL_SECONDS;
 
     if (intervalSecondsInput) {
       const intervalSecondsVal: number = parseInt(intervalSecondsInput);
