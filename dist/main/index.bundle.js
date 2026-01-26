@@ -20008,9 +20008,9 @@ async function index() {
     }
   });
   serverProcess.unref();
-  console.log(`Server started with PID: ${serverProcess.pid}`);
+  throw new Error("error!");
 }
 await index();
 
-//# debugId=1CAF86559205E25064756E2164756E21
+//# debugId=1AA9ABE274AC320764756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
