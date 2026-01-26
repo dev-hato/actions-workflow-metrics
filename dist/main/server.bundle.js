@@ -42256,7 +42256,7 @@ async function server() {
       case "/finish":
         response.statusCode = 200;
         response.end();
-        server2.close();
+        server2.close(() => process.exit(0));
         break;
     }
   });
@@ -42265,5 +42265,5 @@ async function server() {
 }
 await server();
 
-//# debugId=B3FC55BD993EF1B764756E2164756E21
+//# debugId=1CF79A37B32A741A64756E2164756E21
 //# sourceMappingURL=server.bundle.js.map

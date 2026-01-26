@@ -27,7 +27,7 @@ async function server(): Promise<void> {
         case "/finish":
           response.statusCode = 200;
           response.end();
-          server.close();
+          server.close(() => process.exit(0));
           break;
       }
     },
