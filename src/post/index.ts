@@ -19,12 +19,12 @@ async function index(): Promise<void> {
     await fs.writeFile(fileName, JSON.stringify(metricsData));
     const client: DefaultArtifactClient = new DefaultArtifactClient();
     await client.uploadArtifact(artifactName, [fileName], ".");
-
+  } catch (error) {
+    setFailed(error);
+  } finally {
     // Stop the metrics server
     await fetch(`http://localhost:${serverPort}/finish`);
     info("Server finished");
-  } catch (error) {
-    setFailed(error);
   }
 }
 

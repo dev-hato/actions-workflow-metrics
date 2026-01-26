@@ -96046,13 +96046,14 @@ async function index() {
     await fs.writeFile(fileName, JSON.stringify(metricsData));
     const client = new import_artifact.DefaultArtifactClient;
     await client.uploadArtifact(artifactName, [fileName], ".");
-    await fetch(`http://localhost:${serverPort}/finish`);
-    import_core.info("Server finished");
   } catch (error) {
     import_core.setFailed(error);
+  } finally {
+    await fetch(`http://localhost:${serverPort}/finish`);
+    import_core.info("Server finished");
   }
 }
 await index();
 
-//# debugId=91D65739C769017D64756E2164756E21
+//# debugId=EDA598832353AEB364756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
