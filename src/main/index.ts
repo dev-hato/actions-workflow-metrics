@@ -24,7 +24,7 @@ async function index(): Promise<void> {
   // Unref to allow parent process to exit
   serverProcess.unref();
 
-  throw new Error("error!");
+  console.log(`Server started with PID: ${serverProcess.pid}`);
 }
 
 await index();
