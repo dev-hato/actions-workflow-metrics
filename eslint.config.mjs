@@ -15,128 +15,128 @@ import { FlatCompat } from "@eslint/eslintrc";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const compat = new FlatCompat({
-	baseDirectory: __dirname,
-	recommendedConfig: js.configs.recommended,
-	allConfig: js.configs.all,
+  baseDirectory: __dirname,
+  recommendedConfig: js.configs.recommended,
+  allConfig: js.configs.all,
 });
 
 export default defineConfig([
-	globalIgnores(["!**/.*", "**/node_modules/.*", "**/dist/**"]),
-	{
-		extends: compat.extends("eslint:recommended"),
+  globalIgnores(["!**/.*", "**/node_modules/.*", "**/dist/**"]),
+  {
+    extends: compat.extends("eslint:recommended"),
 
-		plugins: {
-			n,
-			prettier,
-		},
+    plugins: {
+      n,
+      prettier,
+    },
 
-		languageOptions: {
-			globals: {
-				...globals.browser,
-				...globals.jest,
-				...globals.node,
-			},
-		},
-	},
-	{
-		files: ["**/*.json"],
-		extends: compat.extends("plugin:jsonc/recommended-with-json"),
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.jest,
+        ...globals.node,
+      },
+    },
+  },
+  {
+    files: ["**/*.json"],
+    extends: compat.extends("plugin:jsonc/recommended-with-json"),
 
-		languageOptions: {
-			parser: jsoncParser,
-			ecmaVersion: "latest",
-			sourceType: "script",
+    languageOptions: {
+      parser: jsoncParser,
+      ecmaVersion: "latest",
+      sourceType: "script",
 
-			parserOptions: {
-				jsonSyntax: "JSON",
-			},
-		},
-	},
-	{
-		files: ["**/*.jsonc"],
-		extends: compat.extends("plugin:jsonc/recommended-with-jsonc"),
+      parserOptions: {
+        jsonSyntax: "JSON",
+      },
+    },
+  },
+  {
+    files: ["**/*.jsonc"],
+    extends: compat.extends("plugin:jsonc/recommended-with-jsonc"),
 
-		languageOptions: {
-			parser: jsoncParser,
-			ecmaVersion: "latest",
-			sourceType: "script",
+    languageOptions: {
+      parser: jsoncParser,
+      ecmaVersion: "latest",
+      sourceType: "script",
 
-			parserOptions: {
-				jsonSyntax: "JSONC",
-			},
-		},
-	},
-	{
-		files: ["**/*.json5"],
-		extends: compat.extends("plugin:jsonc/recommended-with-json5"),
+      parserOptions: {
+        jsonSyntax: "JSONC",
+      },
+    },
+  },
+  {
+    files: ["**/*.json5"],
+    extends: compat.extends("plugin:jsonc/recommended-with-json5"),
 
-		languageOptions: {
-			parser: jsoncParser,
-			ecmaVersion: "latest",
-			sourceType: "script",
+    languageOptions: {
+      parser: jsoncParser,
+      ecmaVersion: "latest",
+      sourceType: "script",
 
-			parserOptions: {
-				jsonSyntax: "JSON5",
-			},
-		},
-	},
-	{
-		files: ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx"],
-		extends: compat.extends("plugin:react/recommended"),
+      parserOptions: {
+        jsonSyntax: "JSON5",
+      },
+    },
+  },
+  {
+    files: ["**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx"],
+    extends: compat.extends("plugin:react/recommended"),
 
-		languageOptions: {
-			ecmaVersion: "latest",
-			sourceType: "module",
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
 
-			parserOptions: {
-				ecmaFeatures: {
-					jsx: true,
-					modules: true,
-				},
-			},
-		},
-	},
-	{
-		files: ["**/*.ts", "**/*.cts", "**/*.mts", "**/*.tsx"],
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+          modules: true,
+        },
+      },
+    },
+  },
+  {
+    files: ["**/*.ts", "**/*.cts", "**/*.mts", "**/*.tsx"],
 
-		extends: compat.extends(
-			"plugin:@typescript-eslint/recommended",
-			"plugin:n/recommended",
-			"plugin:react/recommended",
-			"prettier",
-		),
+    extends: compat.extends(
+      "plugin:@typescript-eslint/recommended",
+      "plugin:n/recommended",
+      "plugin:react/recommended",
+      "prettier",
+    ),
 
-		plugins: {
-			"@typescript-eslint": typescriptEslint,
-		},
+    plugins: {
+      "@typescript-eslint": typescriptEslint,
+    },
 
-		languageOptions: {
-			parser: tsParser,
-			ecmaVersion: "latest",
-			sourceType: "module",
-		},
+    languageOptions: {
+      parser: tsParser,
+      ecmaVersion: "latest",
+      sourceType: "module",
+    },
 
-		rules: {
-			// Disable for TypeScript (doesn't understand TS module resolution and Bun builtins)
-			"n/no-missing-import": "off",
-			// Allow process.exit() in CLI tools
-			"n/no-process-exit": "off",
-		},
-	},
-	{
-		files: ["**/*.vue"],
-		extends: compat.extends("plugin:vue/recommended"),
+    rules: {
+      // Disable for TypeScript (doesn't understand TS module resolution and Bun builtins)
+      "n/no-missing-import": "off",
+      // Allow process.exit() in CLI tools
+      "n/no-process-exit": "off",
+    },
+  },
+  {
+    files: ["**/*.vue"],
+    extends: compat.extends("plugin:vue/recommended"),
 
-		languageOptions: {
-			parser: vueParser,
-			ecmaVersion: "latest",
-			sourceType: "module",
+    languageOptions: {
+      parser: vueParser,
+      ecmaVersion: "latest",
+      sourceType: "module",
 
-			parserOptions: {
-				ecmaFeatures: {
-					modules: true,
-				},
-			},
-		},
-	},
+      parserOptions: {
+        ecmaFeatures: {
+          modules: true,
+        },
+      },
+    },
+  },
 ]);
