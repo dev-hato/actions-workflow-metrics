@@ -60,7 +60,7 @@ describe("Renderer", () => {
     expect(result).toContain("bar");
 
     // Verify legend is included
-    expect(result).toContain("#### legends");
+    expect(result).toContain("#### Legends");
     expect(result).toContain("Red: User CPU");
   });
 
@@ -375,7 +375,7 @@ describe("Renderer", () => {
     expect(result).toContain("xychart");
 
     // Verify legends section is included
-    expect(result).toContain("#### legends");
+    expect(result).toContain("#### Legends");
 
     // Verify LaTeX format legend is included
     expect(result).toContain("$$");
