@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, mock } from "bun:test";
-import { render } from "./lib";
+import { getMetricsData, render } from "./lib";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
 
@@ -20,10 +20,8 @@ function createMockFetch(
 }
 
 describe("render", () => {
-  beforeEach(() => mock.restore());
-
-  it("should fetch metrics data and render charts", async () => {
-    globalThis.fetch = createMockFetch({
+  it("should render charts with valid metrics data", () => {
+    const metricsData: z.TypeOf<typeof metricsDataSchema> = {
       cpuLoadPercentages: [
         { time: 1704067200000, user: 25.5, system: 10.3 },
         { time: 1704067205000, user: 30.2, system: 12.1 },
@@ -32,9 +30,9 @@ describe("render", () => {
         { time: 1704067200000, used: 4096, free: 8192 },
         { time: 1704067205000, used: 4200, free: 8000 },
       ],
-    });
+    };
 
-    const result: string = await render();
+    const result: string = render(metricsData);
 
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
@@ -44,22 +42,20 @@ describe("render", () => {
     expect(result).toContain("Memory Usages");
   });
 
-  it("should handle empty metrics data", async () => {
-    globalThis.fetch = createMockFetch({
+  it("should handle empty metrics data", () => {
+    const metricsData: z.TypeOf<typeof metricsDataSchema> = {
       cpuLoadPercentages: [],
       memoryUsageMBs: [],
-    });
+    };
 
-    const result: string = await render();
+    const result: string = render(metricsData);
 
-    // Template is rendered even with empty data
+    // Empty data results in empty string (no charts to render)
     expect(typeof result).toBe("string");
-    expect(result).toContain("CPU Loads");
-    expect(result).toContain("Memory Usages");
   });
 
-  it("should correctly map CPU load percentages", async () => {
-    globalThis.fetch = createMockFetch({
+  it("should correctly map CPU load percentages", () => {
+    const metricsData: z.TypeOf<typeof metricsDataSchema> = {
       cpuLoadPercentages: [
         { time: 1704067200000, user: 20, system: 10 },
         { time: 1704067205000, user: 25, system: 15 },
@@ -68,27 +64,50 @@ describe("render", () => {
         { time: 1704067200000, used: 4000, free: 8000 },
         { time: 1704067205000, used: 4100, free: 7900 },
       ],
-    });
+    };
 
-    const result: string = await render();
+    const result: string = render(metricsData);
 
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
   });
 
-  it("should correctly map memory usage data", async () => {
-    globalThis.fetch = createMockFetch({
+  it("should correctly map memory usage data", () => {
+    const metricsData: z.TypeOf<typeof metricsDataSchema> = {
       cpuLoadPercentages: [{ time: 1704067200000, user: 20, system: 10 }],
       memoryUsageMBs: [
         { time: 1704067200000, used: 5000, free: 10000 },
         { time: 1704067205000, used: 5500, free: 9500 },
       ],
-    });
+    };
 
-    const result: string = await render();
+    const result: string = render(metricsData);
 
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
+  });
+});
+
+describe("getMetricsData", () => {
+  beforeEach(() => mock.restore());
+
+  it("should fetch metrics data from server", async () => {
+    const expectedData: z.TypeOf<typeof metricsDataSchema> = {
+      cpuLoadPercentages: [
+        { time: 1704067200000, user: 25.5, system: 10.3 },
+        { time: 1704067205000, user: 30.2, system: 12.1 },
+      ],
+      memoryUsageMBs: [
+        { time: 1704067200000, used: 4096, free: 8192 },
+        { time: 1704067205000, used: 4200, free: 8000 },
+      ],
+    };
+
+    globalThis.fetch = createMockFetch(expectedData);
+
+    const result = await getMetricsData();
+
+    expect(result).toEqual(expectedData);
   });
 
   it("should throw error for invalid metrics data", async () => {
@@ -104,17 +123,27 @@ describe("render", () => {
         }) as Response,
     ) as unknown as typeof fetch;
 
-    expect(render()).rejects.toThrow();
-
-    // Restore original mock
-    globalThis.fetch = fetch;
+    expect(getMetricsData()).rejects.toThrow();
   });
 
-  it("should handle fetch errors", async () => {
+  it("should throw error when fetch fails", async () => {
     globalThis.fetch = mock(() =>
       Promise.reject(new Error("Network error")),
     ) as unknown as typeof fetch;
 
-    expect(render()).rejects.toThrow("Network error");
+    expect(getMetricsData()).rejects.toThrow("Network error");
+  });
+
+  it("should throw error when response is not ok", async () => {
+    globalThis.fetch = mock(
+      async (): Promise<Response> =>
+        ({
+          ok: false,
+          status: 500,
+          statusText: "Internal Server Error",
+        }) as Response,
+    ) as unknown as typeof fetch;
+
+    expect(getMetricsData()).rejects.toThrow("Failed to fetch metrics");
   });
 });

@@ -1,10 +1,22 @@
+import { promises as fs } from "node:fs";
+import { DefaultArtifactClient } from "@actions/artifact";
 import { summary } from "@actions/core";
-import { render } from "./lib";
+import { getMetricsData, render } from "./lib";
+import type { z } from "zod";
+import type { metricsDataSchema } from "../lib";
 
 async function index(): Promise<void> {
   try {
+    const metricsData: z.TypeOf<typeof metricsDataSchema> =
+      await getMetricsData();
+
     // Render metrics
-    await summary.addRaw(await render()).write();
+    await summary.addRaw(render(metricsData)).write();
+
+    const fileName: string = "metrics.json";
+    await fs.writeFile(fileName, JSON.stringify(metricsData));
+    const client: DefaultArtifactClient = new DefaultArtifactClient();
+    await client.uploadArtifact("metrics", [fileName], ".");
   } catch (error) {
     console.error("Failed to render metrics:", error);
     process.exit(1);

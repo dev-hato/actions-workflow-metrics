@@ -19,10 +19,11 @@ export const renderParamsSchema = z.object({
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
 
-export async function render(): Promise<string> {
+export async function getMetricsData(): Promise<
+  z.TypeOf<typeof metricsDataSchema>
+> {
   const controller: AbortController = new AbortController();
   const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
-
   try {
     const res: Response = await fetch(`http://localhost:${serverPort}`, {
       signal: controller.signal,
@@ -34,70 +35,69 @@ export async function render(): Promise<string> {
       );
     }
 
-    const {
-      cpuLoadPercentages,
-      memoryUsageMBs,
-    }: z.TypeOf<typeof metricsDataSchema> = metricsDataSchema.parse(
-      await res.json(),
-    );
-
-    const renderer: Renderer = new Renderer();
-    return renderer.render(
-      renderParamsListSchema.parse([
-        {
-          title: "CPU Loads",
-          metricsInfoList: [
-            {
-              color: "Orange",
-              name: "System",
-              data: cpuLoadPercentages.map(
-                ({ system }: { system: number }): number => system,
-              ),
-            },
-            {
-              color: "Red",
-              name: "User",
-              data: cpuLoadPercentages.map(
-                ({ user }: { user: number }): number => user,
-              ),
-            },
-          ],
-          times: cpuLoadPercentages.map(
-            ({ time }: { time: number }): number => time,
-          ),
-          yAxis: {
-            title: "%",
-            range: "0 --> 100",
-          },
-        },
-        {
-          title: "Memory Usages",
-          metricsInfoList: [
-            {
-              color: "Green",
-              name: "Free",
-              data: memoryUsageMBs.map(
-                ({ free }: { free: number }): number => free,
-              ),
-            },
-            {
-              color: "Blue",
-              name: "Used",
-              data: memoryUsageMBs.map(
-                ({ used }: { used: number }): number => used,
-              ),
-            },
-          ],
-          times: memoryUsageMBs.map(
-            ({ time }: { time: number }): number => time,
-          ),
-          yAxis: {
-            title: "MB",
-          },
-        },
-      ]),
-    );
+    return metricsDataSchema.parse(await res.json());
   } finally {
     clearTimeout(timer);
   }
+}
+
+export function render(
+  metricsData: z.TypeOf<typeof metricsDataSchema>,
+): string {
+  const renderer: Renderer = new Renderer();
+  return renderer.render(
+    renderParamsListSchema.parse([
+      {
+        title: "CPU Loads",
+        metricsInfoList: [
+          {
+            color: "Orange",
+            name: "System",
+            data: metricsData.cpuLoadPercentages.map(
+              ({ system }: { system: number }): number => system,
+            ),
+          },
+          {
+            color: "Red",
+            name: "User",
+            data: metricsData.cpuLoadPercentages.map(
+              ({ user }: { user: number }): number => user,
+            ),
+          },
+        ],
+        times: metricsData.cpuLoadPercentages.map(
+          ({ time }: { time: number }): number => time,
+        ),
+        yAxis: {
+          title: "%",
+          range: "0 --> 100",
+        },
+      },
+      {
+        title: "Memory Usages",
+        metricsInfoList: [
+          {
+            color: "Green",
+            name: "Free",
+            data: metricsData.memoryUsageMBs.map(
+              ({ free }: { free: number }): number => free,
+            ),
+          },
+          {
+            color: "Blue",
+            name: "Used",
+            data: metricsData.memoryUsageMBs.map(
+              ({ used }: { used: number }): number => used,
+            ),
+          },
+        ],
+        times: metricsData.memoryUsageMBs.map(
+          ({ time }: { time: number }): number => time,
+        ),
+        yAxis: {
+          title: "MB",
+        },
+      },
+    ]),
+  );
 }
