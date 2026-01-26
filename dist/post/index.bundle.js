@@ -19993,7 +19993,7 @@ var require_core = __commonJS((exports) => {
 });
 
 // src/post/index.ts
-var core = __toESM(require_core(), 1);
+var import_core = __toESM(require_core(), 1);
 
 // node_modules/zod/v3/external.js
 var exports_external = {};
@@ -24111,7 +24111,7 @@ async function render() {
 // src/post/index.ts
 async function index() {
   try {
-    await core.summary.addRaw(await render()).write();
+    await import_core.summary.addRaw(await render()).write();
   } catch (error) {
     console.error("Failed to render metrics:", error);
     process.exit(1);
@@ -24119,5 +24119,5 @@ async function index() {
 }
 await index();
 
-//# debugId=DEB335F08914E0AE64756E2164756E21
+//# debugId=0E20DFDFBDD31E0D64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

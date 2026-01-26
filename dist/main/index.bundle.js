@@ -19993,7 +19993,7 @@ var require_core = __commonJS((exports) => {
 });
 
 // src/main/index.ts
-var core = __toESM(require_core(), 1);
+var import_core = __toESM(require_core(), 1);
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20004,7 +20004,7 @@ async function index() {
     stdio: "ignore",
     env: {
       ...process.env,
-      METRICS_INTERVAL_SECONDS: core.getInput("interval_seconds") || "5"
+      METRICS_INTERVAL_SECONDS: import_core.getInput("interval_seconds") || "5"
     }
   });
   serverProcess.unref();
@@ -20012,5 +20012,5 @@ async function index() {
 }
 await index();
 
-//# debugId=1CAF86559205E25064756E2164756E21
+//# debugId=E663ABED3905EE2564756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

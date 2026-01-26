@@ -1,4 +1,4 @@
-import * as core from "@actions/core";
+import { getInput } from "@actions/core";
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,7 +16,7 @@ async function index(): Promise<void> {
       stdio: "ignore",
       env: {
         ...process.env,
-        METRICS_INTERVAL_SECONDS: core.getInput("interval_seconds") || "5",
+        METRICS_INTERVAL_SECONDS: getInput("interval_seconds") || "5",
       },
     },
   );
