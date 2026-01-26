@@ -13,10 +13,11 @@ async function index(): Promise<void> {
     // Render metrics
     await summary.addRaw(render(metricsData)).write();
 
-    const fileName: string = "metrics.json";
+    const artifactName: string = "workflow_metrics";
+    const fileName: string = `${artifactName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
     const client: DefaultArtifactClient = new DefaultArtifactClient();
-    await client.uploadArtifact("metrics", [fileName], ".");
+    await client.uploadArtifact(artifactName, [fileName], ".");
   } catch (error) {
     console.error("Failed to render metrics:", error);
     process.exit(1);

@@ -96041,10 +96041,11 @@ async function index() {
   try {
     const metricsData = await getMetricsData();
     await import_core.summary.addRaw(render(metricsData)).write();
-    const fileName = "metrics.json";
+    const artifactName = "workflow_metrics";
+    const fileName = `${artifactName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
     const client = new import_artifact.DefaultArtifactClient;
-    await client.uploadArtifact("metrics", [fileName], ".");
+    await client.uploadArtifact(artifactName, [fileName], ".");
   } catch (error) {
     console.error("Failed to render metrics:", error);
     process.exit(1);
@@ -96052,5 +96053,5 @@ async function index() {
 }
 await index();
 
-//# debugId=BC3DF71345F4273564756E2164756E21
+//# debugId=2E9EBA67B6AE66DE64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
