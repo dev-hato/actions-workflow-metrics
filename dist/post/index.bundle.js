@@ -95898,7 +95898,9 @@ var NEVER = INVALID;
 // src/post/renderer.ts
 class Renderer {
   render(renderParamsList) {
-    return renderParamsList.filter(({
+    return `## Workflow Metrics
+
+${renderParamsList.filter(({
       metricsInfoList
     }) => metricsInfoList.length > 0).map((p) => {
       const colors = p.metricsInfoList.map(({ color }) => color);
@@ -95934,7 +95936,7 @@ ${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join(`
 \`\`\``;
     }).join(`
 
-`);
+`)}`;
   }
 }
 
@@ -96050,5 +96052,5 @@ async function index() {
 }
 await index();
 
-//# debugId=F81BFEFD092F676864756E2164756E21
+//# debugId=BC3DF71345F4273564756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
