@@ -4,6 +4,20 @@ import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
 
 /**
+ * Sample metrics data for testing.
+ */
+const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
+  cpuLoadPercentages: [
+    { time: 1704067200000, user: 25.5, system: 10.3 },
+    { time: 1704067205000, user: 30.2, system: 12.1 },
+  ],
+  memoryUsageMBs: [
+    { time: 1704067200000, used: 4096, free: 8192 },
+    { time: 1704067205000, used: 4200, free: 8000 },
+  ],
+};
+
+/**
  * Creates a mock fetch function that returns the given metrics data.
  */
 function createMockFetch(
@@ -21,18 +35,7 @@ function createMockFetch(
 
 describe("render", () => {
   it("should render charts with valid metrics data", () => {
-    const metricsData: z.TypeOf<typeof metricsDataSchema> = {
-      cpuLoadPercentages: [
-        { time: 1704067200000, user: 25.5, system: 10.3 },
-        { time: 1704067205000, user: 30.2, system: 12.1 },
-      ],
-      memoryUsageMBs: [
-        { time: 1704067200000, used: 4096, free: 8192 },
-        { time: 1704067205000, used: 4200, free: 8000 },
-      ],
-    };
-
-    const result: string = render(metricsData);
+    const result: string = render(sampleMetricsData);
 
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
@@ -92,22 +95,11 @@ describe("getMetricsData", () => {
   beforeEach(() => mock.restore());
 
   it("should fetch metrics data from server", async () => {
-    const expectedData: z.TypeOf<typeof metricsDataSchema> = {
-      cpuLoadPercentages: [
-        { time: 1704067200000, user: 25.5, system: 10.3 },
-        { time: 1704067205000, user: 30.2, system: 12.1 },
-      ],
-      memoryUsageMBs: [
-        { time: 1704067200000, used: 4096, free: 8192 },
-        { time: 1704067205000, used: 4200, free: 8000 },
-      ],
-    };
-
-    globalThis.fetch = createMockFetch(expectedData);
+    globalThis.fetch = createMockFetch(sampleMetricsData);
 
     const result = await getMetricsData();
 
-    expect(result).toEqual(expectedData);
+    expect(result).toEqual(sampleMetricsData);
   });
 
   it("should throw error for invalid metrics data", async () => {
