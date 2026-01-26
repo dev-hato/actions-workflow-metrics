@@ -95980,7 +95980,7 @@ async function getMetricsData() {
   const controller = new AbortController;
   const timer = setTimeout(() => controller.abort(), 10 * 1000);
   try {
-    const res = await fetch(`http://localhost:${serverPort}`, {
+    const res = await fetch(`http://localhost:${serverPort}/metrics`, {
       signal: controller.signal
     });
     if (!res.ok) {
@@ -96046,11 +96046,13 @@ async function index() {
     await fs.writeFile(fileName, JSON.stringify(metricsData));
     const client = new import_artifact.DefaultArtifactClient;
     await client.uploadArtifact(artifactName, [fileName], ".");
+    await fetch(`http://localhost:${serverPort}/finish`);
+    import_core.info("Server finished");
   } catch (error) {
     import_core.setFailed(error);
   }
 }
 await index();
 
-//# debugId=3C8D1BCEB3F85B9364756E2164756E21
+//# debugId=91D65739C769017D64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

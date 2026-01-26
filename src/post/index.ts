@@ -1,7 +1,8 @@
 import { promises as fs } from "node:fs";
 import { DefaultArtifactClient } from "@actions/artifact";
-import { setFailed, summary } from "@actions/core";
+import { info, setFailed, summary } from "@actions/core";
 import { getMetricsData, render } from "./lib";
+import { serverPort } from "../lib";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
 
@@ -18,6 +19,10 @@ async function index(): Promise<void> {
     await fs.writeFile(fileName, JSON.stringify(metricsData));
     const client: DefaultArtifactClient = new DefaultArtifactClient();
     await client.uploadArtifact(artifactName, [fileName], ".");
+
+    // Stop the metrics server
+    await fetch(`http://localhost:${serverPort}/finish`);
+    info("Server finished");
   } catch (error) {
     setFailed(error);
   }

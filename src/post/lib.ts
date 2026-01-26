@@ -25,9 +25,12 @@ export async function getMetricsData(): Promise<
   const controller: AbortController = new AbortController();
   const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
   try {
-    const res: Response = await fetch(`http://localhost:${serverPort}`, {
-      signal: controller.signal,
-    });
+    const res: Response = await fetch(
+      `http://localhost:${serverPort}/metrics`,
+      {
+        signal: controller.signal,
+      },
+    );
 
     if (!res.ok) {
       throw new Error(

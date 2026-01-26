@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { Renderer } from "./renderer";
 
 describe("Renderer", () => {
-  it("should return empty string for empty metricsInfo", () => {
+  it("should return only header for empty metricsInfo", () => {
     const renderer: Renderer = new Renderer();
 
     expect(
@@ -16,7 +16,7 @@ describe("Renderer", () => {
           },
         },
       ]),
-    ).toBe("");
+    ).toBe("## Workflow Metrics\n\n");
   });
 
   it("should render with single metric", () => {

@@ -42236,17 +42236,28 @@ var serverPort = 7777;
 // src/main/server.ts
 async function server() {
   const metrics = new Metrics;
-  const server2 = createServer((_, response) => {
-    try {
-      response.setHeader("Content-Type", "application/json");
-      response.setHeader("Access-Control-Allow-Origin", "*");
-      response.statusCode = 200;
-      response.end(metrics.get());
-    } catch (error2) {
-      response.statusCode = 500;
-      response.setHeader("Content-Type", "application/json");
-      response.end(JSON.stringify({ error: "Internal server error" }));
-      import_core2.setFailed(error2);
+  const server2 = createServer((request, response) => {
+    switch (request.url) {
+      case "/metrics":
+        {
+          try {
+            response.setHeader("Content-Type", "application/json");
+            response.setHeader("Access-Control-Allow-Origin", "*");
+            response.statusCode = 200;
+            response.end(metrics.get());
+          } catch (error2) {
+            response.statusCode = 500;
+            response.setHeader("Content-Type", "application/json");
+            response.end(JSON.stringify({ error: "Internal server error" }));
+            import_core2.setFailed(error2);
+          }
+        }
+        break;
+      case "/finish":
+        response.statusCode = 200;
+        response.end();
+        server2.close();
+        break;
     }
   });
   server2.on("error", import_core2.setFailed);
@@ -42254,5 +42265,5 @@ async function server() {
 }
 await server();
 
-//# debugId=C96588BE00F6C35B64756E2164756E21
+//# debugId=B3FC55BD993EF1B764756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
