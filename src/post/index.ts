@@ -22,9 +22,26 @@ async function index(): Promise<void> {
   } catch (error) {
     setFailed(error);
   } finally {
+    const controller: AbortController = new AbortController();
+    const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
+
     // Stop the metrics server
-    await fetch(`http://localhost:${serverPort}/finish`);
-    info("Server finished");
+    try {
+      const res: Response = await fetch(
+        `http://localhost:${serverPort}/finish`,
+        {
+          signal: controller.signal,
+        },
+      );
+
+      if (res.ok) {
+        info("Server finished");
+      } else {
+        setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
+      }
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
 

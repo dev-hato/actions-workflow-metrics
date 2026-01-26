@@ -96049,11 +96049,23 @@ async function index() {
   } catch (error) {
     import_core.setFailed(error);
   } finally {
-    await fetch(`http://localhost:${serverPort}/finish`);
-    import_core.info("Server finished");
+    const controller = new AbortController;
+    const timer = setTimeout(() => controller.abort(), 10 * 1000);
+    try {
+      const res = await fetch(`http://localhost:${serverPort}/finish`, {
+        signal: controller.signal
+      });
+      if (res.ok) {
+        import_core.info("Server finished");
+      } else {
+        import_core.setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
+      }
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
 await index();
 
-//# debugId=EDA598832353AEB364756E2164756E21
+//# debugId=0AA9B8E90C081B6564756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
