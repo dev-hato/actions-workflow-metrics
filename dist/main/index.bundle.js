@@ -20008,9 +20008,9 @@ async function index() {
     }
   });
   serverProcess.unref();
-  console.log(`Server started with PID: ${serverProcess.pid}`);
+  import_core.info(`Server started with PID: ${serverProcess.pid}`);
 }
 await index();
 
-//# debugId=E663ABED3905EE2564756E2164756E21
+//# debugId=C51F500A46F1628364756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
