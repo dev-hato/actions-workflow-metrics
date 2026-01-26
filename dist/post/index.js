@@ -23981,6 +23981,13 @@ class Renderer {
       }, [p.metricsInfoList[0].data.map(() => 0)]).slice(1).toReversed();
       return `### ${p.title}
 
+#### Legends
+
+${p.metricsInfoList.map((i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`).join(`
+`)}
+
+#### Chart
+
 \`\`\`mermaid
 %%{
   init: {
@@ -23997,12 +24004,7 @@ x-axis "Time" ${JSON.stringify(p.times.map((d) => d.toLocaleTimeString("en-GB", 
 y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
 ${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join(`
 `)}
-\`\`\`
-
-#### legends
-
-${p.metricsInfoList.map((i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`).join(`
-`)}`;
+\`\`\``;
     }).join(`
 
 `);
@@ -24117,5 +24119,5 @@ async function index() {
 }
 await index();
 
-//# debugId=2B7F374E8406899564756E2164756E21
+//# debugId=01FAD2CA7B92F7AE64756E2164756E21
 //# sourceMappingURL=index.js.map
