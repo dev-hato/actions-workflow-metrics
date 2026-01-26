@@ -115,6 +115,13 @@ export default defineConfig([
       ecmaVersion: "latest",
       sourceType: "module",
     },
+
+    rules: {
+      // Disable for TypeScript (doesn't understand TS module resolution and Bun builtins)
+      "n/no-missing-import": "off",
+      // Allow process.exit() in CLI tools
+      "n/no-process-exit": "off",
+    },
   },
   {
     files: ["**/*.vue"],

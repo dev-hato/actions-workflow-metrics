@@ -65,7 +65,7 @@ ${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n
 ${p.metricsInfoList
   .map(
     (i: z.TypeOf<typeof metricsInfoSchema>): string =>
-      `* \$\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}\$\$`,
+      `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`,
   )
   .join("\n")}`;
       })
