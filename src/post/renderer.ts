@@ -39,6 +39,17 @@ export class Renderer {
           .toReversed();
         return `### ${p.title}
 
+#### Legends
+
+${p.metricsInfoList
+  .map(
+    (i: z.TypeOf<typeof metricsInfoSchema>): string =>
+      `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`,
+  )
+  .join("\n")}
+
+#### Chart
+
 \`\`\`mermaid
 %%{
   init: {
@@ -58,16 +69,7 @@ x-axis "Time" ${JSON.stringify(
         )}
 y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
 ${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
-\`\`\`
-
-#### legends
-
-${p.metricsInfoList
-  .map(
-    (i: z.TypeOf<typeof metricsInfoSchema>): string =>
-      `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`,
-  )
-  .join("\n")}`;
+\`\`\``;
       })
       .join("\n\n");
   }
