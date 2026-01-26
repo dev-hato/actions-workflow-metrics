@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { setFailed } from "@actions/core";
 import { Metrics } from "./metrics";
 import { serverPort } from "../lib";
 import type { ServerResponse } from "node:http";
@@ -12,16 +13,14 @@ async function server(): Promise<void> {
       response.statusCode = 200;
       response.end(metrics.get());
     } catch (error) {
-      console.error("Error handling request:", error);
       response.statusCode = 500;
       response.setHeader("Content-Type", "application/json");
       response.end(JSON.stringify({ error: "Internal server error" }));
+      setFailed(error);
     }
   });
 
-  server.on("error", (error: Error) => {
-    console.error("Server error:", error);
-  });
+  server.on("error", setFailed);
   server.listen(serverPort);
 }
 

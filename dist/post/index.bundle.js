@@ -96047,11 +96047,10 @@ async function index() {
     const client = new import_artifact.DefaultArtifactClient;
     await client.uploadArtifact(artifactName, [fileName], ".");
   } catch (error) {
-    console.error("Failed to render metrics:", error);
-    process.exit(1);
+    import_core.setFailed(error);
   }
 }
 await index();
 
-//# debugId=2E9EBA67B6AE66DE64756E2164756E21
+//# debugId=3C8D1BCEB3F85B9364756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

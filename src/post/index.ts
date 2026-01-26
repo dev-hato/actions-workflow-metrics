@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import { DefaultArtifactClient } from "@actions/artifact";
-import { summary } from "@actions/core";
+import { setFailed, summary } from "@actions/core";
 import { getMetricsData, render } from "./lib";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
@@ -19,8 +19,7 @@ async function index(): Promise<void> {
     const client: DefaultArtifactClient = new DefaultArtifactClient();
     await client.uploadArtifact(artifactName, [fileName], ".");
   } catch (error) {
-    console.error("Failed to render metrics:", error);
-    process.exit(1);
+    setFailed(error);
   }
 }
 

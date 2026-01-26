@@ -1,3 +1,4 @@
+import { setFailed } from "@actions/core";
 import { currentLoad, mem } from "systeminformation";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
@@ -21,9 +22,7 @@ export class Metrics {
     }
 
     // Start async processing immediately (don't await in constructor)
-    this.append(Date.now()).catch((error: Error) => {
-      console.error("Failed to collect initial metrics:", error);
-    });
+    this.append(Date.now()).catch(setFailed);
   }
 
   get(): string {
@@ -52,15 +51,11 @@ export class Metrics {
         free: available / bytesPerMB,
       });
     } catch (error) {
-      console.error("Error collecting metrics:", error);
+      setFailed(error);
     } finally {
       const nextTime: number = time + this.intervalMs;
       setTimeout(
-        () => {
-          this.append(nextTime).catch((error: Error) => {
-            console.error("Failed to collect metrics:", error);
-          });
-        },
+        () => this.append(nextTime).catch(setFailed),
         Math.max(0, nextTime - Date.now()),
       );
     }
