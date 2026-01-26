@@ -14,7 +14,7 @@ export class Metrics {
       process.env.METRICS_INTERVAL_SECONDS;
 
     if (intervalSecondsInput) {
-      const intervalSecondsVal: number = parseInt(intervalSecondsInput);
+      const intervalSecondsVal: number = parseInt(intervalSecondsInput, 10);
       if (Number.isInteger(intervalSecondsVal)) {
         this.intervalMs = intervalSecondsVal * 1000;
       }
