@@ -2,7 +2,8 @@
 
 English | [日本語](README.ja.md)
 
-A custom GitHub Action that collects system metrics (CPU load, memory usage) during workflow execution and visualizes them as Mermaid charts.
+A custom GitHub Action that collects system metrics during workflow execution.
+It monitors CPU load and memory usage, then visualizes them as Mermaid charts.
 
 ## Features
 
@@ -83,7 +84,8 @@ pip install pre-commit
 pre-commit install
 ```
 
-This automatically runs gitleaks on commit to check for sensitive information like API keys or tokens.
+This automatically runs gitleaks on commit.
+It checks for sensitive information like API keys or tokens.
 
 ## Development Commands
 

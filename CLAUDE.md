@@ -1,10 +1,13 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code).
+It helps when working with code in this repository.
 
 ## Project Overview
 
-A custom GitHub Action for workflow telemetry collection. Periodically collects CPU load and memory usage during workflow execution, visualizes them as Mermaid charts, and outputs to GitHub Actions summary.
+A custom GitHub Action for workflow telemetry collection.
+Periodically collects CPU load and memory usage during workflow execution.
+Visualizes them as Mermaid charts and outputs to GitHub Actions summary.
 
 ## Documentation
 
@@ -13,7 +16,8 @@ This project maintains bilingual documentation:
 - **README.md** - English documentation
 - **README.ja.md** - Japanese documentation
 
-**Important**: When updating either readme file, the other must be updated with the same content in the appropriate language to keep them synchronized.
+**Important**: When updating either readme file, the other must be updated accordingly.
+Keep both files synchronized with the same content in the appropriate language.
 
 ## Setup
 
@@ -82,7 +86,8 @@ bun test --coverage
 **src/main/metrics.ts - Metrics class**
 
 - Collects system information using `systeminformation` library
-- Automatically adds metrics at 5-second intervals by default (customizable via `interval` input in seconds)
+- Automatically adds metrics at 5-second intervals by default
+- Interval is customizable via `interval` input (in seconds)
 - CPU: `currentLoadUser` and `currentLoadSystem` (0-100%)
 - Memory: Converts `active` (in use) and `available` to MB
 - Starts async collection immediately in constructor, repeats with `setTimeout`
@@ -91,7 +96,8 @@ bun test --coverage
 
 - Generates Mermaid charts using TypeScript template literals
 - Stacked area chart format (stacked bar chart)
-- Converts time series data to cumulative values for rendering (`toReversed()` and `reduce()` for cumulative calculation)
+- Converts time series data to cumulative values for rendering
+- Uses `toReversed()` and `reduce()` for cumulative calculation
 
 **src/lib.ts - Common schema and server settings**
 

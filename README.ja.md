@@ -1,8 +1,13 @@
 # actions-workflow-metrics
 
+<!-- textlint-disable ja-technical-writing/ja-no-mixed-period -->
+
 [English](README.md) | 日本語
 
-GitHub Actionsワークフロー実行中のシステムメトリクス（CPU負荷、メモリ使用量）を収集し、Mermaidチャートとして可視化するカスタムアクションです。
+<!-- textlint-enable ja-technical-writing/ja-no-mixed-period -->
+
+ワークフロー実行中にシステムメトリクスを収集するGitHub Actionsカスタムアクションです。
+CPU負荷とメモリ使用量を監視し、Mermaidチャートとして可視化します。
 
 ## 機能
 
@@ -83,7 +88,8 @@ pip install pre-commit
 pre-commit install
 ```
 
-これにより、コミット時に自動的にgitleaksが実行され、APIキーやトークンなどの機密情報が含まれていないかチェックされます。
+これにより、コミット時に自動的にgitleaksが実行されます。
+APIキーやトークンなどの機密情報が含まれていないかチェックされます。
 
 ## 開発コマンド
 
