@@ -18237,7 +18237,7 @@ class Metrics {
     this.intervalMs = 5 * 1000;
     const intervalSecondsInput = process.env.METRICS_INTERVAL_SECONDS;
     if (intervalSecondsInput) {
-      const intervalSecondsVal = parseInt(intervalSecondsInput);
+      const intervalSecondsVal = parseInt(intervalSecondsInput, 10);
       if (Number.isInteger(intervalSecondsVal)) {
         this.intervalMs = intervalSecondsVal * 1000;
       }
@@ -22295,5 +22295,5 @@ async function server() {
 }
 await server();
 
-//# debugId=B4DFD93D28CC787564756E2164756E21
+//# debugId=ACCE8A9A87941AF464756E2164756E21
 //# sourceMappingURL=server.js.map
