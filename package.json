@@ -1,7 +1,8 @@
 {
   "type": "module",
   "overrides": {
-    "undici": "6.23.0"
+    "undici": "6.23.0",
+    "lodash": "4.17.23"
   },
   "scripts": {
     "build": "bun run fix && tsc && bun run scripts/build.ts",
