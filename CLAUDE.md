@@ -13,7 +13,7 @@ This project maintains bilingual documentation:
 - **README.md** - English documentation
 - **README.ja.md** - Japanese documentation
 
-**Important**: When updating either README file, the other must be updated with the same content in the appropriate language to keep them synchronized.
+**Important**: When updating either readme file, the other must be updated with the same content in the appropriate language to keep them synchronized.
 
 ## Setup
 
