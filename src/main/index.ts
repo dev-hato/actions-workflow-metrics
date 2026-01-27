@@ -2,14 +2,11 @@ import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getInput, info } from "@actions/core";
-import { context } from "@actions/github";
 import type { ChildProcess } from "node:child_process";
 
 const __dirname: string = dirname(fileURLToPath(import.meta.url));
 
 async function index(): Promise<void> {
-  info(JSON.stringify(context));
-
   // Start server in background with interval passed via environment variable
   const serverProcess: ChildProcess = spawn(
     "node",
