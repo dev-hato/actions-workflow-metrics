@@ -34,8 +34,10 @@ function createMockFetch(
 }
 
 describe("render", () => {
+  const testMetricsID: string = "1234567890";
+
   it("should render charts with valid metrics data", () => {
-    const result: string = render(sampleMetricsData);
+    const result: string = render(sampleMetricsData, testMetricsID);
 
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
@@ -51,7 +53,7 @@ describe("render", () => {
       memoryUsageMBs: [],
     };
 
-    const result: string = render(metricsData);
+    const result: string = render(metricsData, testMetricsID);
 
     // Empty data results in empty string (no charts to render)
     expect(typeof result).toBe("string");
@@ -69,7 +71,7 @@ describe("render", () => {
       ],
     };
 
-    const result: string = render(metricsData);
+    const result: string = render(metricsData, testMetricsID);
 
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
@@ -84,7 +86,7 @@ describe("render", () => {
       ],
     };
 
-    const result: string = render(metricsData);
+    const result: string = render(metricsData, testMetricsID);
 
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);

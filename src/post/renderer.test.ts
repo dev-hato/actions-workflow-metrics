@@ -2,42 +2,50 @@ import { describe, expect, it } from "bun:test";
 import { Renderer } from "./renderer";
 
 describe("Renderer", () => {
+  const testMetricsID: string = "1234567890";
+
   it("should return only header for empty metricsInfo", () => {
     const renderer: Renderer = new Renderer();
 
     expect(
-      renderer.render([
-        {
-          title: "Test",
-          metricsInfoList: [],
-          times: [],
-          yAxis: {
-            title: "Units",
+      renderer.render(
+        [
+          {
+            title: "Test",
+            metricsInfoList: [],
+            times: [],
+            yAxis: {
+              title: "Units",
+            },
           },
-        },
-      ]),
-    ).toBe("## Workflow Metrics\n\n");
+        ],
+        testMetricsID,
+      ),
+    ).toBe(`## Workflow Metrics (Metrics ID: ${testMetricsID})\n\n`);
   });
 
   it("should render with single metric", () => {
     const renderer: Renderer = new Renderer();
-    const result: string = renderer.render([
-      {
-        title: "CPU Usage",
-        metricsInfoList: [
-          {
-            color: "Red",
-            name: "User CPU",
-            data: [10, 20, 30],
+    const result: string = renderer.render(
+      [
+        {
+          title: "CPU Usage",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "User CPU",
+              data: [10, 20, 30],
+            },
+          ],
+          times: [new Date("2024-01-01T00:00:00Z")],
+          yAxis: {
+            title: "Percentage",
+            range: "0 --> 100",
           },
-        ],
-        times: [new Date("2024-01-01T00:00:00Z")],
-        yAxis: {
-          title: "Percentage",
-          range: "0 --> 100",
         },
-      },
-    ]);
+      ],
+      testMetricsID,
+    );
 
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
@@ -66,32 +74,35 @@ describe("Renderer", () => {
 
   it("should render with multiple metrics", () => {
     const renderer: Renderer = new Renderer();
-    const result: string = renderer.render([
-      {
-        title: "System Metrics",
-        metricsInfoList: [
-          {
-            color: "Red",
-            name: "User CPU",
-            data: [10, 20, 30],
+    const result: string = renderer.render(
+      [
+        {
+          title: "System Metrics",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "User CPU",
+              data: [10, 20, 30],
+            },
+            {
+              color: "Orange",
+              name: "System CPU",
+              data: [5, 10, 15],
+            },
+          ],
+          times: [
+            new Date("2024-01-01T00:00:00Z"),
+            new Date("2024-01-01T00:00:05Z"),
+            new Date("2024-01-01T00:00:10Z"),
+          ],
+          yAxis: {
+            title: "%",
+            range: "0 --> 100",
           },
-          {
-            color: "Orange",
-            name: "System CPU",
-            data: [5, 10, 15],
-          },
-        ],
-        times: [
-          new Date("2024-01-01T00:00:00Z"),
-          new Date("2024-01-01T00:00:05Z"),
-          new Date("2024-01-01T00:00:10Z"),
-        ],
-        yAxis: {
-          title: "%",
-          range: "0 --> 100",
         },
-      },
-    ]);
+      ],
+      testMetricsID,
+    );
 
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
@@ -122,22 +133,25 @@ describe("Renderer", () => {
 
   it("should handle yAxis without range", () => {
     const renderer: Renderer = new Renderer();
-    const result: string = renderer.render([
-      {
-        title: "Memory Usage",
-        metricsInfoList: [
-          {
-            color: "Blue",
-            name: "Used Memory",
-            data: [100, 200, 300],
+    const result: string = renderer.render(
+      [
+        {
+          title: "Memory Usage",
+          metricsInfoList: [
+            {
+              color: "Blue",
+              name: "Used Memory",
+              data: [100, 200, 300],
+            },
+          ],
+          times: [new Date()],
+          yAxis: {
+            title: "MB",
           },
-        ],
-        times: [new Date()],
-        yAxis: {
-          title: "MB",
         },
-      },
-    ]);
+      ],
+      testMetricsID,
+    );
 
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
@@ -155,32 +169,35 @@ describe("Renderer", () => {
 
   it("should correctly extract colors from metricsInfo", () => {
     const renderer: Renderer = new Renderer();
-    const result: string = renderer.render([
-      {
-        title: "Test",
-        metricsInfoList: [
-          {
-            color: "Red",
-            name: "Metric 1",
-            data: [1],
+    const result: string = renderer.render(
+      [
+        {
+          title: "Test",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "Metric 1",
+              data: [1],
+            },
+            {
+              color: "Blue",
+              name: "Metric 2",
+              data: [2],
+            },
+            {
+              color: "Green",
+              name: "Metric 3",
+              data: [3],
+            },
+          ],
+          times: [new Date()],
+          yAxis: {
+            title: "Units",
           },
-          {
-            color: "Blue",
-            name: "Metric 2",
-            data: [2],
-          },
-          {
-            color: "Green",
-            name: "Metric 3",
-            data: [3],
-          },
-        ],
-        times: [new Date()],
-        yAxis: {
-          title: "Units",
         },
-      },
-    ]);
+      ],
+      testMetricsID,
+    );
 
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
@@ -204,31 +221,34 @@ describe("Renderer", () => {
     // - Base (Metric 1): [0, 0, 0] + [10, 20, 30] = [10, 20, 30]
     // - Stacked (Metric 2): [10, 20, 30] + [5, 10, 15] = [15, 30, 45]
 
-    const result: string = renderer.render([
-      {
-        title: "Stacked Test",
-        metricsInfoList: [
-          {
-            color: "Red",
-            name: "Base Metric",
-            data: [10, 20, 30],
+    const result: string = renderer.render(
+      [
+        {
+          title: "Stacked Test",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "Base Metric",
+              data: [10, 20, 30],
+            },
+            {
+              color: "Blue",
+              name: "Stacked Metric",
+              data: [5, 10, 15],
+            },
+          ],
+          times: [
+            new Date("2024-01-01T00:00:00Z"),
+            new Date("2024-01-01T00:00:05Z"),
+            new Date("2024-01-01T00:00:10Z"),
+          ],
+          yAxis: {
+            title: "Value",
           },
-          {
-            color: "Blue",
-            name: "Stacked Metric",
-            data: [5, 10, 15],
-          },
-        ],
-        times: [
-          new Date("2024-01-01T00:00:00Z"),
-          new Date("2024-01-01T00:00:05Z"),
-          new Date("2024-01-01T00:00:10Z"),
-        ],
-        yAxis: {
-          title: "Value",
         },
-      },
-    ]);
+      ],
+      testMetricsID,
+    );
 
     // The result should be a valid rendered template
     expect(result).toBeTruthy();
@@ -248,35 +268,38 @@ describe("Renderer", () => {
 
   it("should handle three or more metrics in stack", () => {
     const renderer: Renderer = new Renderer();
-    const result: string = renderer.render([
-      {
-        title: "Multi-layer Stack",
-        metricsInfoList: [
-          {
-            color: "Red",
-            name: "Layer 1",
-            data: [10, 20],
+    const result: string = renderer.render(
+      [
+        {
+          title: "Multi-layer Stack",
+          metricsInfoList: [
+            {
+              color: "Red",
+              name: "Layer 1",
+              data: [10, 20],
+            },
+            {
+              color: "Orange",
+              name: "Layer 2",
+              data: [5, 10],
+            },
+            {
+              color: "Yellow",
+              name: "Layer 3",
+              data: [3, 6],
+            },
+          ],
+          times: [
+            new Date("2024-01-01T00:00:00Z"),
+            new Date("2024-01-01T00:00:05Z"),
+          ],
+          yAxis: {
+            title: "Units",
           },
-          {
-            color: "Orange",
-            name: "Layer 2",
-            data: [5, 10],
-          },
-          {
-            color: "Yellow",
-            name: "Layer 3",
-            data: [3, 6],
-          },
-        ],
-        times: [
-          new Date("2024-01-01T00:00:00Z"),
-          new Date("2024-01-01T00:00:05Z"),
-        ],
-        yAxis: {
-          title: "Units",
         },
-      },
-    ]);
+      ],
+      testMetricsID,
+    );
 
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
@@ -311,26 +334,29 @@ describe("Renderer", () => {
 
   it("should format times correctly in x-axis", () => {
     const renderer: Renderer = new Renderer();
-    const result: string = renderer.render([
-      {
-        title: "Time Format Test",
-        metricsInfoList: [
-          {
-            color: "Blue",
-            name: "Test Metric",
-            data: [10, 20, 30],
+    const result: string = renderer.render(
+      [
+        {
+          title: "Time Format Test",
+          metricsInfoList: [
+            {
+              color: "Blue",
+              name: "Test Metric",
+              data: [10, 20, 30],
+            },
+          ],
+          times: [
+            new Date("2024-01-01T09:15:30Z"),
+            new Date("2024-01-01T14:30:45Z"),
+            new Date("2024-01-01T23:59:59Z"),
+          ],
+          yAxis: {
+            title: "Value",
           },
-        ],
-        times: [
-          new Date("2024-01-01T09:15:30Z"),
-          new Date("2024-01-01T14:30:45Z"),
-          new Date("2024-01-01T23:59:59Z"),
-        ],
-        yAxis: {
-          title: "Value",
         },
-      },
-    ]);
+      ],
+      testMetricsID,
+    );
 
     // Verify times are in HH:MM:SS format
     expect(result).toContain("09:15:30");
@@ -343,23 +369,26 @@ describe("Renderer", () => {
 
   it("should include complete Mermaid chart structure", () => {
     const renderer: Renderer = new Renderer();
-    const result: string = renderer.render([
-      {
-        title: "Structure Test",
-        metricsInfoList: [
-          {
-            color: "Green",
-            name: "Test",
-            data: [100],
+    const result: string = renderer.render(
+      [
+        {
+          title: "Structure Test",
+          metricsInfoList: [
+            {
+              color: "Green",
+              name: "Test",
+              data: [100],
+            },
+          ],
+          times: [new Date()],
+          yAxis: {
+            title: "Units",
+            range: "0 --> 200",
           },
-        ],
-        times: [new Date()],
-        yAxis: {
-          title: "Units",
-          range: "0 --> 200",
         },
-      },
-    ]);
+      ],
+      testMetricsID,
+    );
 
     // Verify Mermaid block start and end are included
     expect(result).toContain("```mermaid");
@@ -385,22 +414,25 @@ describe("Renderer", () => {
 
   it("should handle single data point", () => {
     const renderer: Renderer = new Renderer();
-    const result: string = renderer.render([
-      {
-        title: "Single Point",
-        metricsInfoList: [
-          {
-            color: "Purple",
-            name: "Single Metric",
-            data: [42],
+    const result: string = renderer.render(
+      [
+        {
+          title: "Single Point",
+          metricsInfoList: [
+            {
+              color: "Purple",
+              name: "Single Metric",
+              data: [42],
+            },
+          ],
+          times: [new Date("2024-01-01T12:00:00Z")],
+          yAxis: {
+            title: "Value",
           },
-        ],
-        times: [new Date("2024-01-01T12:00:00Z")],
-        yAxis: {
-          title: "Value",
         },
-      },
-    ]);
+      ],
+      testMetricsID,
+    );
 
     expect(result).toBeTruthy();
     expect(result).toContain("### Single Point");

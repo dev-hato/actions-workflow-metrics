@@ -11,16 +11,40 @@ async function index(): Promise<void> {
     const metricsData: z.TypeOf<typeof metricsDataSchema> =
       await getMetricsData();
 
-    // Render metrics
-    await summary.addRaw(render(metricsData)).write();
-
-    const artifactName: string = ["workflow_metrics"]
-      .concat(process.env.GITHUB_JOB ? [process.env.GITHUB_JOB] : [])
-      .join("_");
-    const fileName: string = `${artifactName}.json`;
+    const fileBaseName: string = "workflow_metrics";
+    const fileName: string = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
-    const client: DefaultArtifactClient = new DefaultArtifactClient();
-    await client.uploadArtifact(artifactName, [fileName], ".");
+    const maxRetryCount: number = 10;
+    let metricsID: string = "";
+
+    for (let i = 0; i < maxRetryCount; i++) {
+      metricsID = new Date().getTime().toString();
+
+      try {
+        const client: DefaultArtifactClient = new DefaultArtifactClient();
+        await client.uploadArtifact(
+          [fileBaseName, metricsID].join("_"),
+          [fileName],
+          ".",
+        );
+        break;
+      } catch (error) {
+        if (
+          maxRetryCount - 2 < i ||
+          !(error instanceof Error) ||
+          !error.message.includes(
+            "Failed request: (409) Conflict: an artifact with this name already exists on the workflow run",
+          )
+        ) {
+          setFailed(error);
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    // Render metrics
+    await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error) {
     setFailed(error);
   } finally {

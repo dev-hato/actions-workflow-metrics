@@ -83103,7 +83103,7 @@ var require_upload_artifact = __commonJS((exports) => {
   }
 });
 
-// node_modules/@actions/github/lib/context.js
+// node_modules/@actions/artifact/node_modules/@actions/github/lib/context.js
 var require_context = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.Context = undefined;
@@ -83157,7 +83157,7 @@ var require_context = __commonJS((exports) => {
   exports.Context = Context;
 });
 
-// node_modules/@actions/github/node_modules/@actions/http-client/lib/proxy.js
+// node_modules/@actions/artifact/node_modules/@actions/github/node_modules/@actions/http-client/lib/proxy.js
 var require_proxy2 = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.checkBypass = exports.getProxyUrl = undefined;
@@ -83237,7 +83237,7 @@ var require_proxy2 = __commonJS((exports) => {
   }
 });
 
-// node_modules/@actions/github/node_modules/@actions/http-client/lib/index.js
+// node_modules/@actions/artifact/node_modules/@actions/github/node_modules/@actions/http-client/lib/index.js
 var require_lib3 = __commonJS((exports) => {
   var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
     if (k2 === undefined)
@@ -83832,7 +83832,7 @@ var require_lib3 = __commonJS((exports) => {
   var lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => (c[k.toLowerCase()] = obj[k], c), {});
 });
 
-// node_modules/@actions/github/lib/internal/utils.js
+// node_modules/@actions/artifact/node_modules/@actions/github/lib/internal/utils.js
 var require_utils6 = __commonJS((exports) => {
   var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
     if (k2 === undefined)
@@ -85081,7 +85081,7 @@ var require_dist_node8 = __commonJS((exports, module) => {
   };
 });
 
-// node_modules/@octokit/plugin-rest-endpoint-methods/dist-node/index.js
+// node_modules/@actions/artifact/node_modules/@actions/github/node_modules/@octokit/plugin-rest-endpoint-methods/dist-node/index.js
 var require_dist_node9 = __commonJS((exports, module) => {
   var __defProp2 = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -87218,7 +87218,7 @@ var require_dist_node9 = __commonJS((exports, module) => {
   legacyRestEndpointMethods.VERSION = VERSION;
 });
 
-// node_modules/@octokit/plugin-paginate-rest/dist-node/index.js
+// node_modules/@actions/artifact/node_modules/@actions/github/node_modules/@octokit/plugin-paginate-rest/dist-node/index.js
 var require_dist_node10 = __commonJS((exports, module) => {
   var __defProp2 = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -87585,7 +87585,7 @@ var require_dist_node10 = __commonJS((exports, module) => {
   paginateRest.VERSION = VERSION;
 });
 
-// node_modules/@actions/github/lib/utils.js
+// node_modules/@actions/artifact/node_modules/@actions/github/lib/utils.js
 var require_utils7 = __commonJS((exports) => {
   var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
     if (k2 === undefined)
@@ -87647,7 +87647,7 @@ var require_utils7 = __commonJS((exports) => {
   exports.getOctokitOptions = getOctokitOptions;
 });
 
-// node_modules/@actions/github/lib/github.js
+// node_modules/@actions/artifact/node_modules/@actions/github/lib/github.js
 var require_github = __commonJS((exports) => {
   var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
     if (k2 === undefined)
@@ -95897,8 +95897,8 @@ var coerce = {
 var NEVER = INVALID;
 // src/post/renderer.ts
 class Renderer {
-  render(renderParamsList) {
-    return `## Workflow Metrics
+  render(renderParamsList, metricsID) {
+    return `## Workflow Metrics (Metrics ID: ${metricsID})
 
 ${renderParamsList.filter(({
       metricsInfoList
@@ -95991,7 +95991,7 @@ async function getMetricsData() {
     clearTimeout(timer);
   }
 }
-function render(metricsData) {
+function render(metricsData, metricsID) {
   const renderer = new Renderer;
   return renderer.render(renderParamsListSchema.parse([
     {
@@ -96033,19 +96033,32 @@ function render(metricsData) {
         title: "MB"
       }
     }
-  ]));
+  ]), metricsID);
 }
 
 // src/post/index.ts
 async function index() {
   try {
     const metricsData = await getMetricsData();
-    await import_core.summary.addRaw(render(metricsData)).write();
-    const artifactName = ["workflow_metrics"].concat(process.env.GITHUB_JOB ? [process.env.GITHUB_JOB] : []).join("_");
-    const fileName = `${artifactName}.json`;
+    const fileBaseName = "workflow_metrics";
+    const fileName = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
-    const client = new import_artifact.DefaultArtifactClient;
-    await client.uploadArtifact(artifactName, [fileName], ".");
+    const maxRetryCount = 10;
+    let metricsID = "";
+    for (let i = 0;i < maxRetryCount; i++) {
+      metricsID = new Date().getTime().toString();
+      try {
+        const client = new import_artifact.DefaultArtifactClient;
+        await client.uploadArtifact([fileBaseName, metricsID].join("_"), [fileName], ".");
+        break;
+      } catch (error) {
+        if (maxRetryCount - 2 < i || !(error instanceof Error) || !error.message.includes("Failed request: (409) Conflict: an artifact with this name already exists on the workflow run")) {
+          import_core.setFailed(error);
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    await import_core.summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error) {
     import_core.setFailed(error);
   } finally {
@@ -96067,5 +96080,5 @@ async function index() {
 }
 await index();
 
-//# debugId=8A261523312CF7C964756E2164756E21
+//# debugId=A2E554AC3CBF3B2664756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

@@ -7,8 +7,11 @@ import type {
 } from "./lib";
 
 export class Renderer {
-  render(renderParamsList: z.TypeOf<typeof renderParamsListSchema>): string {
-    return `## Workflow Metrics
+  render(
+    renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
+    metricsID: string,
+  ): string {
+    return `## Workflow Metrics (Metrics ID: ${metricsID})
 
 ${renderParamsList
   .filter(

@@ -46,6 +46,7 @@ export async function getMetricsData(): Promise<
 
 export function render(
   metricsData: z.TypeOf<typeof metricsDataSchema>,
+  metricsID: string,
 ): string {
   const renderer: Renderer = new Renderer();
   return renderer.render(
@@ -102,5 +103,6 @@ export function render(
         },
       },
     ]),
+    metricsID,
   );
 }
