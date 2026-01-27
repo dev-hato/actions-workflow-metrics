@@ -14,7 +14,9 @@ async function index(): Promise<void> {
     // Render metrics
     await summary.addRaw(render(metricsData)).write();
 
-    const artifactName: string = "workflow_metrics";
+    const artifactName: string = ["workflow_metrics"]
+      .concat(process.env.GITHUB_JOB ? [process.env.GITHUB_JOB] : [])
+      .join("_");
     const fileName: string = `${artifactName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
     const client: DefaultArtifactClient = new DefaultArtifactClient();
