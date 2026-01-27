@@ -95898,7 +95898,11 @@ var NEVER = INVALID;
 // src/post/renderer.ts
 class Renderer {
   render(renderParamsList, metricsID) {
-    return `## Workflow Metrics (Metrics ID: ${metricsID})
+    return `## Workflow Metrics
+
+### Metrics ID
+
+${metricsID}
 
 ${renderParamsList.filter(({
       metricsInfoList
@@ -96080,5 +96084,5 @@ async function index() {
 }
 await index();
 
-//# debugId=D6A5EC21F7A11E7064756E2164756E21
+//# debugId=49560CBC07496A5E64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

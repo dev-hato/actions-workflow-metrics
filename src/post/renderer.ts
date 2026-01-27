@@ -11,7 +11,11 @@ export class Renderer {
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
     metricsID: string,
   ): string {
-    return `## Workflow Metrics (Metrics ID: ${metricsID})
+    return `## Workflow Metrics
+
+### Metrics ID
+
+${metricsID}
 
 ${renderParamsList
   .filter(

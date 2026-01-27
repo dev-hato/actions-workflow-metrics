@@ -21,7 +21,7 @@ describe("Renderer", () => {
         ],
         testMetricsID,
       ),
-    ).toBe(`## Workflow Metrics (Metrics ID: ${testMetricsID})\n\n`);
+    ).toBe(`## Workflow Metrics\n\n### Metrics ID\n\n${testMetricsID}\n\n`);
   });
 
   it("should render with single metric", () => {
