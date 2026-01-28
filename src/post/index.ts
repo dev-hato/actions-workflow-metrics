@@ -7,14 +7,30 @@ import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
 
 async function index(): Promise<void> {
-  try {
-    const metricsData: z.TypeOf<typeof metricsDataSchema> =
-      await getMetricsData();
+  const maxRetryCount: number = 10;
+  let metricsData: z.TypeOf<typeof metricsDataSchema>;
 
+  for (let i = 0; i < maxRetryCount; i++) {
+    try {
+      metricsData = await getMetricsData();
+      break;
+    } catch (error) {
+      if (
+        maxRetryCount - 2 < i ||
+        !(error instanceof TypeError) ||
+        error.message !== "fetch failed"
+      ) {
+        setFailed(error);
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  try {
     const fileBaseName: string = "workflow_metrics";
     const fileName: string = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
-    const maxRetryCount: number = 10;
     let metricsID: string = "";
 
     for (let i = 0; i < maxRetryCount; i++) {
@@ -65,9 +81,6 @@ async function index(): Promise<void> {
       } else {
         setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
-    } catch {
-      // Server may have already stopped or failed to start
-      info("Server already stopped or not running");
     } finally {
       clearTimeout(timer);
     }
