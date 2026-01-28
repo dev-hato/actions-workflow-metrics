@@ -250,7 +250,7 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
-    // The result should be a valid rendered template
+    // The result should be a valid-rendered template
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
     expect(result).toContain("### Stacked Test");
