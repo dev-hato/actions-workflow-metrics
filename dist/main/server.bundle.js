@@ -56042,15 +56042,15 @@ function date4(params) {
 config(en_default());
 // src/lib.ts
 var cpuLoadPercentageSchema = exports_external.object({
-  unixTimeMs: exports_external.number().finite(),
-  user: exports_external.number().finite().nonnegative().max(100),
-  system: exports_external.number().finite().nonnegative().max(100)
+  unixTimeMs: exports_external.number(),
+  user: exports_external.number().nonnegative().max(100),
+  system: exports_external.number().nonnegative().max(100)
 });
 var cpuLoadPercentagesSchema = exports_external.array(cpuLoadPercentageSchema);
 var memoryUsageMBSchema = exports_external.object({
-  unixTimeMs: exports_external.number().finite(),
-  used: exports_external.number().finite().nonnegative(),
-  free: exports_external.number().finite().nonnegative()
+  unixTimeMs: exports_external.number(),
+  used: exports_external.number().nonnegative(),
+  free: exports_external.number().nonnegative()
 });
 var memoryUsageMBsSchema = exports_external.array(memoryUsageMBSchema);
 var metricsDataSchema = exports_external.object({
@@ -56089,5 +56089,5 @@ async function server() {
 }
 await server();
 
-//# debugId=893D6AA04E2C714D64756E2164756E21
+//# debugId=AECAD69A2863411864756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
