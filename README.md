@@ -17,19 +17,19 @@ The following charts and data are output.
 
 ### CPU Loads
 
-Stacked bar chart of system/user CPU load
+Stacked bar chart of system/user CPU load.
 
 ![CPU Loads](images/metrics_example_cpu.png)
 
 ### Memory Usages
 
-Stacked bar chart of active/available memory
+Stacked bar chart of active/available memory.
 
 ![Memory Usages](images/metrics_example_memory.png)
 
 ### Artifacts
 
-JSON data of CPU Loads and Memory Usages
+JSON data of CPU Loads and Memory Usages.
 
 ![Artifacts](images/artifact_example.png)
 

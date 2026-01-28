@@ -21,19 +21,19 @@ CPU負荷とメモリ使用量を監視し、Mermaidチャートとして可視�
 
 ### CPU Loads
 
-システム/ユーザーCPU負荷の積み上げ棒グラフ
+システム/ユーザーCPU負荷の積み上げ棒グラフです。
 
 ![CPU Loads](images/metrics_example_cpu.png)
 
 ### Memory Usages
 
-使用中/空きメモリの積み上げ棒グラフ
+使用中/空きメモリの積み上げ棒グラフです。
 
 ![Memory Usages](images/metrics_example_memory.png)
 
 ### Artifacts
 
-CPU LoadsやMemory UsagesのJSONデータ
+CPU LoadsやMemory UsagesのJSONデータです。
 
 ![Artifacts](images/artifact_example.png)
 
