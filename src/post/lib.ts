@@ -70,7 +70,7 @@ export function render(
           },
         ],
         times: metricsData.cpuLoadPercentages.map(
-          ({ time }: { time: number }): number => time,
+          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
         ),
         yAxis: {
           title: "%",
@@ -96,7 +96,7 @@ export function render(
           },
         ],
         times: metricsData.memoryUsageMBs.map(
-          ({ time }: { time: number }): number => time,
+          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
         ),
         yAxis: {
           title: "MB",

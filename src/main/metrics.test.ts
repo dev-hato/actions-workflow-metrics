@@ -60,13 +60,13 @@ describe("Metrics", () => {
 
     // Verify CPU metrics are collected
     expect(data.cpuLoadPercentages.length).toBeGreaterThan(0);
-    expect(data.cpuLoadPercentages[0]).toHaveProperty("time");
+    expect(data.cpuLoadPercentages[0]).toHaveProperty("unixTimeMs");
     expect(data.cpuLoadPercentages[0]).toHaveProperty("user");
     expect(data.cpuLoadPercentages[0]).toHaveProperty("system");
 
     // Verify memory metrics are collected
     expect(data.memoryUsageMBs.length).toBeGreaterThan(0);
-    expect(data.memoryUsageMBs[0]).toHaveProperty("time");
+    expect(data.memoryUsageMBs[0]).toHaveProperty("unixTimeMs");
     expect(data.memoryUsageMBs[0]).toHaveProperty("used");
     expect(data.memoryUsageMBs[0]).toHaveProperty("free");
   });
@@ -81,7 +81,7 @@ describe("Metrics", () => {
       metrics.get(),
     ).cpuLoadPercentages[0];
 
-    expect(typeof cpuData.time).toBe("number");
+    expect(typeof cpuData.unixTimeMs).toBe("number");
     expect(typeof cpuData.user).toBe("number");
     expect(typeof cpuData.system).toBe("number");
     expect(cpuData.user).toBe(25.5);
@@ -98,7 +98,7 @@ describe("Metrics", () => {
       metrics.get(),
     ).memoryUsageMBs[0];
 
-    expect(typeof memData.time).toBe("number");
+    expect(typeof memData.unixTimeMs).toBe("number");
     expect(typeof memData.used).toBe("number");
     expect(typeof memData.free).toBe("number");
 
@@ -157,9 +157,10 @@ describe("Metrics", () => {
 
     // Verify timestamp interval is approximately 5 seconds (5000ms)
     const cpuTimeDiff: number =
-      data.cpuLoadPercentages[1].time - data.cpuLoadPercentages[0].time;
+      data.cpuLoadPercentages[1].unixTimeMs -
+      data.cpuLoadPercentages[0].unixTimeMs;
     const memTimeDiff: number =
-      data.memoryUsageMBs[1].time - data.memoryUsageMBs[0].time;
+      data.memoryUsageMBs[1].unixTimeMs - data.memoryUsageMBs[0].unixTimeMs;
 
     // Verify close to 5 seconds (5000ms) with ±200ms tolerance
     expect(cpuTimeDiff).toBeGreaterThanOrEqual(4800);
@@ -189,14 +190,14 @@ describe("Metrics", () => {
 
     // Verify all timestamps are in ascending order
     for (let i = 1; i < finalData.cpuLoadPercentages.length; i++) {
-      expect(finalData.cpuLoadPercentages[i].time).toBeGreaterThan(
-        finalData.cpuLoadPercentages[i - 1].time,
+      expect(finalData.cpuLoadPercentages[i].unixTimeMs).toBeGreaterThan(
+        finalData.cpuLoadPercentages[i - 1].unixTimeMs,
       );
     }
 
     for (let i = 1; i < finalData.memoryUsageMBs.length; i++) {
-      expect(finalData.memoryUsageMBs[i].time).toBeGreaterThan(
-        finalData.memoryUsageMBs[i - 1].time,
+      expect(finalData.memoryUsageMBs[i].unixTimeMs).toBeGreaterThan(
+        finalData.memoryUsageMBs[i - 1].unixTimeMs,
       );
     }
   }, 15000); // Set test timeout to 15 seconds

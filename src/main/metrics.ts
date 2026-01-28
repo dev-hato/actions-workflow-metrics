@@ -29,7 +29,7 @@ export class Metrics {
     return JSON.stringify(this.data);
   }
 
-  private async append(time: number): Promise<void> {
+  private async append(unixTimeMs: number): Promise<void> {
     try {
       const {
         currentLoadUser,
@@ -37,7 +37,7 @@ export class Metrics {
       }: { currentLoadUser: number; currentLoadSystem: number } =
         await currentLoad();
       this.data.cpuLoadPercentages.push({
-        time,
+        unixTimeMs,
         user: currentLoadUser,
         system: currentLoadSystem,
       });
@@ -46,17 +46,17 @@ export class Metrics {
       const { active, available }: { active: number; available: number } =
         await mem();
       this.data.memoryUsageMBs.push({
-        time,
+        unixTimeMs,
         used: active / bytesPerMB,
         free: available / bytesPerMB,
       });
     } catch (error) {
       setFailed(error);
     } finally {
-      const nextTime: number = time + this.intervalMs;
+      const nextUNIXTimeMs: number = unixTimeMs + this.intervalMs;
       setTimeout(
-        () => this.append(nextTime).catch(setFailed),
-        Math.max(0, nextTime - Date.now()),
+        () => this.append(nextUNIXTimeMs).catch(setFailed),
+        Math.max(0, nextUNIXTimeMs - Date.now()),
       );
     }
   }

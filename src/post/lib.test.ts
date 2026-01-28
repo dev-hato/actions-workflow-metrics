@@ -8,12 +8,12 @@ import type { metricsDataSchema } from "../lib";
  */
 const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
   cpuLoadPercentages: [
-    { time: 1704067200000, user: 25.5, system: 10.3 },
-    { time: 1704067205000, user: 30.2, system: 12.1 },
+    { unixTimeMs: 1704067200000, user: 25.5, system: 10.3 },
+    { unixTimeMs: 1704067205000, user: 30.2, system: 12.1 },
   ],
   memoryUsageMBs: [
-    { time: 1704067200000, used: 4096, free: 8192 },
-    { time: 1704067205000, used: 4200, free: 8000 },
+    { unixTimeMs: 1704067200000, used: 4096, free: 8192 },
+    { unixTimeMs: 1704067205000, used: 4200, free: 8000 },
   ],
 };
 
@@ -62,12 +62,12 @@ describe("render", () => {
   it("should correctly map CPU load percentages", () => {
     const metricsData: z.TypeOf<typeof metricsDataSchema> = {
       cpuLoadPercentages: [
-        { time: 1704067200000, user: 20, system: 10 },
-        { time: 1704067205000, user: 25, system: 15 },
+        { unixTimeMs: 1704067200000, user: 20, system: 10 },
+        { unixTimeMs: 1704067205000, user: 25, system: 15 },
       ],
       memoryUsageMBs: [
-        { time: 1704067200000, used: 4000, free: 8000 },
-        { time: 1704067205000, used: 4100, free: 7900 },
+        { unixTimeMs: 1704067200000, used: 4000, free: 8000 },
+        { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
       ],
     };
 
@@ -79,10 +79,10 @@ describe("render", () => {
 
   it("should correctly map memory usage data", () => {
     const metricsData: z.TypeOf<typeof metricsDataSchema> = {
-      cpuLoadPercentages: [{ time: 1704067200000, user: 20, system: 10 }],
+      cpuLoadPercentages: [{ unixTimeMs: 1704067200000, user: 20, system: 10 }],
       memoryUsageMBs: [
-        { time: 1704067200000, used: 5000, free: 10000 },
-        { time: 1704067205000, used: 5500, free: 9500 },
+        { unixTimeMs: 1704067200000, used: 5000, free: 10000 },
+        { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
       ],
     };
 

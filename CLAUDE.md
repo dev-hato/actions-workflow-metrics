@@ -38,6 +38,8 @@ pre-commit install
 
 ## Development Commands
 
+Requires Node.js 24.x and Bun.
+
 ```bash
 bun install                         # Install dependencies
 bun run build                       # Type check + bundle to dist/
@@ -119,7 +121,7 @@ globalThis.fetch = mock(
 
 - **Immediate async start**: `Metrics` class starts async collection in constructor without `await`.
   Uses `.catch()` for error handling.
-- **Drift-compensated timers**: Uses `Math.max(0, nextTime - Date.now())` for precise intervals.
+- **Drift-compensated timers**: Uses `Math.max(0, nextUNIXTimeMs - Date.now())` for precise intervals.
 - **AbortController timeout**: 10-second timeout for metrics fetch in post execution.
 - **Node.js compatibility**: Uses `import.meta.url` with `dirname(fileURLToPath())`.
   Avoids Bun-specific `import.meta.dir`.

@@ -1,13 +1,13 @@
 import { z } from "zod";
 
 export const cpuLoadPercentageSchema = z.object({
-  time: z.number().finite(),
+  unixTimeMs: z.number().finite(),
   user: z.number().finite().nonnegative().max(100),
   system: z.number().finite().nonnegative().max(100),
 });
 export const cpuLoadPercentagesSchema = z.array(cpuLoadPercentageSchema);
 export const memoryUsageMBSchema = z.object({
-  time: z.number().finite(),
+  unixTimeMs: z.number().finite(),
   used: z.number().finite().nonnegative(),
   free: z.number().finite().nonnegative(),
 });
