@@ -11,6 +11,28 @@ It monitors CPU load and memory usage, then visualizes them as Mermaid charts.
 - **Mermaid Chart Generation**: Visualizes collected metrics as Mermaid stacked bar charts
 - **Job Summary Output**: Automatically displays charts in GitHub Actions job summary
 
+## Output Example
+
+The following charts and data are output.
+
+### CPU Loads
+
+Stacked bar chart of system/user CPU load
+
+![CPU Loads](images/metrics_example_cpu.png)
+
+### Memory Usages
+
+Stacked bar chart of active/available memory
+
+![Memory Usages](images/metrics_example_memory.png)
+
+### Artifacts
+
+JSON data of CPU Loads and Memory Usages
+
+![Artifacts](images/artifact_example.png)
+
 ## Usage
 
 This action is designed to be executed at the **beginning** of a workflow.
@@ -43,13 +65,6 @@ jobs:
 1. **main** (workflow start): Starts metrics collection server in the background
 2. **Workflow steps**: Execute normally while metrics are collected in the background
 3. **post** (workflow end): Renders collected metrics as Mermaid charts and outputs to job summary
-
-## Output Example
-
-The job summary displays charts like the following:
-
-- **CPU Loads**: Stacked bar chart of system/user CPU load
-- **Memory Usages**: Stacked bar chart of active/available memory
 
 ## Tech Stack
 

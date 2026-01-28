@@ -15,6 +15,28 @@ CPU負荷とメモリ使用量を監視し、Mermaidチャートとして可視�
 - **Mermaidチャート生成**: 収集したメトリクスをMermaid形式の積み上げ棒グラフとして可視化
 - **ジョブサマリー出力**: GitHub Actionsのジョブサマリーに自動的にチャートを表示
 
+## 出力例
+
+次のようなチャートやデータが出力されます。
+
+### CPU Loads
+
+システム/ユーザーCPU負荷の積み上げ棒グラフ
+
+![CPU Loads](images/metrics_example_cpu.png)
+
+### Memory Usages
+
+使用中/空きメモリの積み上げ棒グラフ
+
+![Memory Usages](images/metrics_example_memory.png)
+
+### Artifacts
+
+CPU LoadsやMemory UsagesのJSONデータ
+
+![Artifacts](images/artifact_example.png)
+
 ## 使い方
 
 このアクションはワークフローの**先頭**で実行することを前提としています。
@@ -47,13 +69,6 @@ jobs:
 1. **main** (ワークフロー開始時): バックグラウンドでメトリクス収集サーバーを起動
 2. **ワークフローの各ステップ**: 通常通り実行されながらバックグラウンドでメトリクスが収集される
 3. **post** (ワークフロー終了時): 収集したメトリクスをMermaidチャートとして描画し、ジョブサマリーに出力
-
-## 出力例
-
-ジョブサマリーには次のようなチャートが表示されます。
-
-- **CPU Loads**: システム/ユーザーCPU負荷の積み上げ棒グラフ
-- **Memory Usages**: 使用中/空きメモリの積み上げ棒グラフ
 
 ## 技術スタック
 
