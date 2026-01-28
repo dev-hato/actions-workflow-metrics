@@ -109885,16 +109885,15 @@ async function index() {
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
-    const maxRetryCount2 = 10;
     let metricsID = "";
-    for (let i = 0;i < maxRetryCount2; i++) {
+    for (let i = 0;i < maxRetryCount; i++) {
       metricsID = new Date().getTime().toString();
       try {
         const client = new import_artifact.DefaultArtifactClient;
         await client.uploadArtifact([fileBaseName, metricsID].join("_"), [fileName], ".");
         break;
       } catch (error48) {
-        if (maxRetryCount2 - 2 < i || !(error48 instanceof Error) || !error48.message.includes("Failed request: (409) Conflict: an artifact with this name already exists on the workflow run")) {
+        if (maxRetryCount - 2 < i || !(error48 instanceof Error) || !error48.message.includes("Failed request: (409) Conflict: an artifact with this name already exists on the workflow run")) {
           import_core7.setFailed(error48);
         }
       }
@@ -109922,5 +109921,5 @@ async function index() {
 }
 await index();
 
-//# debugId=C91A10E98506B6B664756E2164756E21
+//# debugId=663CF5A663CA3C0C64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
