@@ -1,7 +1,7 @@
 {
   "type": "module",
   "overrides": {
-    "undici": "6.23.0",
+    "undici": "7.19.0",
     "lodash": "4.17.23"
   },
   "scripts": {
