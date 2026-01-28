@@ -95946,13 +95946,13 @@ ${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join(`
 
 // src/lib.ts
 var cpuLoadPercentageSchema = exports_external.object({
-  time: exports_external.number().finite(),
+  unixTimeMs: exports_external.number().finite(),
   user: exports_external.number().finite().nonnegative().max(100),
   system: exports_external.number().finite().nonnegative().max(100)
 });
 var cpuLoadPercentagesSchema = exports_external.array(cpuLoadPercentageSchema);
 var memoryUsageMBSchema = exports_external.object({
-  time: exports_external.number().finite(),
+  unixTimeMs: exports_external.number().finite(),
   used: exports_external.number().finite().nonnegative(),
   free: exports_external.number().finite().nonnegative()
 });
@@ -96012,7 +96012,7 @@ function render(metricsData, metricsID) {
           data: metricsData.cpuLoadPercentages.map(({ user }) => user)
         }
       ],
-      times: metricsData.cpuLoadPercentages.map(({ time }) => time),
+      times: metricsData.cpuLoadPercentages.map(({ unixTimeMs }) => unixTimeMs),
       yAxis: {
         title: "%",
         range: "0 --> 100"
@@ -96032,7 +96032,7 @@ function render(metricsData, metricsID) {
           data: metricsData.memoryUsageMBs.map(({ used }) => used)
         }
       ],
-      times: metricsData.memoryUsageMBs.map(({ time }) => time),
+      times: metricsData.memoryUsageMBs.map(({ unixTimeMs }) => unixTimeMs),
       yAxis: {
         title: "MB"
       }
@@ -96084,5 +96084,5 @@ async function index() {
 }
 await index();
 
-//# debugId=49560CBC07496A5E64756E2164756E21
+//# debugId=BCA3BC99BBB3F31264756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

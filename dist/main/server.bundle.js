@@ -38214,29 +38214,29 @@ class Metrics {
   get() {
     return JSON.stringify(this.data);
   }
-  async append(time) {
+  async append(unixTimeMs) {
     try {
       const {
         currentLoadUser,
         currentLoadSystem
       } = await import_systeminformation.currentLoad();
       this.data.cpuLoadPercentages.push({
-        time,
+        unixTimeMs,
         user: currentLoadUser,
         system: currentLoadSystem
       });
       const bytesPerMB = 1024 * 1024;
       const { active, available } = await import_systeminformation.mem();
       this.data.memoryUsageMBs.push({
-        time,
+        unixTimeMs,
         used: active / bytesPerMB,
         free: available / bytesPerMB
       });
     } catch (error2) {
       import_core.setFailed(error2);
     } finally {
-      const nextTime = time + this.intervalMs;
-      setTimeout(() => this.append(nextTime).catch(import_core.setFailed), Math.max(0, nextTime - Date.now()));
+      const nextUNIXTimeMs = unixTimeMs + this.intervalMs;
+      setTimeout(() => this.append(nextUNIXTimeMs).catch(import_core.setFailed), Math.max(0, nextUNIXTimeMs - Date.now()));
     }
   }
 }
@@ -42216,13 +42216,13 @@ var coerce = {
 var NEVER = INVALID;
 // src/lib.ts
 var cpuLoadPercentageSchema = exports_external.object({
-  time: exports_external.number().finite(),
+  unixTimeMs: exports_external.number().finite(),
   user: exports_external.number().finite().nonnegative().max(100),
   system: exports_external.number().finite().nonnegative().max(100)
 });
 var cpuLoadPercentagesSchema = exports_external.array(cpuLoadPercentageSchema);
 var memoryUsageMBSchema = exports_external.object({
-  time: exports_external.number().finite(),
+  unixTimeMs: exports_external.number().finite(),
   used: exports_external.number().finite().nonnegative(),
   free: exports_external.number().finite().nonnegative()
 });
@@ -42263,5 +42263,5 @@ async function server() {
 }
 await server();
 
-//# debugId=7CC332F7EE8E87C064756E2164756E21
+//# debugId=5152DBD3BB44DDF364756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
