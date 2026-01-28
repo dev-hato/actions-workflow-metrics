@@ -31,7 +31,6 @@ async function index(): Promise<void> {
     const fileBaseName: string = "workflow_metrics";
     const fileName: string = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
-    const maxRetryCount: number = 10;
     let metricsID: string = "";
 
     for (let i = 0; i < maxRetryCount; i++) {
