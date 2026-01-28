@@ -1,0 +1,31 @@
+{
+  "filters": {
+    "comments": true
+  },
+  "rules": {
+    "@textlint-ja/no-insert-dropping-sa": true,
+    "@proofdict/proofdict": {
+      "dictURL": "https://azu.github.io/proof-dictionary/"
+    },
+    "abbr-within-parentheses": true,
+    "footnote-order": true,
+    "general-novel-style-ja": {
+        "chars_leading_paragraph": false,
+        "max_arabic_numeral_digits": false
+    },
+    "ja-hiragana-fukushi": true,
+    "ja-hiragana-hojodoushi": true,
+    "ja-hiragana-keishikimeishi": true,
+    "no-dead-link": true,
+    "no-mixed-zenkaku-and-hankaku-alphabet": true,
+    "prefer-tari-tari": true,
+    "preset-ja-spacing": true,
+    "preset-ja-technical-writing": true,
+    "preset-jtf-style": {
+      "1.1.3.箇条書き": false,
+      "4.3.1.丸かっこ（）": false,
+      "4.3.2.大かっこ［］": false
+    },
+    "terminology": true
+  }
+}
