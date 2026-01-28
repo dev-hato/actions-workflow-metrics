@@ -36,7 +36,7 @@
   },
   "overrides": {
     "lodash": "4.17.23",
-    "undici": "6.23.0",
+    "undici": "7.19.0",
   },
   "packages": {
     "@actions/artifact": ["@actions/artifact@5.0.2", "", { "dependencies": { "@actions/core": "^2.0.0", "@actions/github": "^6.0.1", "@actions/http-client": "^3.0.1", "@azure/storage-blob": "^12.29.1", "@octokit/core": "^5.2.1", "@octokit/plugin-request-log": "^1.0.4", "@octokit/plugin-retry": "^3.0.9", "@octokit/request": "^8.4.1", "@octokit/request-error": "^5.1.1", "@protobuf-ts/plugin": "^2.2.3-alpha.1", "archiver": "^7.0.1", "jwt-decode": "^3.1.2", "unzip-stream": "^0.3.1" } }, "sha512-NmA+THO1s/Ubqf5y34EZofB1FRORcToa3T8Mb3/Z87TCCozTtvBUaxDn8OPPwgyYQ4ft0nd01Z4kFSu2DTWqGw=="],
@@ -1153,7 +1153,7 @@
 
     "unbox-primitive": ["unbox-primitive@1.1.0", "", { "dependencies": { "call-bound": "^1.0.3", "has-bigints": "^1.0.2", "has-symbols": "^1.1.0", "which-boxed-primitive": "^1.1.1" } }, "sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw=="],
 
-    "undici": ["undici@6.23.0", "", {}, "sha512-VfQPToRA5FZs/qJxLIinmU59u0r7LXqoJkCzinq3ckNJp3vKEh7jTWN589YQ5+aoAC/TGRLyJLCPKcLQbM8r9g=="],
+    "undici": ["undici@7.19.0", "", {}, "sha512-Heho1hJD81YChi+uS2RkSjcVO+EQLmLSyUlHyp7Y/wFbxQaGb4WXVKD073JytrjXJVkSZVzoE2MCSOKugFGtOQ=="],
 
     "undici-types": ["undici-types@7.16.0", "", {}, "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw=="],
 
