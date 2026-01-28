@@ -1,8 +1,7 @@
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getInput, info, setFailed } from "@actions/core";
-import { getMetricsData } from "../post/lib";
+import { getInput, info } from "@actions/core";
 import type { ChildProcess } from "node:child_process";
 
 const __dirname: string = dirname(fileURLToPath(import.meta.url));
@@ -26,24 +25,6 @@ async function index(): Promise<void> {
   serverProcess.unref();
 
   info(`Server started with PID: ${serverProcess.pid}`);
-  const maxRetryCount: number = 10;
-
-  for (let i = 0; i < maxRetryCount; i++) {
-    try {
-      await getMetricsData();
-      break;
-    } catch (error) {
-      if (
-        maxRetryCount - 2 < i ||
-        !(error instanceof TypeError) ||
-        error.message !== "fetch failed"
-      ) {
-        setFailed(error);
-      }
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
 }
 
 await index();
