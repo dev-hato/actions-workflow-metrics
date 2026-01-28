@@ -96,15 +96,25 @@ describe("MyTest", () => {
 ### Mock Patterns
 
 **systeminformation**: Type assertion required for partial objects:
+
 ```typescript
 mock.module("systeminformation", () => ({
-  currentLoad: mock(async () => ({ currentLoadUser: 25.5, currentLoadSystem: 10.3 } as Systeminformation.CurrentLoadData)),
+  currentLoad: mock(
+    async () =>
+      ({
+        currentLoadUser: 25.5,
+        currentLoadSystem: 10.3,
+      }) as Systeminformation.CurrentLoadData,
+  ),
 }));
 ```
 
 **fetch**: Double type assertion required:
+
 ```typescript
-globalThis.fetch = mock(async () => ({ ok: true, json: () => Promise.resolve({}) }) as Response) as unknown as typeof fetch;
+globalThis.fetch = mock(
+  async () => ({ ok: true, json: () => Promise.resolve({}) }) as Response,
+) as unknown as typeof fetch;
 ```
 
 ## Implementation Notes
