@@ -100344,6 +100344,8 @@ async function index() {
       } else {
         import_core.setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
+    } catch {
+      import_core.info("Server already stopped or not running");
     } finally {
       clearTimeout(timer);
     }
@@ -100351,5 +100353,5 @@ async function index() {
 }
 await index();
 
-//# debugId=DBEE257ABC59BBE664756E2164756E21
+//# debugId=F95E06BEF77C892E64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

@@ -65,6 +65,9 @@ async function index(): Promise<void> {
       } else {
         setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
+    } catch {
+      // Server may have already stopped or failed to start
+      info("Server already stopped or not running");
     } finally {
       clearTimeout(timer);
     }
