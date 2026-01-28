@@ -109772,15 +109772,15 @@ ${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join(`
 
 // src/lib.ts
 var cpuLoadPercentageSchema = exports_external.object({
-  unixTimeMs: exports_external.number().finite(),
-  user: exports_external.number().finite().nonnegative().max(100),
-  system: exports_external.number().finite().nonnegative().max(100)
+  unixTimeMs: exports_external.number(),
+  user: exports_external.number().nonnegative().max(100),
+  system: exports_external.number().nonnegative().max(100)
 });
 var cpuLoadPercentagesSchema = exports_external.array(cpuLoadPercentageSchema);
 var memoryUsageMBSchema = exports_external.object({
-  unixTimeMs: exports_external.number().finite(),
-  used: exports_external.number().finite().nonnegative(),
-  free: exports_external.number().finite().nonnegative()
+  unixTimeMs: exports_external.number(),
+  used: exports_external.number().nonnegative(),
+  free: exports_external.number().nonnegative()
 });
 var memoryUsageMBsSchema = exports_external.array(memoryUsageMBSchema);
 var metricsDataSchema = exports_external.object({
@@ -109921,5 +109921,5 @@ async function index() {
 }
 await index();
 
-//# debugId=663CF5A663CA3C0C64756E2164756E21
+//# debugId=9B10BD7BD8B4B09A64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

@@ -1,15 +1,15 @@
 import { z } from "zod";
 
 export const cpuLoadPercentageSchema = z.object({
-  unixTimeMs: z.number().finite(),
-  user: z.number().finite().nonnegative().max(100),
-  system: z.number().finite().nonnegative().max(100),
+  unixTimeMs: z.number(),
+  user: z.number().nonnegative().max(100),
+  system: z.number().nonnegative().max(100),
 });
 export const cpuLoadPercentagesSchema = z.array(cpuLoadPercentageSchema);
 export const memoryUsageMBSchema = z.object({
-  unixTimeMs: z.number().finite(),
-  used: z.number().finite().nonnegative(),
-  free: z.number().finite().nonnegative(),
+  unixTimeMs: z.number(),
+  used: z.number().nonnegative(),
+  free: z.number().nonnegative(),
 });
 export const memoryUsageMBsSchema = z.array(memoryUsageMBSchema);
 export const metricsDataSchema = z.object({
