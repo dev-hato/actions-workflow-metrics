@@ -12,13 +12,13 @@ async function index(): Promise<void> {
 
   for (let i = 0; i < maxRetryCount; i++) {
     try {
-       metricsData=await getMetricsData();
+      metricsData = await getMetricsData();
       break;
     } catch (error) {
       if (
-          maxRetryCount - 2 < i ||
-          !(error instanceof TypeError) ||
-          error.message !== "fetch failed"
+        maxRetryCount - 2 < i ||
+        !(error instanceof TypeError) ||
+        error.message !== "fetch failed"
       ) {
         setFailed(error);
       }

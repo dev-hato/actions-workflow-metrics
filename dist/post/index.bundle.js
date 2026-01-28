@@ -109868,21 +109868,33 @@ function render(metricsData, metricsID) {
 
 // src/post/index.ts
 async function index() {
+  const maxRetryCount = 10;
+  let metricsData;
+  for (let i = 0;i < maxRetryCount; i++) {
+    try {
+      metricsData = await getMetricsData();
+      break;
+    } catch (error48) {
+      if (maxRetryCount - 2 < i || !(error48 instanceof TypeError) || error48.message !== "fetch failed") {
+        import_core7.setFailed(error48);
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
   try {
-    const metricsData = await getMetricsData();
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
-    const maxRetryCount = 10;
+    const maxRetryCount2 = 10;
     let metricsID = "";
-    for (let i = 0;i < maxRetryCount; i++) {
+    for (let i = 0;i < maxRetryCount2; i++) {
       metricsID = new Date().getTime().toString();
       try {
         const client = new import_artifact.DefaultArtifactClient;
         await client.uploadArtifact([fileBaseName, metricsID].join("_"), [fileName], ".");
         break;
       } catch (error48) {
-        if (maxRetryCount - 2 < i || !(error48 instanceof Error) || !error48.message.includes("Failed request: (409) Conflict: an artifact with this name already exists on the workflow run")) {
+        if (maxRetryCount2 - 2 < i || !(error48 instanceof Error) || !error48.message.includes("Failed request: (409) Conflict: an artifact with this name already exists on the workflow run")) {
           import_core7.setFailed(error48);
         }
       }
@@ -109903,8 +109915,6 @@ async function index() {
       } else {
         import_core7.setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
-    } catch {
-      import_core7.info("Server already stopped or not running");
     } finally {
       clearTimeout(timer);
     }
@@ -109912,5 +109922,5 @@ async function index() {
 }
 await index();
 
-//# debugId=2C7FE72BF2956A4E64756E2164756E21
+//# debugId=C91A10E98506B6B664756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
