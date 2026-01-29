@@ -1,6 +1,8 @@
 name: "actions-workflow-metrics"
 author: "Masaya Suzuki"
 description: "A GitHub Actions for collecting system metrics during workflows and outputting Mermaid charts"
+branding:
+  color: green
 inputs:
   interval_seconds:
     description: "Interval between metrics collection in seconds"
