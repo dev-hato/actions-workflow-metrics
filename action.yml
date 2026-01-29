@@ -1,6 +1,6 @@
 name: "actions-workflow-metrics"
 author: "Masaya Suzuki"
-description: "A custom GitHub Action that collects system metrics (CPU load, memory usage) during workflow execution and visualizes them as Mermaid charts"
+description: "A GitHub Actions for collecting system metrics during workflows and outputting Mermaid charts"
 inputs:
   interval_seconds:
     description: "Interval between metrics collection in seconds"

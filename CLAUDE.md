@@ -19,6 +19,9 @@ This project maintains bilingual documentation:
 **Important**: When updating either readme file, the other must be updated accordingly.
 Keep both files synchronized with the same content in the appropriate language.
 
+**Important**: README.md's description (line 5) must match action.yml's `description` field.
+When updating one, update the other accordingly. Note that action.yml's description should not have a trailing period.
+
 ## Setup
 
 ### Install pre-commit (Recommended)
