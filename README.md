@@ -2,8 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-A custom GitHub Action that collects system metrics during workflow execution.
-It monitors CPU load and memory usage, then visualizes them as Mermaid charts.
+A GitHub Actions for collecting system metrics during workflows and outputting Mermaid charts.
 
 ## Features
 

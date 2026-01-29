@@ -6,8 +6,7 @@
 
 <!-- textlint-enable ja-technical-writing/ja-no-mixed-period -->
 
-ワークフロー実行中にシステムメトリクスを収集するGitHub Actionsカスタムアクションです。
-CPU負荷とメモリ使用量を監視し、Mermaidチャートとして可視化します。
+ワークフロー実行中にシステムメトリクスを収集し、Mermaidチャートを出力するGitHub Actionsです。
 
 ## 機能
 
