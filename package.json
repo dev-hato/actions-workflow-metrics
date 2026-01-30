@@ -1,8 +1,5 @@
 {
   "type": "module",
-  "overrides": {
-    "undici": "7.19.0"
-  },
   "scripts": {
     "build": "bun run fix && tsc && bun run scripts/build.ts",
     "fix": "prettier --write ."
