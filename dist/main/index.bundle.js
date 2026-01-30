@@ -233,7 +233,7 @@ var require_file_command = __commonJS((exports) => {
   }
 });
 
-// node_modules/@actions/http-client/lib/proxy.js
+// node_modules/@actions/core/node_modules/@actions/http-client/lib/proxy.js
 var require_proxy = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.getProxyUrl = getProxyUrl;
@@ -21723,7 +21723,7 @@ var require_undici = __commonJS((exports, module) => {
   exports.install = install;
 });
 
-// node_modules/@actions/http-client/lib/index.js
+// node_modules/@actions/core/node_modules/@actions/http-client/lib/index.js
 var require_lib = __commonJS((exports) => {
   var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
     if (k2 === undefined)
@@ -22378,7 +22378,7 @@ var require_lib = __commonJS((exports) => {
   var lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => (c[k.toLowerCase()] = obj[k], c), {});
 });
 
-// node_modules/@actions/http-client/lib/auth.js
+// node_modules/@actions/core/node_modules/@actions/http-client/lib/auth.js
 var require_auth = __commonJS((exports) => {
   var __awaiter = exports && exports.__awaiter || function(thisArg, _arguments, P, generator) {
     function adopt(value) {
@@ -24279,5 +24279,5 @@ async function index() {
 }
 await index();
 
-//# debugId=1D4BD680030FECC164756E2164756E21
+//# debugId=6BC8663BE121965864756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
