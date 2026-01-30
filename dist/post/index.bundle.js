@@ -98428,7 +98428,7 @@ class Doc {
 var version = {
   major: 4,
   minor: 3,
-  patch: 5
+  patch: 6
 };
 
 // node_modules/zod/v4/core/schemas.js
@@ -99714,7 +99714,7 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
         if (keyResult instanceof Promise) {
           throw new Error("Async schemas not supported in object keys currently");
         }
-        const checkNumericKey = typeof key === "string" && number.test(key) && keyResult.issues.length && keyResult.issues.some((iss) => iss.code === "invalid_type" && iss.expected === "number");
+        const checkNumericKey = typeof key === "string" && number.test(key) && keyResult.issues.length;
         if (checkNumericKey) {
           const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx);
           if (retryResult instanceof Promise) {
@@ -107085,7 +107085,7 @@ function finalize(ctx, schema) {
           }
         }
       }
-      if (refSchema.$ref) {
+      if (refSchema.$ref && refSeen.def) {
         for (const key in schema2) {
           if (key === "$ref" || key === "allOf")
             continue;
@@ -109921,5 +109921,5 @@ async function index() {
 }
 await index();
 
-//# debugId=9B10BD7BD8B4B09A64756E2164756E21
+//# debugId=237DBDF9949D3D2464756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
