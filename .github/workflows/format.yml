@@ -19,12 +19,6 @@ jobs:
     env:
       SAFE_CHAIN_MINIMUM_PACKAGE_AGE_HOURS: 168 # 7 days
     steps:
-      - name: Generate a token
-        id: generate_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ secrets.PROJECT_AUTOMATION_APP_ID }}
-          private-key: ${{ secrets.PROJECT_AUTOMATION_PRIVATE_KEY }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -44,7 +38,7 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.action != 'closed'
       - uses: dev-hato/actions-diff-pr-management@9de3de40217217a73ac95f3751d7bfe1c9f23ead # v2.2.3
         with:
-          github-token: ${{steps.generate_token.outputs.token}}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           branch-name-prefix: fix-format
           pr-title-prefix: Fix format
           pr-description-prefix: CI fixed format.

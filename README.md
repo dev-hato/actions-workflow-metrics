@@ -47,7 +47,7 @@ jobs:
     steps:
       # Run actions-workflow-metrics at the beginning of the workflow
       - name: Start Workflow Telemetry
-        uses: massongit/actions-workflow-metrics@v1
+        uses: dev-hato/actions-workflow-metrics@v1
 
       # Subsequent regular steps
       - name: Checkout
