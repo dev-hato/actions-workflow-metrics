@@ -150,18 +150,18 @@ var require_tunnel = __commonJS((exports) => {
       if (res.statusCode !== 200) {
         debug("tunneling socket could not be established, statusCode=%d", res.statusCode);
         socket.destroy();
-        var error2 = new Error("tunneling socket could not be established, " + "statusCode=" + res.statusCode);
-        error2.code = "ECONNRESET";
-        options.request.emit("error", error2);
+        var error = new Error("tunneling socket could not be established, " + "statusCode=" + res.statusCode);
+        error.code = "ECONNRESET";
+        options.request.emit("error", error);
         self.removeSocket(placeholder);
         return;
       }
       if (head.length > 0) {
         debug("got illegal response body from proxy");
         socket.destroy();
-        var error2 = new Error("got illegal response body from proxy");
-        error2.code = "ECONNRESET";
-        options.request.emit("error", error2);
+        var error = new Error("got illegal response body from proxy");
+        error.code = "ECONNRESET";
+        options.request.emit("error", error);
         self.removeSocket(placeholder);
         return;
       }
@@ -173,9 +173,9 @@ var require_tunnel = __commonJS((exports) => {
       connectReq.removeAllListeners();
       debug(`tunneling socket could not be established, cause=%s
 `, cause.message, cause.stack);
-      var error2 = new Error("tunneling socket could not be established, " + "cause=" + cause.message);
-      error2.code = "ECONNRESET";
-      options.request.emit("error", error2);
+      var error = new Error("tunneling socket could not be established, " + "cause=" + cause.message);
+      error.code = "ECONNRESET";
+      options.request.emit("error", error);
       self.removeSocket(placeholder);
     }
   };
@@ -1449,9 +1449,9 @@ var require_diagnostics = __commonJS((exports, module) => {
     diagnosticsChannel.channel("undici:client:connectError").subscribe((evt) => {
       const {
         connectParams: { version, protocol, port, host },
-        error: error2
+        error
       } = evt;
-      debuglog("connection to %s using %s%s errored - %s", `${host}${port ? `:${port}` : ""}`, protocol, version, error2.message);
+      debuglog("connection to %s using %s%s errored - %s", `${host}${port ? `:${port}` : ""}`, protocol, version, error.message);
     });
     diagnosticsChannel.channel("undici:client:sendHeaders").subscribe((evt) => {
       const {
@@ -1475,9 +1475,9 @@ var require_diagnostics = __commonJS((exports, module) => {
     diagnosticsChannel.channel("undici:request:error").subscribe((evt) => {
       const {
         request: { method, path, origin },
-        error: error2
+        error
       } = evt;
-      debuglog("request to %s %s/%s errored - %s", method, origin, path, error2.message);
+      debuglog("request to %s %s/%s errored - %s", method, origin, path, error.message);
     });
     isClientSet = true;
   }
@@ -1499,9 +1499,9 @@ var require_diagnostics = __commonJS((exports, module) => {
       diagnosticsChannel.channel("undici:client:connectError").subscribe((evt) => {
         const {
           connectParams: { version, protocol, port, host },
-          error: error2
+          error
         } = evt;
-        debuglog("connection to %s%s using %s%s errored - %s", host, port ? `:${port}` : "", protocol, version, error2.message);
+        debuglog("connection to %s%s using %s%s errored - %s", host, port ? `:${port}` : "", protocol, version, error.message);
       });
       diagnosticsChannel.channel("undici:client:sendHeaders").subscribe((evt) => {
         const {
@@ -1760,16 +1760,16 @@ var require_request = __commonJS((exports, module) => {
         this.onError(err);
       }
     }
-    onError(error2) {
+    onError(error) {
       this.onFinally();
       if (channels.error.hasSubscribers) {
-        channels.error.publish({ request: this, error: error2 });
+        channels.error.publish({ request: this, error });
       }
       if (this.aborted) {
         return;
       }
       this.aborted = true;
-      return this[kHandler].onError(error2);
+      return this[kHandler].onError(error);
     }
     onFinally() {
       if (this.errorHandler) {
@@ -5137,7 +5137,7 @@ ${normalizeLinefeeds(value)}\r
     }
     throwIfAborted(object[kState]);
     const promise = createDeferredPromise();
-    const errorSteps = (error2) => promise.reject(error2);
+    const errorSteps = (error) => promise.reject(error);
     const successSteps = (data) => {
       try {
         promise.resolve(convertBytesToJSValue(data));
@@ -6587,8 +6587,8 @@ var require_client_h2 = __commonJS((exports, module) => {
       }
       request.onRequestSent();
       client[kResume]();
-    } catch (error2) {
-      abort(error2);
+    } catch (error) {
+      abort(error);
     }
   }
   function writeStream(abort, socket, expectsPayload, h2stream, body, client, request, contentLength) {
@@ -6738,8 +6738,8 @@ var require_redirect_handler = __commonJS((exports, module) => {
     onUpgrade(statusCode, headers, socket) {
       this.handler.onUpgrade(statusCode, headers, socket);
     }
-    onError(error2) {
-      this.handler.onError(error2);
+    onError(error) {
+      this.handler.onError(error);
     }
     onHeaders(statusCode, headers, resume, statusText) {
       this.location = this.history.length >= this.maxRedirections || util.isDisturbed(this.opts.body) ? null : parseLocation(statusCode, headers);
@@ -7643,7 +7643,7 @@ var require_pool = __commonJS((exports, module) => {
       this[kOptions] = { ...util.deepClone(options), connect, allowH2 };
       this[kOptions].interceptors = options.interceptors ? { ...options.interceptors } : undefined;
       this[kFactory] = factory;
-      this.on("connectionError", (origin2, targets, error2) => {
+      this.on("connectionError", (origin2, targets, error) => {
         for (const target of targets) {
           const idx = this[kClients].indexOf(target);
           if (idx !== -1) {
@@ -9907,13 +9907,13 @@ var require_mock_utils = __commonJS((exports, module) => {
     if (mockDispatch2.data.callback) {
       mockDispatch2.data = { ...mockDispatch2.data, ...mockDispatch2.data.callback(opts) };
     }
-    const { data: { statusCode, data, headers, trailers, error: error2 }, delay, persist } = mockDispatch2;
+    const { data: { statusCode, data, headers, trailers, error }, delay, persist } = mockDispatch2;
     const { timesInvoked, times } = mockDispatch2;
     mockDispatch2.consumed = !persist && timesInvoked >= times;
     mockDispatch2.pending = timesInvoked < times;
-    if (error2 !== null) {
+    if (error !== null) {
       deleteMockDispatch(this[kDispatches], key);
-      handler.onError(error2);
+      handler.onError(error);
       return true;
     }
     if (typeof delay === "number" && delay > 0) {
@@ -9950,19 +9950,19 @@ var require_mock_utils = __commonJS((exports, module) => {
       if (agent.isMockActive) {
         try {
           mockDispatch.call(this, opts, handler);
-        } catch (error2) {
-          if (error2 instanceof MockNotMatchedError) {
+        } catch (error) {
+          if (error instanceof MockNotMatchedError) {
             const netConnect = agent[kGetNetConnect]();
             if (netConnect === false) {
-              throw new MockNotMatchedError(`${error2.message}: subsequent request to origin ${origin} was not allowed (net.connect disabled)`);
+              throw new MockNotMatchedError(`${error.message}: subsequent request to origin ${origin} was not allowed (net.connect disabled)`);
             }
             if (checkNetConnect(netConnect, origin)) {
               originalDispatch.call(this, opts, handler);
             } else {
-              throw new MockNotMatchedError(`${error2.message}: subsequent request to origin ${origin} was not allowed (net.connect is not enabled for this origin)`);
+              throw new MockNotMatchedError(`${error.message}: subsequent request to origin ${origin} was not allowed (net.connect is not enabled for this origin)`);
             }
           } else {
-            throw error2;
+            throw error;
           }
         }
       } else {
@@ -10111,11 +10111,11 @@ var require_mock_interceptor = __commonJS((exports, module) => {
       const newMockDispatch = addMockDispatch(this[kDispatches], this[kDispatchKey], dispatchData);
       return new MockScope(newMockDispatch);
     }
-    replyWithError(error2) {
-      if (typeof error2 === "undefined") {
+    replyWithError(error) {
+      if (typeof error === "undefined") {
         throw new InvalidArgumentError("error must be defined");
       }
-      const newMockDispatch = addMockDispatch(this[kDispatches], this[kDispatchKey], { error: error2 });
+      const newMockDispatch = addMockDispatch(this[kDispatches], this[kDispatchKey], { error });
       return new MockScope(newMockDispatch);
     }
     defaultReplyHeaders(headers) {
@@ -12363,17 +12363,17 @@ var require_fetch = __commonJS((exports, module) => {
       this.connection?.destroy(reason);
       this.emit("terminated", reason);
     }
-    abort(error2) {
+    abort(error) {
       if (this.state !== "ongoing") {
         return;
       }
       this.state = "aborted";
-      if (!error2) {
-        error2 = new DOMException("The operation was aborted.", "AbortError");
+      if (!error) {
+        error = new DOMException("The operation was aborted.", "AbortError");
       }
-      this.serializedAbortReason = error2;
-      this.connection?.destroy(error2);
-      this.emit("terminated", error2);
+      this.serializedAbortReason = error;
+      this.connection?.destroy(error);
+      this.emit("terminated", error);
     }
   }
   function handleFetchDone(response) {
@@ -12459,12 +12459,12 @@ var require_fetch = __commonJS((exports, module) => {
     markResourceTiming(timingInfo, originalURL.href, initiatorType, globalThis, cacheState);
   }
   var markResourceTiming = performance.markResourceTiming;
-  function abortFetch(p, request, responseObject, error2) {
+  function abortFetch(p, request, responseObject, error) {
     if (p) {
-      p.reject(error2);
+      p.reject(error);
     }
     if (request.body != null && isReadable(request.body?.stream)) {
-      request.body.stream.cancel(error2).catch((err) => {
+      request.body.stream.cancel(error).catch((err) => {
         if (err.code === "ERR_INVALID_STATE") {
           return;
         }
@@ -12476,7 +12476,7 @@ var require_fetch = __commonJS((exports, module) => {
     }
     const response = responseObject[kState];
     if (response.body != null && isReadable(response.body?.stream)) {
-      response.body.stream.cancel(error2).catch((err) => {
+      response.body.stream.cancel(error).catch((err) => {
         if (err.code === "ERR_INVALID_STATE") {
           return;
         }
@@ -13241,13 +13241,13 @@ var require_fetch = __commonJS((exports, module) => {
           fetchParams.controller.ended = true;
           this.body.push(null);
         },
-        onError(error2) {
+        onError(error) {
           if (this.abort) {
             fetchParams.controller.off("terminated", this.abort);
           }
-          this.body?.destroy(error2);
-          fetchParams.controller.terminate(error2);
-          reject(error2);
+          this.body?.destroy(error);
+          fetchParams.controller.terminate(error);
+          reject(error);
         },
         onUpgrade(status, rawHeaders, socket) {
           if (status !== 101) {
@@ -13698,8 +13698,8 @@ var require_util4 = __commonJS((exports, module) => {
                 }
                 fr[kResult] = result2;
                 fireAProgressEvent("load", fr);
-              } catch (error2) {
-                fr[kError] = error2;
+              } catch (error) {
+                fr[kError] = error;
                 fireAProgressEvent("error", fr);
               }
               if (fr[kState] !== "loading") {
@@ -13708,13 +13708,13 @@ var require_util4 = __commonJS((exports, module) => {
             });
             break;
           }
-        } catch (error2) {
+        } catch (error) {
           if (fr[kAborted]) {
             return;
           }
           queueMicrotask(() => {
             fr[kState] = "done";
-            fr[kError] = error2;
+            fr[kError] = error;
             fireAProgressEvent("error", fr);
             if (fr[kState] !== "loading") {
               fireAProgressEvent("loadend", fr);
@@ -15784,11 +15784,11 @@ var require_connection = __commonJS((exports, module) => {
       });
     }
   }
-  function onSocketError(error2) {
+  function onSocketError(error) {
     const { ws } = this;
     ws[kReadyState] = states.CLOSING;
     if (channels.socketError.hasSubscribers) {
-      channels.socketError.publish(error2);
+      channels.socketError.publish(error);
     }
     this.destroy();
   }
@@ -15998,9 +15998,9 @@ var require_receiver = __commonJS((exports, module) => {
               }
               this.#state = parserStates.INFO;
             } else {
-              this.#extensions.get("permessage-deflate").decompress(body, this.#info.fin, (error2, data) => {
-                if (error2) {
-                  closeWebSocketConnection(this.ws, 1007, error2.message, error2.message.length);
+              this.#extensions.get("permessage-deflate").decompress(body, this.#info.fin, (error, data) => {
+                if (error) {
+                  closeWebSocketConnection(this.ws, 1007, error.message, error.message.length);
                   return;
                 }
                 this.#fragments.push(data);
@@ -16908,8 +16908,8 @@ var require_eventsource = __commonJS((exports, module) => {
             this.dispatchEvent(createFastMessageEvent(event.type, event.options));
           }
         });
-        pipeline(response.body.stream, eventSourceStream, (error2) => {
-          if (error2?.aborted === false) {
+        pipeline(response.body.stream, eventSourceStream, (error) => {
+          if (error?.aborted === false) {
             this.close();
             this.dispatchEvent(new Event("error"));
           }
@@ -17175,7 +17175,7 @@ var require_undici = __commonJS((exports, module) => {
 var require_package = __commonJS((exports, module) => {
   module.exports = {
     name: "systeminformation",
-    version: "5.30.6",
+    version: "5.30.7",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -17864,8 +17864,8 @@ var require_util9 = __commonJS((exports) => {
       opts = execOptsWin;
     }
     let newCmd = "chcp 65001 > nul && cmd /C " + cmd + " && chcp " + codepage + " > nul";
-    exec(newCmd, opts, (error3, stdout) => {
-      callback(error3, stdout);
+    exec(newCmd, opts, (error2, stdout) => {
+      callback(error2, stdout);
     });
   }
   function darwinXcodeExists() {
@@ -18246,8 +18246,8 @@ var require_util9 = __commonJS((exports) => {
       const payload = new Array(2);
       promise.then((result2) => {
         payload[0] = result2;
-      }).catch((error3) => {
-        payload[1] = error3;
+      }).catch((error2) => {
+        payload[1] = error2;
       }).then(() => {
         resolve(payload);
       });
@@ -19995,7 +19995,7 @@ var require_osinfo = __commonJS((exports) => {
           uefi: false
         };
         if (_linux) {
-          exec("cat /etc/*-release; cat /usr/lib/os-release; cat /etc/openwrt_release", (error3, stdout) => {
+          exec("cat /etc/*-release; cat /usr/lib/os-release; cat /etc/openwrt_release", (error2, stdout) => {
             let release = {};
             let lines = stdout.toString().split(`
 `);
@@ -20033,7 +20033,7 @@ var require_osinfo = __commonJS((exports) => {
           });
         }
         if (_freebsd || _openbsd || _netbsd) {
-          exec("sysctl kern.ostype kern.osrelease kern.osrevision kern.hostuuid machdep.bootmethod kern.geom.confxml", (error3, stdout) => {
+          exec("sysctl kern.ostype kern.osrelease kern.osrevision kern.hostuuid machdep.bootmethod kern.geom.confxml", (error2, stdout) => {
             let lines = stdout.toString().split(`
 `);
             const distro = util.getValue(lines, "kern.ostype");
@@ -20057,7 +20057,7 @@ var require_osinfo = __commonJS((exports) => {
           });
         }
         if (_darwin) {
-          exec("sw_vers; sysctl kern.ostype kern.osrelease kern.osrevision kern.uuid", (error3, stdout) => {
+          exec("sw_vers; sysctl kern.ostype kern.osrelease kern.osrevision kern.uuid", (error2, stdout) => {
             let lines = stdout.toString().split(`
 `);
             result2.serial = util.getValue(lines, "kern.uuid");
@@ -20094,7 +20094,7 @@ var require_osinfo = __commonJS((exports) => {
         }
         if (_sunos) {
           result2.release = result2.kernel;
-          exec("uname -o", (error3, stdout) => {
+          exec("uname -o", (error2, stdout) => {
             const lines = stdout.toString().split(`
 `);
             result2.distro = lines[0];
@@ -20160,8 +20160,8 @@ var require_osinfo = __commonJS((exports) => {
           if (!err) {
             return resolve(true);
           } else {
-            exec('dmesg | grep -E "EFI v"', (error3, stdout) => {
-              if (!error3) {
+            exec('dmesg | grep -E "EFI v"', (error2, stdout) => {
+              if (!error2) {
                 const lines = stdout.toString().split(`
 `);
                 return resolve(lines.length > 0);
@@ -20177,14 +20177,14 @@ var require_osinfo = __commonJS((exports) => {
     return new Promise((resolve) => {
       process.nextTick(() => {
         try {
-          exec('findstr /C:"Detected boot environment" "%windir%\\Panther\\setupact.log"', util.execOptsWin, (error3, stdout) => {
-            if (!error3) {
+          exec('findstr /C:"Detected boot environment" "%windir%\\Panther\\setupact.log"', util.execOptsWin, (error2, stdout) => {
+            if (!error2) {
               const line = stdout.toString().split(`
 \r`)[0];
               return resolve(line.toLowerCase().indexOf("efi") >= 0);
             } else {
-              exec("echo %firmware_type%", util.execOptsWin, (error4, stdout2) => {
-                if (!error4) {
+              exec("echo %firmware_type%", util.execOptsWin, (error3, stdout2) => {
+                if (!error3) {
                   const line = stdout2.toString() || "";
                   return resolve(line.toLowerCase().indexOf("efi") >= 0);
                 } else {
@@ -20305,8 +20305,8 @@ var require_osinfo = __commonJS((exports) => {
         try {
           if ({}.hasOwnProperty.call(appsObj.versions, "openssl")) {
             appsObj.versions.openssl = process.versions.openssl;
-            exec("openssl version", (error3, stdout) => {
-              if (!error3) {
+            exec("openssl version", (error2, stdout) => {
+              if (!error2) {
                 let openssl_string = stdout.toString().split(`
 `)[0].trim();
                 let openssl = openssl_string.split(" ");
@@ -20317,8 +20317,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "npm")) {
-            exec("npm -v", (error3, stdout) => {
-              if (!error3) {
+            exec("npm -v", (error2, stdout) => {
+              if (!error2) {
                 appsObj.versions.npm = stdout.toString().split(`
 `)[0];
               }
@@ -20330,8 +20330,8 @@ var require_osinfo = __commonJS((exports) => {
             if (_windows) {
               cmd += ".cmd";
             }
-            exec(`${cmd} -v`, (error3, stdout) => {
-              if (!error3) {
+            exec(`${cmd} -v`, (error2, stdout) => {
+              if (!error2) {
                 let pm2 = stdout.toString().split(`
 `)[0].trim();
                 if (!pm2.startsWith("[PM2]")) {
@@ -20342,8 +20342,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "yarn")) {
-            exec("yarn --version", (error3, stdout) => {
-              if (!error3) {
+            exec("yarn --version", (error2, stdout) => {
+              if (!error2) {
                 appsObj.versions.yarn = stdout.toString().split(`
 `)[0];
               }
@@ -20355,8 +20355,8 @@ var require_osinfo = __commonJS((exports) => {
             if (_windows) {
               cmd += ".cmd";
             }
-            exec(`${cmd} --version`, (error3, stdout) => {
-              if (!error3) {
+            exec(`${cmd} --version`, (error2, stdout) => {
+              if (!error2) {
                 const gulp = stdout.toString().split(`
 `)[0] || "";
                 appsObj.versions.gulp = (gulp.toLowerCase().split("version")[1] || "").trim();
@@ -20366,8 +20366,8 @@ var require_osinfo = __commonJS((exports) => {
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "homebrew")) {
             cmd = "brew";
-            exec(`${cmd} --version`, (error3, stdout) => {
-              if (!error3) {
+            exec(`${cmd} --version`, (error2, stdout) => {
+              if (!error2) {
                 const brew = stdout.toString().split(`
 `)[0] || "";
                 appsObj.versions.homebrew = (brew.toLowerCase().split(" ")[1] || "").trim();
@@ -20380,8 +20380,8 @@ var require_osinfo = __commonJS((exports) => {
             if (_windows) {
               cmd += ".cmd";
             }
-            exec(`${cmd} --version`, (error3, stdout) => {
-              if (!error3) {
+            exec(`${cmd} --version`, (error2, stdout) => {
+              if (!error2) {
                 const tsc = stdout.toString().split(`
 `)[0] || "";
                 appsObj.versions.tsc = (tsc.toLowerCase().split("version")[1] || "").trim();
@@ -20394,8 +20394,8 @@ var require_osinfo = __commonJS((exports) => {
             if (_windows) {
               cmd += ".cmd";
             }
-            exec(`${cmd} --version`, (error3, stdout) => {
-              if (!error3) {
+            exec(`${cmd} --version`, (error2, stdout) => {
+              if (!error2) {
                 const grunt = stdout.toString().split(`
 `)[0] || "";
                 appsObj.versions.grunt = (grunt.toLowerCase().split("cli v")[1] || "").trim();
@@ -20407,8 +20407,8 @@ var require_osinfo = __commonJS((exports) => {
             if (_darwin) {
               const gitHomebrewExists = fs2.existsSync("/usr/local/Cellar/git") || fs2.existsSync("/opt/homebrew/bin/git");
               if (util.darwinXcodeExists() || gitHomebrewExists) {
-                exec("git --version", (error3, stdout) => {
-                  if (!error3) {
+                exec("git --version", (error2, stdout) => {
+                  if (!error2) {
                     let git = stdout.toString().split(`
 `)[0] || "";
                     git = (git.toLowerCase().split("version")[1] || "").trim();
@@ -20420,8 +20420,8 @@ var require_osinfo = __commonJS((exports) => {
                 functionProcessed();
               }
             } else {
-              exec("git --version", (error3, stdout) => {
-                if (!error3) {
+              exec("git --version", (error2, stdout) => {
+                if (!error2) {
                   let git = stdout.toString().split(`
 `)[0] || "";
                   git = (git.toLowerCase().split("version")[1] || "").trim();
@@ -20432,8 +20432,8 @@ var require_osinfo = __commonJS((exports) => {
             }
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "apache")) {
-            exec("apachectl -v 2>&1", (error3, stdout) => {
-              if (!error3) {
+            exec("apachectl -v 2>&1", (error2, stdout) => {
+              if (!error2) {
                 const apache = (stdout.toString().split(`
 `)[0] || "").split(":");
                 appsObj.versions.apache = apache.length > 1 ? apache[1].replace("Apache", "").replace("/", "").split("(")[0].trim() : "";
@@ -20442,8 +20442,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "nginx")) {
-            exec("nginx -v 2>&1", (error3, stdout) => {
-              if (!error3) {
+            exec("nginx -v 2>&1", (error2, stdout) => {
+              if (!error2) {
                 const nginx = stdout.toString().split(`
 `)[0] || "";
                 appsObj.versions.nginx = (nginx.toLowerCase().split("/")[1] || "").trim();
@@ -20452,8 +20452,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "mysql")) {
-            exec("mysql -V", (error3, stdout) => {
-              if (!error3) {
+            exec("mysql -V", (error2, stdout) => {
+              if (!error2) {
                 let mysql = stdout.toString().split(`
 `)[0] || "";
                 mysql = mysql.toLowerCase();
@@ -20472,8 +20472,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "php")) {
-            exec("php -v", (error3, stdout) => {
-              if (!error3) {
+            exec("php -v", (error2, stdout) => {
+              if (!error2) {
                 const php = stdout.toString().split(`
 `)[0] || "";
                 let parts = php.split("(");
@@ -20486,8 +20486,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "redis")) {
-            exec("redis-server --version", (error3, stdout) => {
-              if (!error3) {
+            exec("redis-server --version", (error2, stdout) => {
+              if (!error2) {
                 const redis = stdout.toString().split(`
 `)[0] || "";
                 const parts = redis.split(" ");
@@ -20497,8 +20497,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "docker")) {
-            exec("docker --version", (error3, stdout) => {
-              if (!error3) {
+            exec("docker --version", (error2, stdout) => {
+              if (!error2) {
                 const docker = stdout.toString().split(`
 `)[0] || "";
                 const parts = docker.split(" ");
@@ -20508,8 +20508,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "postfix")) {
-            exec("postconf -d | grep mail_version", (error3, stdout) => {
-              if (!error3) {
+            exec("postconf -d | grep mail_version", (error2, stdout) => {
+              if (!error2) {
                 const postfix = stdout.toString().split(`
 `) || [];
                 appsObj.versions.postfix = util.getValue(postfix, "mail_version", "=", true);
@@ -20518,8 +20518,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "mongodb")) {
-            exec("mongod --version", (error3, stdout) => {
-              if (!error3) {
+            exec("mongod --version", (error2, stdout) => {
+              if (!error2) {
                 const mongodb = stdout.toString().split(`
 `)[0] || "";
                 appsObj.versions.mongodb = (mongodb.toLowerCase().split(",")[0] || "").replace(/[^0-9.]/g, "");
@@ -20529,13 +20529,13 @@ var require_osinfo = __commonJS((exports) => {
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "postgresql")) {
             if (_linux) {
-              exec("locate bin/postgres", (error3, stdout) => {
-                if (!error3) {
+              exec("locate bin/postgres", (error2, stdout) => {
+                if (!error2) {
                   const postgresqlBin = stdout.toString().split(`
 `).sort();
                   if (postgresqlBin.length) {
-                    exec(postgresqlBin[postgresqlBin.length - 1] + " -V", (error4, stdout2) => {
-                      if (!error4) {
+                    exec(postgresqlBin[postgresqlBin.length - 1] + " -V", (error3, stdout2) => {
+                      if (!error3) {
                         const postgresql = stdout2.toString().split(`
 `)[0].split(" ") || [];
                         appsObj.versions.postgresql = postgresql.length ? postgresql[postgresql.length - 1] : "";
@@ -20546,8 +20546,8 @@ var require_osinfo = __commonJS((exports) => {
                     functionProcessed();
                   }
                 } else {
-                  exec("psql -V", (error4, stdout2) => {
-                    if (!error4) {
+                  exec("psql -V", (error3, stdout2) => {
+                    if (!error3) {
                       const postgresql = stdout2.toString().split(`
 `)[0].split(" ") || [];
                       appsObj.versions.postgresql = postgresql.length ? postgresql[postgresql.length - 1] : "";
@@ -20577,14 +20577,14 @@ var require_osinfo = __commonJS((exports) => {
                   functionProcessed();
                 });
               } else {
-                exec("postgres -V", (error3, stdout) => {
-                  if (!error3) {
+                exec("postgres -V", (error2, stdout) => {
+                  if (!error2) {
                     const postgresql = stdout.toString().split(`
 `)[0].split(" ") || [];
                     appsObj.versions.postgresql = postgresql.length ? postgresql[postgresql.length - 1] : "";
                   } else {
-                    exec("pg_config --version", (error4, stdout2) => {
-                      if (!error4) {
+                    exec("pg_config --version", (error3, stdout2) => {
+                      if (!error3) {
                         const postgresql = stdout2.toString().split(`
 `)[0].split(" ") || [];
                         appsObj.versions.postgresql = postgresql.length ? postgresql[postgresql.length - 1] : "";
@@ -20597,8 +20597,8 @@ var require_osinfo = __commonJS((exports) => {
             }
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "perl")) {
-            exec("perl -v", (error3, stdout) => {
-              if (!error3) {
+            exec("perl -v", (error2, stdout) => {
+              if (!error2) {
                 const perl = stdout.toString().split(`
 `) || "";
                 while (perl.length > 0 && perl[0].trim() === "") {
@@ -20622,8 +20622,8 @@ var require_osinfo = __commonJS((exports) => {
                 const gitHomebrewExists2 = fs2.existsSync("/opt/homebrew/bin/python");
                 if (util.darwinXcodeExists() && util.semverCompare("12.0.1", osVersion) < 0 || gitHomebrewExists1 || gitHomebrewExists2) {
                   const cmd2 = gitHomebrewExists1 ? "/usr/local/Cellar/python -V 2>&1" : gitHomebrewExists2 ? "/opt/homebrew/bin/python -V 2>&1" : "python -V 2>&1";
-                  exec(cmd2, (error3, stdout2) => {
-                    if (!error3) {
+                  exec(cmd2, (error2, stdout2) => {
+                    if (!error2) {
                       const python = stdout2.toString().split(`
 `)[0] || "";
                       appsObj.versions.python = python.toLowerCase().replace("python", "").trim();
@@ -20637,8 +20637,8 @@ var require_osinfo = __commonJS((exports) => {
                 functionProcessed();
               }
             } else {
-              exec("python -V 2>&1", (error3, stdout) => {
-                if (!error3) {
+              exec("python -V 2>&1", (error2, stdout) => {
+                if (!error2) {
                   const python = stdout.toString().split(`
 `)[0] || "";
                   appsObj.versions.python = python.toLowerCase().replace("python", "").trim();
@@ -20651,8 +20651,8 @@ var require_osinfo = __commonJS((exports) => {
             if (_darwin) {
               const gitHomebrewExists = fs2.existsSync("/usr/local/Cellar/python3") || fs2.existsSync("/opt/homebrew/bin/python3");
               if (util.darwinXcodeExists() || gitHomebrewExists) {
-                exec("python3 -V 2>&1", (error3, stdout) => {
-                  if (!error3) {
+                exec("python3 -V 2>&1", (error2, stdout) => {
+                  if (!error2) {
                     const python = stdout.toString().split(`
 `)[0] || "";
                     appsObj.versions.python3 = python.toLowerCase().replace("python", "").trim();
@@ -20663,8 +20663,8 @@ var require_osinfo = __commonJS((exports) => {
                 functionProcessed();
               }
             } else {
-              exec("python3 -V 2>&1", (error3, stdout) => {
-                if (!error3) {
+              exec("python3 -V 2>&1", (error2, stdout) => {
+                if (!error2) {
                   const python = stdout.toString().split(`
 `)[0] || "";
                   appsObj.versions.python3 = python.toLowerCase().replace("python", "").trim();
@@ -20677,8 +20677,8 @@ var require_osinfo = __commonJS((exports) => {
             if (_darwin) {
               const gitHomebrewExists = fs2.existsSync("/usr/local/Cellar/pip") || fs2.existsSync("/opt/homebrew/bin/pip");
               if (util.darwinXcodeExists() || gitHomebrewExists) {
-                exec("pip -V 2>&1", (error3, stdout) => {
-                  if (!error3) {
+                exec("pip -V 2>&1", (error2, stdout) => {
+                  if (!error2) {
                     const pip = stdout.toString().split(`
 `)[0] || "";
                     const parts = pip.split(" ");
@@ -20690,8 +20690,8 @@ var require_osinfo = __commonJS((exports) => {
                 functionProcessed();
               }
             } else {
-              exec("pip -V 2>&1", (error3, stdout) => {
-                if (!error3) {
+              exec("pip -V 2>&1", (error2, stdout) => {
+                if (!error2) {
                   const pip = stdout.toString().split(`
 `)[0] || "";
                   const parts = pip.split(" ");
@@ -20705,8 +20705,8 @@ var require_osinfo = __commonJS((exports) => {
             if (_darwin) {
               const gitHomebrewExists = fs2.existsSync("/usr/local/Cellar/pip3") || fs2.existsSync("/opt/homebrew/bin/pip3");
               if (util.darwinXcodeExists() || gitHomebrewExists) {
-                exec("pip3 -V 2>&1", (error3, stdout) => {
-                  if (!error3) {
+                exec("pip3 -V 2>&1", (error2, stdout) => {
+                  if (!error2) {
                     const pip = stdout.toString().split(`
 `)[0] || "";
                     const parts = pip.split(" ");
@@ -20718,8 +20718,8 @@ var require_osinfo = __commonJS((exports) => {
                 functionProcessed();
               }
             } else {
-              exec("pip3 -V 2>&1", (error3, stdout) => {
-                if (!error3) {
+              exec("pip3 -V 2>&1", (error2, stdout) => {
+                if (!error2) {
                   const pip = stdout.toString().split(`
 `)[0] || "";
                   const parts = pip.split(" ");
@@ -20731,10 +20731,10 @@ var require_osinfo = __commonJS((exports) => {
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "java")) {
             if (_darwin) {
-              exec("/usr/libexec/java_home -V 2>&1", (error3, stdout) => {
-                if (!error3 && stdout.toString().toLowerCase().indexOf("no java runtime") === -1) {
-                  exec("java -version 2>&1", (error4, stdout2) => {
-                    if (!error4) {
+              exec("/usr/libexec/java_home -V 2>&1", (error2, stdout) => {
+                if (!error2 && stdout.toString().toLowerCase().indexOf("no java runtime") === -1) {
+                  exec("java -version 2>&1", (error3, stdout2) => {
+                    if (!error3) {
                       const java = stdout2.toString().split(`
 `)[0] || "";
                       const parts = java.split('"');
@@ -20747,8 +20747,8 @@ var require_osinfo = __commonJS((exports) => {
                 }
               });
             } else {
-              exec("java -version 2>&1", (error3, stdout) => {
-                if (!error3) {
+              exec("java -version 2>&1", (error2, stdout) => {
+                if (!error2) {
                   const java = stdout.toString().split(`
 `)[0] || "";
                   const parts = java.split('"');
@@ -20760,16 +20760,16 @@ var require_osinfo = __commonJS((exports) => {
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "gcc")) {
             if (_darwin && util.darwinXcodeExists() || !_darwin) {
-              exec("gcc -dumpversion", (error3, stdout) => {
-                if (!error3) {
+              exec("gcc -dumpversion", (error2, stdout) => {
+                if (!error2) {
                   appsObj.versions.gcc = stdout.toString().split(`
 `)[0].trim() || "";
                 }
                 if (appsObj.versions.gcc.indexOf(".") > -1) {
                   functionProcessed();
                 } else {
-                  exec("gcc --version", (error4, stdout2) => {
-                    if (!error4) {
+                  exec("gcc --version", (error3, stdout2) => {
+                    if (!error3) {
                       const gcc = stdout2.toString().split(`
 `)[0].trim();
                       if (gcc.indexOf("gcc") > -1 && gcc.indexOf(")") > -1) {
@@ -20786,8 +20786,8 @@ var require_osinfo = __commonJS((exports) => {
             }
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "virtualbox")) {
-            exec(util.getVboxmanage() + " -v 2>&1", (error3, stdout) => {
-              if (!error3) {
+            exec(util.getVboxmanage() + " -v 2>&1", (error2, stdout) => {
+              if (!error2) {
                 const vbox = stdout.toString().split(`
 `)[0] || "";
                 const parts = vbox.split("r");
@@ -20797,8 +20797,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "bash")) {
-            exec("bash --version", (error3, stdout) => {
-              if (!error3) {
+            exec("bash --version", (error2, stdout) => {
+              if (!error2) {
                 const line = stdout.toString().split(`
 `)[0];
                 const parts = line.split(" version ");
@@ -20810,8 +20810,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "zsh")) {
-            exec("zsh --version", (error3, stdout) => {
-              if (!error3) {
+            exec("zsh --version", (error2, stdout) => {
+              if (!error2) {
                 const line = stdout.toString().split(`
 `)[0];
                 const parts = line.split("zsh ");
@@ -20823,8 +20823,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "fish")) {
-            exec("fish --version", (error3, stdout) => {
-              if (!error3) {
+            exec("fish --version", (error2, stdout) => {
+              if (!error2) {
                 const line = stdout.toString().split(`
 `)[0];
                 const parts = line.split(" version ");
@@ -20836,8 +20836,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "bun")) {
-            exec("bun -v", (error3, stdout) => {
-              if (!error3) {
+            exec("bun -v", (error2, stdout) => {
+              if (!error2) {
                 const line = stdout.toString().split(`
 `)[0].trim();
                 appsObj.versions.bun = line;
@@ -20846,8 +20846,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "deno")) {
-            exec("deno -v", (error3, stdout) => {
-              if (!error3) {
+            exec("deno -v", (error2, stdout) => {
+              if (!error2) {
                 const line = stdout.toString().split(`
 `)[0].trim();
                 const parts = line.split(" ");
@@ -20859,8 +20859,8 @@ var require_osinfo = __commonJS((exports) => {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "node")) {
-            exec("node -v", (error3, stdout) => {
-              if (!error3) {
+            exec("node -v", (error2, stdout) => {
+              if (!error2) {
                 let line = stdout.toString().split(`
 `)[0].trim();
                 if (line.startsWith("v")) {
@@ -20937,8 +20937,8 @@ var require_osinfo = __commonJS((exports) => {
           }
         } else {
           let result2 = "";
-          exec("echo $SHELL", (error3, stdout) => {
-            if (!error3) {
+          exec("echo $SHELL", (error2, stdout) => {
+            if (!error2) {
               result2 = stdout.toString().split(`
 `)[0];
             }
@@ -20992,8 +20992,8 @@ var require_osinfo = __commonJS((exports) => {
         };
         let parts;
         if (_darwin) {
-          exec("system_profiler SPHardwareDataType -json", (error3, stdout) => {
-            if (!error3) {
+          exec("system_profiler SPHardwareDataType -json", (error2, stdout) => {
+            if (!error2) {
               try {
                 const jsonObj = JSON.parse(stdout.toString());
                 if (jsonObj.SPHardwareDataType && jsonObj.SPHardwareDataType.length > 0) {
@@ -21015,7 +21015,7 @@ var require_osinfo = __commonJS((exports) => {
           const cmd = `echo -n "os: "; cat /var/lib/dbus/machine-id 2> /dev/null ||
 cat /etc/machine-id 2> /dev/null; echo;
 echo -n "hardware: "; cat /sys/class/dmi/id/product_uuid 2> /dev/null; echo;`;
-          exec(cmd, (error3, stdout) => {
+          exec(cmd, (error2, stdout) => {
             const lines = stdout.toString().split(`
 `);
             result2.os = util.getValue(lines, "os").toLowerCase();
@@ -21033,7 +21033,7 @@ echo -n "hardware: "; cat /sys/class/dmi/id/product_uuid 2> /dev/null; echo;`;
           });
         }
         if (_freebsd || _openbsd || _netbsd) {
-          exec("sysctl -i kern.hostid kern.hostuuid", (error3, stdout) => {
+          exec("sysctl -i kern.hostid kern.hostuuid", (error2, stdout) => {
             const lines = stdout.toString().split(`
 `);
             result2.hardware = util.getValue(lines, "kern.hostid", ":").toLowerCase();
@@ -21059,7 +21059,7 @@ echo -n "hardware: "; cat /sys/class/dmi/id/product_uuid 2> /dev/null; echo;`;
             let lines = stdout.split(`\r
 `);
             result2.hardware = util.getValue(lines, "uuid", ":").toLowerCase();
-            exec(`${sysdir}\\reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography" /v MachineGuid`, util.execOptsWin, (error3, stdout2) => {
+            exec(`${sysdir}\\reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography" /v MachineGuid`, util.execOptsWin, (error2, stdout2) => {
               parts = stdout2.toString().split(`
 \r`)[0].split("REG_SZ");
               result2.os = parts.length > 1 ? parts[1].replace(/\r+|\n+|\s+/gi, "").toLowerCase() : "";
@@ -21106,7 +21106,7 @@ var require_system = __commonJS((exports) => {
           virtual: false
         };
         if (_linux || _freebsd || _openbsd || _netbsd) {
-          exec("export LC_ALL=C; dmidecode -t system 2>/dev/null; unset LC_ALL", (error3, stdout) => {
+          exec("export LC_ALL=C; dmidecode -t system 2>/dev/null; unset LC_ALL", (error2, stdout) => {
             let lines = stdout.toString().split(`
 `);
             result2.manufacturer = cleanDefaults(util.getValue(lines, "manufacturer"));
@@ -21266,8 +21266,8 @@ var require_system = __commonJS((exports) => {
               util.noop();
             }
             if (result2.manufacturer === "" && result2.model === "Computer" && result2.version === "") {
-              fs2.readFile("/proc/cpuinfo", (error4, stdout2) => {
-                if (!error4) {
+              fs2.readFile("/proc/cpuinfo", (error3, stdout2) => {
+                if (!error3) {
                   let lines2 = stdout2.toString().split(`
 `);
                   result2.model = util.getValue(lines2, "hardware", ":", true).toUpperCase();
@@ -21301,8 +21301,8 @@ var require_system = __commonJS((exports) => {
           });
         }
         if (_darwin) {
-          exec("ioreg -c IOPlatformExpertDevice -d 2", (error3, stdout) => {
-            if (!error3) {
+          exec("ioreg -c IOPlatformExpertDevice -d 2", (error2, stdout) => {
+            if (!error2) {
               const lines = stdout.toString().replace(/[<>"]/g, "").split(`
 `);
               const model = util.getAppleModel(util.getValue(lines, "model", "=", true));
@@ -21328,8 +21328,8 @@ var require_system = __commonJS((exports) => {
         }
         if (_windows) {
           try {
-            util.powerShell("Get-CimInstance Win32_ComputerSystemProduct | select Name,Vendor,Version,IdentifyingNumber,UUID | fl").then((stdout, error3) => {
-              if (!error3) {
+            util.powerShell("Get-CimInstance Win32_ComputerSystemProduct | select Name,Vendor,Version,IdentifyingNumber,UUID | fl").then((stdout, error2) => {
+              if (!error2) {
                 const lines = stdout.split(`\r
 `);
                 result2.manufacturer = util.getValue(lines, "vendor", ":");
@@ -21375,15 +21375,15 @@ var require_system = __commonJS((exports) => {
                     result2.virtualHost = "Parallels";
                   }
                 }
-                util.powerShell('Get-CimInstance MS_Systeminformation -Namespace "root/wmi" | select systemsku | fl ').then((stdout2, error4) => {
-                  if (!error4) {
+                util.powerShell('Get-CimInstance MS_Systeminformation -Namespace "root/wmi" | select systemsku | fl ').then((stdout2, error3) => {
+                  if (!error3) {
                     const lines2 = stdout2.split(`\r
 `);
                     result2.sku = util.getValue(lines2, "systemsku", ":");
                   }
                   if (!result2.virtual) {
-                    util.powerShell("Get-CimInstance Win32_bios | select Version, SerialNumber, SMBIOSBIOSVersion").then((stdout3, error5) => {
-                      if (!error5) {
+                    util.powerShell("Get-CimInstance Win32_bios | select Version, SerialNumber, SMBIOSBIOSVersion").then((stdout3, error4) => {
+                      if (!error4) {
                         let lines2 = stdout3.toString();
                         if (lines2.indexOf("VRTUAL") >= 0 || lines2.indexOf("A M I ") >= 0 || lines2.indexOf("VirtualBox") >= 0 || lines2.indexOf("VMWare") >= 0 || lines2.indexOf("Xen") >= 0 || lines2.indexOf("Parallels") >= 0) {
                           result2.virtual = true;
@@ -21465,7 +21465,7 @@ var require_system = __commonJS((exports) => {
           } else {
             cmd = "export LC_ALL=C; dmidecode -t bios 2>/dev/null; unset LC_ALL";
           }
-          exec(cmd, (error3, stdout) => {
+          exec(cmd, (error2, stdout) => {
             let lines = stdout.toString().split(`
 `);
             result2.vendor = util.getValue(lines, "Vendor");
@@ -21509,7 +21509,7 @@ var require_system = __commonJS((exports) => {
         }
         if (_darwin) {
           result2.vendor = "Apple Inc.";
-          exec("system_profiler SPHardwareDataType -json", (error3, stdout) => {
+          exec("system_profiler SPHardwareDataType -json", (error2, stdout) => {
             try {
               const hardwareData = JSON.parse(stdout.toString());
               if (hardwareData && hardwareData.SPHardwareDataType && hardwareData.SPHardwareDataType.length) {
@@ -21535,8 +21535,8 @@ var require_system = __commonJS((exports) => {
         }
         if (_windows) {
           try {
-            util.powerShell('Get-CimInstance Win32_bios | select Description,Version,Manufacturer,@{n="ReleaseDate";e={$_.ReleaseDate.ToString("yyyy-MM-dd")}},BuildNumber,SerialNumber,SMBIOSBIOSVersion | fl').then((stdout, error3) => {
-              if (!error3) {
+            util.powerShell('Get-CimInstance Win32_bios | select Description,Version,Manufacturer,@{n="ReleaseDate";e={$_.ReleaseDate.ToString("yyyy-MM-dd")}},BuildNumber,SerialNumber,SMBIOSBIOSVersion | fl').then((stdout, error2) => {
+              if (!error2) {
                 let lines = stdout.toString().split(`\r
 `);
                 const description = util.getValue(lines, "description", ":");
@@ -21792,7 +21792,7 @@ var require_system = __commonJS((exports) => {
             echo -n "chassis_type: "; cat /sys/devices/virtual/dmi/id/chassis_type 2>/dev/null; echo;
             echo -n "chassis_vendor: "; cat /sys/devices/virtual/dmi/id/chassis_vendor 2>/dev/null; echo;
             echo -n "chassis_version: "; cat /sys/devices/virtual/dmi/id/chassis_version 2>/dev/null; echo;`;
-          exec(cmd, (error3, stdout) => {
+          exec(cmd, (error2, stdout) => {
             let lines = stdout.toString().split(`
 `);
             result2.manufacturer = cleanDefaults(util.getValue(lines, "chassis_vendor"));
@@ -21808,8 +21808,8 @@ var require_system = __commonJS((exports) => {
           });
         }
         if (_darwin) {
-          exec("ioreg -c IOPlatformExpertDevice -d 2", (error3, stdout) => {
-            if (!error3) {
+          exec("ioreg -c IOPlatformExpertDevice -d 2", (error2, stdout) => {
+            if (!error2) {
               const lines = stdout.toString().replace(/[<>"]/g, "").split(`
 `);
               const model = util.getAppleModel(util.getValue(lines, "model", "=", true));
@@ -21835,8 +21835,8 @@ var require_system = __commonJS((exports) => {
         }
         if (_windows) {
           try {
-            util.powerShell("Get-CimInstance Win32_SystemEnclosure | select Model,Manufacturer,ChassisTypes,Version,SerialNumber,PartNumber,SKU,SMBIOSAssetTag | fl").then((stdout, error3) => {
-              if (!error3) {
+            util.powerShell("Get-CimInstance Win32_SystemEnclosure | select Model,Manufacturer,ChassisTypes,Version,SerialNumber,PartNumber,SKU,SMBIOSAssetTag | fl").then((stdout, error2) => {
+              if (!error2) {
                 let lines = stdout.toString().split(`\r
 `);
                 result2.manufacturer = cleanDefaults(util.getValue(lines, "manufacturer", ":"));
@@ -22696,7 +22696,7 @@ var require_cpu = __commonJS((exports) => {
           result2.flags = flags;
           result2.virtualization = flags.indexOf("vmx") > -1 || flags.indexOf("svm") > -1;
           if (_darwin) {
-            exec("sysctl machdep.cpu hw.cpufrequency_max hw.cpufrequency_min hw.packages hw.physicalcpu_max hw.ncpu hw.tbfrequency hw.cpufamily hw.cpusubfamily", (error3, stdout) => {
+            exec("sysctl machdep.cpu hw.cpufrequency_max hw.cpufrequency_min hw.packages hw.physicalcpu_max hw.ncpu hw.tbfrequency hw.cpufamily hw.cpusubfamily", (error2, stdout) => {
               const lines = stdout.toString().split(`
 `);
               const modelline = util.getValue(lines, "machdep.cpu.brand_string");
@@ -22751,8 +22751,8 @@ var require_cpu = __commonJS((exports) => {
             if (os4.cpus()[0] && os4.cpus()[0].model) {
               modelline = os4.cpus()[0].model;
             }
-            exec('export LC_ALL=C; lscpu; echo -n "Governor: "; cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null; echo; unset LC_ALL', (error3, stdout) => {
-              if (!error3) {
+            exec('export LC_ALL=C; lscpu; echo -n "Governor: "; cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null; echo; unset LC_ALL', (error2, stdout) => {
+              if (!error2) {
                 lines = stdout.toString().split(`
 `);
               }
@@ -22844,9 +22844,9 @@ var require_cpu = __commonJS((exports) => {
             if (os4.cpus()[0] && os4.cpus()[0].model) {
               modelline = os4.cpus()[0].model;
             }
-            exec("export LC_ALL=C; dmidecode -t 4; dmidecode -t 7 unset LC_ALL", (error3, stdout) => {
+            exec("export LC_ALL=C; dmidecode -t 4; dmidecode -t 7 unset LC_ALL", (error2, stdout) => {
               let cache = [];
-              if (!error3) {
+              if (!error2) {
                 const data = stdout.toString().split("# dmidecode");
                 const processor = data.length > 1 ? data[1] : "";
                 cache = data.length > 2 ? data[2].split("Cache Information") : [];
@@ -23114,7 +23114,7 @@ var require_cpu = __commonJS((exports) => {
           }
           const cmd = 'for mon in /sys/class/hwmon/hwmon*; do for label in "$mon"/temp*_label; do if [ -f $label ]; then value=${label%_*}_input; echo $(cat "$label")___$(cat "$value"); fi; done; done;';
           try {
-            exec(cmd, (error3, stdout) => {
+            exec(cmd, (error2, stdout) => {
               stdout = stdout.toString();
               const tdiePos = stdout.toLowerCase().indexOf("tdie");
               if (tdiePos !== -1) {
@@ -23156,8 +23156,8 @@ var require_cpu = __commonJS((exports) => {
                 resolve(result2);
                 return;
               }
-              exec("sensors", (error4, stdout2) => {
-                if (!error4) {
+              exec("sensors", (error3, stdout2) => {
+                if (!error3) {
                   const lines2 = stdout2.toString().split(`
 `);
                   let tdieTemp = null;
@@ -23226,8 +23226,8 @@ var require_cpu = __commonJS((exports) => {
                 }
                 fs2.stat("/sys/class/thermal/thermal_zone0/temp", (err) => {
                   if (err === null) {
-                    fs2.readFile("/sys/class/thermal/thermal_zone0/temp", (error5, stdout3) => {
-                      if (!error5) {
+                    fs2.readFile("/sys/class/thermal/thermal_zone0/temp", (error4, stdout3) => {
+                      if (!error4) {
                         const lines2 = stdout3.toString().split(`
 `);
                         if (lines2.length > 0) {
@@ -23241,8 +23241,8 @@ var require_cpu = __commonJS((exports) => {
                       resolve(result2);
                     });
                   } else {
-                    exec("/opt/vc/bin/vcgencmd measure_temp", (error5, stdout3) => {
-                      if (!error5) {
+                    exec("/opt/vc/bin/vcgencmd measure_temp", (error4, stdout3) => {
+                      if (!error4) {
                         const lines2 = stdout3.toString().split(`
 `);
                         if (lines2.length > 0 && lines2[0].indexOf("=")) {
@@ -23267,8 +23267,8 @@ var require_cpu = __commonJS((exports) => {
           }
         }
         if (_freebsd || _openbsd || _netbsd) {
-          exec("sysctl dev.cpu | grep temp", (error3, stdout) => {
-            if (!error3) {
+          exec("sysctl dev.cpu | grep temp", (error2, stdout) => {
+            if (!error2) {
               const lines = stdout.toString().split(`
 `);
               let sum = 0;
@@ -23342,8 +23342,8 @@ var require_cpu = __commonJS((exports) => {
         }
         if (_windows) {
           try {
-            util.powerShell('Get-CimInstance MSAcpi_ThermalZoneTemperature -Namespace "root/wmi" | Select CurrentTemperature').then((stdout, error3) => {
-              if (!error3) {
+            util.powerShell('Get-CimInstance MSAcpi_ThermalZoneTemperature -Namespace "root/wmi" | Select CurrentTemperature').then((stdout, error2) => {
+              if (!error2) {
                 let sum = 0;
                 const lines = stdout.split(`\r
 `).filter((line) => line.trim() !== "").filter((line, idx) => idx > 0);
@@ -23383,8 +23383,8 @@ var require_cpu = __commonJS((exports) => {
         let result2 = "";
         if (_windows) {
           try {
-            exec('reg query "HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0" /v FeatureSet', util.execOptsWin, (error3, stdout) => {
-              if (!error3) {
+            exec('reg query "HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0" /v FeatureSet', util.execOptsWin, (error2, stdout) => {
+              if (!error2) {
                 let flag_hex = stdout.split("0x").pop().trim();
                 let flag_bin_unpadded = parseInt(flag_hex, 16).toString(2);
                 let flag_bin = "0".repeat(32 - flag_bin_unpadded.length) + flag_bin_unpadded;
@@ -23443,8 +23443,8 @@ var require_cpu = __commonJS((exports) => {
         }
         if (_linux) {
           try {
-            exec("export LC_ALL=C; lscpu; unset LC_ALL", (error3, stdout) => {
-              if (!error3) {
+            exec("export LC_ALL=C; lscpu; unset LC_ALL", (error2, stdout) => {
+              if (!error2) {
                 let lines = stdout.toString().split(`
 `);
                 lines.forEach((line) => {
@@ -23454,8 +23454,8 @@ var require_cpu = __commonJS((exports) => {
                 });
               }
               if (!result2) {
-                fs2.readFile("/proc/cpuinfo", (error4, stdout2) => {
-                  if (!error4) {
+                fs2.readFile("/proc/cpuinfo", (error3, stdout2) => {
+                  if (!error3) {
                     let lines = stdout2.toString().split(`
 `);
                     result2 = util.getValue(lines, "features", ":", true).toLowerCase();
@@ -23480,9 +23480,9 @@ var require_cpu = __commonJS((exports) => {
           }
         }
         if (_freebsd || _openbsd || _netbsd) {
-          exec("export LC_ALL=C; dmidecode -t 4 2>/dev/null; unset LC_ALL", (error3, stdout) => {
+          exec("export LC_ALL=C; dmidecode -t 4 2>/dev/null; unset LC_ALL", (error2, stdout) => {
             const flags = [];
-            if (!error3) {
+            if (!error2) {
               const parts = stdout.toString().split("\tFlags:");
               const lines = parts.length > 1 ? parts[1].split("\tVersion:")[0].split(`
 `) : [];
@@ -23501,8 +23501,8 @@ var require_cpu = __commonJS((exports) => {
           });
         }
         if (_darwin) {
-          exec("sysctl machdep.cpu.features", (error3, stdout) => {
-            if (!error3) {
+          exec("sysctl machdep.cpu.features", (error2, stdout) => {
+            if (!error2) {
               let lines = stdout.toString().split(`
 `);
               if (lines.length > 0 && lines[0].indexOf("machdep.cpu.features:") !== -1) {
@@ -23536,8 +23536,8 @@ var require_cpu = __commonJS((exports) => {
         };
         if (_linux) {
           try {
-            exec("export LC_ALL=C; lscpu; unset LC_ALL", (error3, stdout) => {
-              if (!error3) {
+            exec("export LC_ALL=C; lscpu; unset LC_ALL", (error2, stdout) => {
+              if (!error2) {
                 const lines = stdout.toString().split(`
 `);
                 lines.forEach((line) => {
@@ -23569,9 +23569,9 @@ var require_cpu = __commonJS((exports) => {
           }
         }
         if (_freebsd || _openbsd || _netbsd) {
-          exec("export LC_ALL=C; dmidecode -t 7 2>/dev/null; unset LC_ALL", (error3, stdout) => {
+          exec("export LC_ALL=C; dmidecode -t 7 2>/dev/null; unset LC_ALL", (error2, stdout) => {
             let cache = [];
-            if (!error3) {
+            if (!error2) {
               const data = stdout.toString();
               cache = data.split("Cache Information");
               cache.shift();
@@ -23601,8 +23601,8 @@ var require_cpu = __commonJS((exports) => {
           });
         }
         if (_darwin) {
-          exec("sysctl hw.l1icachesize hw.l1dcachesize hw.l2cachesize hw.l3cachesize", (error3, stdout) => {
-            if (!error3) {
+          exec("sysctl hw.l1icachesize hw.l1dcachesize hw.l2cachesize hw.l3cachesize", (error2, stdout) => {
+            if (!error2) {
               let lines = stdout.toString().split(`
 `);
               lines.forEach((line) => {
@@ -24022,8 +24022,8 @@ var require_memory = __commonJS((exports) => {
         };
         if (_linux) {
           try {
-            fs2.readFile("/proc/meminfo", (error3, stdout) => {
-              if (!error3) {
+            fs2.readFile("/proc/meminfo", (error2, stdout) => {
+              if (!error2) {
                 const lines = stdout.toString().split(`
 `);
                 result2.total = parseInt(util.getValue(lines, "memtotal"), 10);
@@ -24067,8 +24067,8 @@ var require_memory = __commonJS((exports) => {
         }
         if (_freebsd || _openbsd || _netbsd) {
           try {
-            exec("/sbin/sysctl hw.realmem hw.physmem vm.stats.vm.v_page_count vm.stats.vm.v_wire_count vm.stats.vm.v_active_count vm.stats.vm.v_inactive_count vm.stats.vm.v_cache_count vm.stats.vm.v_free_count vm.stats.vm.v_page_size", (error3, stdout) => {
-              if (!error3) {
+            exec("/sbin/sysctl hw.realmem hw.physmem vm.stats.vm.v_page_count vm.stats.vm.v_wire_count vm.stats.vm.v_active_count vm.stats.vm.v_inactive_count vm.stats.vm.v_cache_count vm.stats.vm.v_free_count vm.stats.vm.v_page_size", (error2, stdout) => {
+              if (!error2) {
                 const lines = stdout.toString().split(`
 `);
                 const pagesize = parseInt(util.getValue(lines, "vm.stats.vm.v_page_size"), 10);
@@ -24113,8 +24113,8 @@ var require_memory = __commonJS((exports) => {
             util.noop();
           }
           try {
-            exec('vm_stat 2>/dev/null | egrep "Pages active|Pages inactive"', (error3, stdout) => {
-              if (!error3) {
+            exec('vm_stat 2>/dev/null | egrep "Pages active|Pages inactive"', (error2, stdout) => {
+              if (!error2) {
                 let lines = stdout.toString().split(`
 `);
                 result2.active = (parseInt(util.getValue(lines, "Pages active"), 10) || 0) * pageSize;
@@ -24122,8 +24122,8 @@ var require_memory = __commonJS((exports) => {
                 result2.buffcache = result2.used - result2.active;
                 result2.available = result2.free + result2.buffcache;
               }
-              exec("sysctl -n vm.swapusage 2>/dev/null", (error4, stdout2) => {
-                if (!error4) {
+              exec("sysctl -n vm.swapusage 2>/dev/null", (error3, stdout2) => {
+                if (!error3) {
                   let lines = stdout2.toString().split(`
 `);
                   if (lines.length > 0) {
@@ -24159,8 +24159,8 @@ var require_memory = __commonJS((exports) => {
           let swaptotal = 0;
           let swapused = 0;
           try {
-            util.powerShell("Get-CimInstance Win32_PageFileUsage | Select AllocatedBaseSize, CurrentUsage").then((stdout, error3) => {
-              if (!error3) {
+            util.powerShell("Get-CimInstance Win32_PageFileUsage | Select AllocatedBaseSize, CurrentUsage").then((stdout, error2) => {
+              if (!error2) {
                 let lines = stdout.split(`\r
 `).filter((line) => line.trim() !== "").filter((line, idx) => idx > 0);
                 lines.forEach((line) => {
@@ -24202,8 +24202,8 @@ var require_memory = __commonJS((exports) => {
       process.nextTick(() => {
         let result2 = [];
         if (_linux || _freebsd || _openbsd || _netbsd) {
-          exec('export LC_ALL=C; dmidecode -t memory 2>/dev/null | grep -iE "Size:|Type|Speed|Manufacturer|Form Factor|Locator|Memory Device|Serial Number|Voltage|Part Number"; unset LC_ALL', (error3, stdout) => {
-            if (!error3) {
+          exec('export LC_ALL=C; dmidecode -t memory 2>/dev/null | grep -iE "Size:|Type|Speed|Manufacturer|Form Factor|Locator|Memory Device|Serial Number|Voltage|Part Number"; unset LC_ALL', (error2, stdout) => {
+            if (!error2) {
               const devices = stdout.toString().split("Memory Device");
               devices.shift();
               devices.forEach((device) => {
@@ -24311,8 +24311,8 @@ var require_memory = __commonJS((exports) => {
           });
         }
         if (_darwin) {
-          exec("system_profiler SPMemoryDataType", (error3, stdout) => {
-            if (!error3) {
+          exec("system_profiler SPMemoryDataType", (error2, stdout) => {
+            if (!error2) {
               const allLines = stdout.toString().split(`
 `);
               const eccStatus = util.getValue(allLines, "ecc", ":", true).toLowerCase();
@@ -24400,8 +24400,8 @@ var require_memory = __commonJS((exports) => {
           const memoryTypes = "Unknown|Other|DRAM|Synchronous DRAM|Cache DRAM|EDO|EDRAM|VRAM|SRAM|RAM|ROM|FLASH|EEPROM|FEPROM|EPROM|CDRAM|3DRAM|SDRAM|SGRAM|RDRAM|DDR|DDR2|DDR2 FB-DIMM|Reserved|DDR3|FBD2|DDR4|LPDDR|LPDDR2|LPDDR3|LPDDR4|Logical non-volatile device|HBM|HBM2|DDR5|LPDDR5".split("|");
           const FormFactors = "Unknown|Other|SIP|DIP|ZIP|SOJ|Proprietary|SIMM|DIMM|TSOP|PGA|RIMM|SODIMM|SRIMM|SMD|SSMP|QFP|TQFP|SOIC|LCC|PLCC|BGA|FPBGA|LGA".split("|");
           try {
-            util.powerShell("Get-CimInstance Win32_PhysicalMemory | select DataWidth,TotalWidth,Capacity,BankLabel,MemoryType,SMBIOSMemoryType,ConfiguredClockSpeed,Speed,FormFactor,Manufacturer,PartNumber,SerialNumber,ConfiguredVoltage,MinVoltage,MaxVoltage,Tag | fl").then((stdout, error3) => {
-              if (!error3) {
+            util.powerShell("Get-CimInstance Win32_PhysicalMemory | select DataWidth,TotalWidth,Capacity,BankLabel,MemoryType,SMBIOSMemoryType,ConfiguredClockSpeed,Speed,FormFactor,Manufacturer,PartNumber,SerialNumber,ConfiguredVoltage,MinVoltage,MaxVoltage,Tag | fl").then((stdout, error2) => {
+              if (!error2) {
                 const devices = stdout.toString().split(/\n\s*\n/);
                 devices.shift();
                 devices.forEach((device) => {
@@ -24520,8 +24520,8 @@ var require_battery = __commonJS((exports, module) => {
           acConnected = file.toString().trim() === "1";
         }
         if (battery_path) {
-          fs2.readFile(battery_path + "uevent", (error3, stdout) => {
-            if (!error3) {
+          fs2.readFile(battery_path + "uevent", (error2, stdout) => {
+            if (!error2) {
               let lines = stdout.toString().split(`
 `);
               result2.isCharging = util.getValue(lines, "POWER_SUPPLY_STATUS", "=").toLowerCase() === "charging";
@@ -24583,7 +24583,7 @@ var require_battery = __commonJS((exports, module) => {
         }
       }
       if (_freebsd || _openbsd || _netbsd) {
-        exec("sysctl -i hw.acpi.battery hw.acpi.acline", (error3, stdout) => {
+        exec("sysctl -i hw.acpi.battery hw.acpi.acline", (error2, stdout) => {
           let lines = stdout.toString().split(`
 `);
           const batteries = parseInt("0" + util.getValue(lines, "hw.acpi.battery.units"), 10);
@@ -24603,7 +24603,7 @@ var require_battery = __commonJS((exports, module) => {
         });
       }
       if (_darwin) {
-        exec('ioreg -n AppleSmartBattery -r | egrep "CycleCount|IsCharging|DesignCapacity|MaxCapacity|CurrentCapacity|DeviceName|BatterySerialNumber|Serial|TimeRemaining|Voltage"; pmset -g batt | grep %', (error3, stdout) => {
+        exec('ioreg -n AppleSmartBattery -r | egrep "CycleCount|IsCharging|DesignCapacity|MaxCapacity|CurrentCapacity|DeviceName|BatterySerialNumber|Serial|TimeRemaining|Voltage"; pmset -g batt | grep %', (error2, stdout) => {
           if (stdout) {
             let lines = stdout.toString().replace(/ +/g, "").replace(/"+/g, "").replace(/-/g, "").split(`
 `);
@@ -25395,8 +25395,8 @@ var require_graphics = __commonJS((exports) => {
         };
         if (_darwin) {
           const cmd = "system_profiler -xml -detailLevel full SPDisplaysDataType";
-          exec(cmd, (error3, stdout) => {
-            if (!error3) {
+          exec(cmd, (error2, stdout) => {
+            if (!error2) {
               try {
                 const output = stdout.toString();
                 result2 = parseLinesDarwin(util.plistParser(output)[0]._items);
@@ -25449,7 +25449,7 @@ var require_graphics = __commonJS((exports) => {
         if (_linux) {
           if (util.isRaspberry()) {
             const cmd2 = `fbset -s 2> /dev/null | grep 'mode "' ; vcgencmd get_mem gpu 2> /dev/null; tvservice -s 2> /dev/null; tvservice -n 2> /dev/null;`;
-            exec(cmd2, (error3, stdout) => {
+            exec(cmd2, (error2, stdout) => {
               const lines = stdout.toString().split(`
 `);
               if (lines.length > 3 && lines[0].indexOf('mode "') >= -1 && lines[2].indexOf("0x12000a") > -1) {
@@ -25486,8 +25486,8 @@ var require_graphics = __commonJS((exports) => {
             });
           }
           const cmd = "lspci -vvv  2>/dev/null";
-          exec(cmd, (error3, stdout) => {
-            if (!error3) {
+          exec(cmd, (error2, stdout) => {
+            if (!error2) {
               const lines = stdout.toString().split(`
 `);
               if (result2.controllers.length === 0) {
@@ -25499,23 +25499,23 @@ var require_graphics = __commonJS((exports) => {
               }
             }
             const cmd2 = "clinfo --raw";
-            exec(cmd2, (error4, stdout2) => {
-              if (!error4) {
+            exec(cmd2, (error3, stdout2) => {
+              if (!error3) {
                 const lines = stdout2.toString().split(`
 `);
                 result2.controllers = parseLinesLinuxClinfo(result2.controllers, lines);
               }
               const cmd3 = "xdpyinfo 2>/dev/null | grep 'depth of root window' | awk '{ print $5 }'";
-              exec(cmd3, (error5, stdout3) => {
+              exec(cmd3, (error4, stdout3) => {
                 let depth = 0;
-                if (!error5) {
+                if (!error4) {
                   const lines = stdout3.toString().split(`
 `);
                   depth = parseInt(lines[0]) || 0;
                 }
                 const cmd4 = "xrandr --verbose 2>/dev/null";
-                exec(cmd4, (error6, stdout4) => {
-                  if (!error6) {
+                exec(cmd4, (error5, stdout4) => {
+                  if (!error5) {
                     const lines = stdout4.toString().split(`
 `);
                     result2.displays = parseLinesLinuxDisplays(lines, depth);
@@ -25960,7 +25960,7 @@ var require_filesystem = __commonJS((exports) => {
               util.noop();
             }
           }
-          exec(cmd, { maxBuffer: 1024 * 1024 }, (error3, stdout) => {
+          exec(cmd, { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
             const lines = filterLines(stdout);
             data = parseDf(lines);
             if (drive) {
@@ -25968,13 +25968,13 @@ var require_filesystem = __commonJS((exports) => {
                 return item.fs.toLowerCase().indexOf(drive.toLowerCase()) >= 0 || item.mount.toLowerCase().indexOf(drive.toLowerCase()) >= 0;
               });
             }
-            if ((!error3 || data.length) && stdout.toString().trim() !== "") {
+            if ((!error2 || data.length) && stdout.toString().trim() !== "") {
               if (callback) {
                 callback(data);
               }
               resolve(data);
             } else {
-              exec("df -kPT 2>/dev/null", { maxBuffer: 1024 * 1024 }, (error4, stdout2) => {
+              exec("df -kPT 2>/dev/null", { maxBuffer: 1024 * 1024 }, (error3, stdout2) => {
                 const lines2 = filterLines(stdout2);
                 data = parseDf(lines2);
                 if (callback) {
@@ -25995,8 +25995,8 @@ var require_filesystem = __commonJS((exports) => {
           try {
             const driveSanitized = drive ? util.sanitizeShellString(drive, true) : "";
             const cmd = `Get-WmiObject Win32_logicaldisk | select Access,Caption,FileSystem,FreeSpace,Size ${driveSanitized ? "| where -property Caption -eq " + driveSanitized : ""} | fl`;
-            util.powerShell(cmd).then((stdout, error3) => {
-              if (!error3) {
+            util.powerShell(cmd).then((stdout, error2) => {
+              if (!error2) {
                 const devices = stdout.toString().split(/\n\s*\n/);
                 devices.forEach((device) => {
                   const lines = device.split(`\r
@@ -26046,8 +26046,8 @@ var require_filesystem = __commonJS((exports) => {
         };
         if (_freebsd || _openbsd || _netbsd || _darwin) {
           const cmd = "sysctl -i kern.maxfiles kern.num_files kern.open_files";
-          exec(cmd, { maxBuffer: 1024 * 1024 }, (error3, stdout) => {
-            if (!error3) {
+          exec(cmd, { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
+            if (!error2) {
               const lines = stdout.toString().split(`
 `);
               result2.max = parseInt(util.getValue(lines, "kern.maxfiles", ":"), 10);
@@ -26061,8 +26061,8 @@ var require_filesystem = __commonJS((exports) => {
           });
         }
         if (_linux) {
-          fs2.readFile("/proc/sys/fs/file-nr", (error3, stdout) => {
-            if (!error3) {
+          fs2.readFile("/proc/sys/fs/file-nr", (error2, stdout) => {
+            if (!error2) {
               const lines = stdout.toString().split(`
 `);
               if (lines[0]) {
@@ -26081,8 +26081,8 @@ var require_filesystem = __commonJS((exports) => {
               }
               resolve(result2);
             } else {
-              fs2.readFile("/proc/sys/fs/file-max", (error4, stdout2) => {
-                if (!error4) {
+              fs2.readFile("/proc/sys/fs/file-max", (error3, stdout2) => {
+                if (!error3) {
                   const lines = stdout2.toString().split(`
 `);
                   if (lines[0]) {
@@ -26374,8 +26374,8 @@ var require_filesystem = __commonJS((exports) => {
       process.nextTick(() => {
         let data = [];
         if (_linux) {
-          const procLsblk1 = exec("lsblk -bPo NAME,TYPE,SIZE,FSTYPE,MOUNTPOINT,UUID,ROTA,RO,RM,TRAN,SERIAL,LABEL,MODEL,OWNER 2>/dev/null", { maxBuffer: 1024 * 1024 }, (error3, stdout) => {
-            if (!error3) {
+          const procLsblk1 = exec("lsblk -bPo NAME,TYPE,SIZE,FSTYPE,MOUNTPOINT,UUID,ROTA,RO,RM,TRAN,SERIAL,LABEL,MODEL,OWNER 2>/dev/null", { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
+            if (!error2) {
               const lines = blkStdoutToObject(stdout).split(`
 `);
               data = parseBlk(lines);
@@ -26386,8 +26386,8 @@ var require_filesystem = __commonJS((exports) => {
               }
               resolve(data);
             } else {
-              const procLsblk2 = exec("lsblk -bPo NAME,TYPE,SIZE,FSTYPE,MOUNTPOINT,UUID,ROTA,RO,RM,LABEL,MODEL,OWNER 2>/dev/null", { maxBuffer: 1024 * 1024 }, (error4, stdout2) => {
-                if (!error4) {
+              const procLsblk2 = exec("lsblk -bPo NAME,TYPE,SIZE,FSTYPE,MOUNTPOINT,UUID,ROTA,RO,RM,LABEL,MODEL,OWNER 2>/dev/null", { maxBuffer: 1024 * 1024 }, (error3, stdout2) => {
+                if (!error3) {
                   const lines = blkStdoutToObject(stdout2).split(`
 `);
                   data = parseBlk(lines);
@@ -26414,8 +26414,8 @@ var require_filesystem = __commonJS((exports) => {
           });
         }
         if (_darwin) {
-          const procDskutil = exec("diskutil info -all", { maxBuffer: 1024 * 1024 }, (error3, stdout) => {
-            if (!error3) {
+          const procDskutil = exec("diskutil info -all", { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
+            if (!error2) {
               const lines = stdout.toString().split(`
 `);
               data = parseDevices(lines);
@@ -26555,8 +26555,8 @@ var require_filesystem = __commonJS((exports) => {
         let wx = 0;
         if (_fs_speed && !_fs_speed.ms || _fs_speed && _fs_speed.ms && Date.now() - _fs_speed.ms >= 500) {
           if (_linux) {
-            const procLsblk = exec("lsblk -r 2>/dev/null | grep /", { maxBuffer: 1024 * 1024 }, (error3, stdout) => {
-              if (!error3) {
+            const procLsblk = exec("lsblk -r 2>/dev/null | grep /", { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
+              if (!error2) {
                 const lines = stdout.toString().split(`
 `);
                 const fs_filter = [];
@@ -26569,8 +26569,8 @@ var require_filesystem = __commonJS((exports) => {
                   }
                 });
                 const output = fs_filter.join("|");
-                const procCat = exec('cat /proc/diskstats | egrep "' + output + '"', { maxBuffer: 1024 * 1024 }, (error4, stdout2) => {
-                  if (!error4) {
+                const procCat = exec('cat /proc/diskstats | egrep "' + output + '"', { maxBuffer: 1024 * 1024 }, (error3, stdout2) => {
+                  if (!error3) {
                     const lines2 = stdout2.toString().split(`
 `);
                     lines2.forEach((line) => {
@@ -26610,8 +26610,8 @@ var require_filesystem = __commonJS((exports) => {
           }
           if (_darwin) {
             const procIoreg = exec(`ioreg -c IOBlockStorageDriver -k Statistics -r -w0 | sed -n "/IOBlockStorageDriver/,/Statistics/p" | grep "Statistics" | tr -cd "01234567890,
-"`, { maxBuffer: 1024 * 1024 }, (error3, stdout) => {
-              if (!error3) {
+"`, { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
+              if (!error2) {
                 const lines = stdout.toString().split(`
 `);
                 lines.forEach((line) => {
@@ -26751,8 +26751,8 @@ var require_filesystem = __commonJS((exports) => {
         if (_disk_io && !_disk_io.ms || _disk_io && _disk_io.ms && Date.now() - _disk_io.ms >= 500) {
           if (_linux || _freebsd || _openbsd || _netbsd) {
             const cmd = 'for mount in `lsblk 2>/dev/null | grep " disk " | sed "s/[│└─├]//g" | awk \'{$1=$1};1\' | cut -d " " -f 1 | sort -u`; do cat /sys/block/$mount/stat | sed -r "s/ +/;/g" | sed -r "s/^;//"; done';
-            exec(cmd, { maxBuffer: 1024 * 1024 }, (error3, stdout) => {
-              if (!error3) {
+            exec(cmd, { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
+              if (!error2) {
                 const lines = stdout.split(`
 `);
                 lines.forEach((line) => {
@@ -26781,8 +26781,8 @@ var require_filesystem = __commonJS((exports) => {
           }
           if (_darwin) {
             exec(`ioreg -c IOBlockStorageDriver -k Statistics -r -w0 | sed -n "/IOBlockStorageDriver/,/Statistics/p" | grep "Statistics" | tr -cd "01234567890,
-"`, { maxBuffer: 1024 * 1024 }, (error3, stdout) => {
-              if (!error3) {
+"`, { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
+              if (!error2) {
                 const lines = stdout.toString().split(`
 `);
                 lines.forEach((line) => {
@@ -26886,8 +26886,8 @@ var require_filesystem = __commonJS((exports) => {
         let cmd = "";
         if (_linux) {
           let cmdFullSmart = "";
-          exec("export LC_ALL=C; lsblk -ablJO 2>/dev/null; unset LC_ALL", { maxBuffer: 1024 * 1024 }, (error3, stdout) => {
-            if (!error3) {
+          exec("export LC_ALL=C; lsblk -ablJO 2>/dev/null; unset LC_ALL", { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
+            if (!error2) {
               try {
                 const out = stdout.toString().trim();
                 let devices = [];
@@ -26955,7 +26955,7 @@ ${BSDName}|"; smartctl -H ${BSDName} | grep overall;`;
               }
             }
             if (cmdFullSmart) {
-              exec(cmdFullSmart, { maxBuffer: 1024 * 1024 }, (error4, stdout2) => {
+              exec(cmdFullSmart, { maxBuffer: 1024 * 1024 }, (error3, stdout2) => {
                 try {
                   const data = JSON.parse(`[${stdout2}]`);
                   data.forEach((disk) => {
@@ -26975,7 +26975,7 @@ ${BSDName}|"; smartctl -H ${BSDName} | grep overall;`;
                   if (cmd) {
                     cmd = cmd + `printf "
 "`;
-                    exec(cmd, { maxBuffer: 1024 * 1024 }, (error5, stdout3) => {
+                    exec(cmd, { maxBuffer: 1024 * 1024 }, (error4, stdout3) => {
                       const lines = stdout3.toString().split(`
 `);
                       lines.forEach((line) => {
@@ -27022,8 +27022,8 @@ ${BSDName}|"; smartctl -H ${BSDName} | grep overall;`;
           resolve(result2);
         }
         if (_darwin) {
-          exec("system_profiler SPSerialATADataType SPNVMeDataType SPUSBDataType", { maxBuffer: 1024 * 1024 }, (error3, stdout) => {
-            if (!error3) {
+          exec("system_profiler SPSerialATADataType SPNVMeDataType SPUSBDataType", { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
+            if (!error2) {
               const lines = stdout.toString().split(`
 `);
               const linesSATA = [];
@@ -27198,7 +27198,7 @@ ${BSDName}|"; diskutil info /dev/${BSDName} | grep SMART;`;
               if (cmd) {
                 cmd = cmd + `printf "
 "`;
-                exec(cmd, { maxBuffer: 1024 * 1024 }, (error4, stdout2) => {
+                exec(cmd, { maxBuffer: 1024 * 1024 }, (error3, stdout2) => {
                   const lines2 = stdout2.toString().split(`
 `);
                   lines2.forEach((line) => {
@@ -27675,8 +27675,8 @@ var require_network = __commonJS((exports) => {
       const profileList = result2.split(`\r
 Profile on interface`);
       return profileList;
-    } catch (error3) {
-      if (error3.status === 1 && error3.stdout.includes("AutoConfig")) {
+    } catch (error2) {
+      if (error2.status === 1 && error2.stdout.includes("AutoConfig")) {
         return "Disabled";
       }
       return [];
@@ -27750,8 +27750,8 @@ Profile on interface`);
           i8021x.state = i8021xState.split(":").pop();
           i8021x.protocol = i8021xProtocol.split(":").pop();
         }
-      } catch {
-        if (error.status === 1 && error.stdout.includes("AutoConfig")) {
+      } catch (error2) {
+        if (error2.status === 1 && error2.stdout.includes("AutoConfig")) {
           i8021x.state = "Disabled";
           i8021x.protocol = "Not defined";
         }
@@ -28629,8 +28629,8 @@ Profile on interface`);
           if (_linux) {
             if (fs2.existsSync("/sys/class/net/" + ifaceSanitized)) {
               cmd = "cat /sys/class/net/" + ifaceSanitized + "/operstate; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/rx_bytes; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/tx_bytes; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/rx_dropped; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/rx_errors; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/tx_dropped; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/tx_errors; ";
-              exec(cmd, (error3, stdout) => {
-                if (!error3) {
+              exec(cmd, (error2, stdout) => {
+                if (!error2) {
                   lines = stdout.toString().split(`
 `);
                   operstate = lines[0].trim();
@@ -28650,8 +28650,8 @@ Profile on interface`);
           }
           if (_freebsd || _openbsd || _netbsd) {
             cmd = "netstat -ibndI " + ifaceSanitized;
-            exec(cmd, (error3, stdout) => {
-              if (!error3) {
+            exec(cmd, (error2, stdout) => {
+              if (!error2) {
                 lines = stdout.toString().split(`
 `);
                 for (let i = 1;i < lines.length; i++) {
@@ -28681,13 +28681,13 @@ Profile on interface`);
           }
           if (_darwin) {
             cmd = "ifconfig " + ifaceSanitized + ' | grep "status"';
-            exec(cmd, (error3, stdout) => {
+            exec(cmd, (error2, stdout) => {
               result2.operstate = (stdout.toString().split(":")[1] || "").trim();
               result2.operstate = (result2.operstate || "").toLowerCase();
               result2.operstate = result2.operstate === "active" ? "up" : result2.operstate === "inactive" ? "down" : "unknown";
               cmd = "netstat -bdI " + ifaceSanitized;
-              exec(cmd, (error4, stdout2) => {
-                if (!error4) {
+              exec(cmd, (error3, stdout2) => {
+                if (!error3) {
                   lines = stdout2.toString().split(`
 `);
                   if (lines.length > 1 && lines[1].trim() !== "") {
@@ -28709,8 +28709,8 @@ Profile on interface`);
           if (_windows) {
             let perfData = [];
             let ifaceName = ifaceSanitized;
-            util.powerShell("Get-CimInstance Win32_PerfRawData_Tcpip_NetworkInterface | select Name,BytesReceivedPersec,PacketsReceivedErrors,PacketsReceivedDiscarded,BytesSentPersec,PacketsOutboundErrors,PacketsOutboundDiscarded | fl").then((stdout, error3) => {
-              if (!error3) {
+            util.powerShell("Get-CimInstance Win32_PerfRawData_Tcpip_NetworkInterface | select Name,BytesReceivedPersec,PacketsReceivedErrors,PacketsReceivedDiscarded,BytesSentPersec,PacketsOutboundErrors,PacketsOutboundDiscarded | fl").then((stdout, error2) => {
+              if (!error2) {
                 const psections = stdout.toString().split(/\n\s*\n/);
                 perfData = parseLinesWindowsPerfData(psections);
               }
@@ -28774,10 +28774,10 @@ Profile on interface`);
           if (_freebsd || _openbsd || _netbsd) {
             cmd = 'export LC_ALL=C; netstat -na | grep "ESTABLISHED\\|SYN_SENT\\|SYN_RECV\\|FIN_WAIT1\\|FIN_WAIT2\\|TIME_WAIT\\|CLOSE\\|CLOSE_WAIT\\|LAST_ACK\\|LISTEN\\|CLOSING\\|UNKNOWN"; unset LC_ALL';
           }
-          exec(cmd, { maxBuffer: 1024 * 102400 }, (error3, stdout) => {
+          exec(cmd, { maxBuffer: 1024 * 102400 }, (error2, stdout) => {
             let lines = stdout.toString().split(`
 `);
-            if (!error3 && (lines.length > 1 || lines[0] !== "")) {
+            if (!error2 && (lines.length > 1 || lines[0] !== "")) {
               lines.forEach((line) => {
                 line = line.replace(/ +/g, " ").split(" ");
                 if (line.length >= 7) {
@@ -28819,8 +28819,8 @@ Profile on interface`);
               resolve(result2);
             } else {
               cmd = 'ss -tunap | grep "ESTAB\\|SYN-SENT\\|SYN-RECV\\|FIN-WAIT1\\|FIN-WAIT2\\|TIME-WAIT\\|CLOSE\\|CLOSE-WAIT\\|LAST-ACK\\|LISTEN\\|CLOSING"';
-              exec(cmd, { maxBuffer: 1024 * 102400 }, (error4, stdout2) => {
-                if (!error4) {
+              exec(cmd, { maxBuffer: 1024 * 102400 }, (error3, stdout2) => {
+                if (!error3) {
                   const lines2 = stdout2.toString().split(`
 `);
                   lines2.forEach((line) => {
@@ -28887,8 +28887,8 @@ Profile on interface`);
         if (_darwin) {
           const cmd = 'netstat -natvln | head -n2; netstat -natvln | grep "tcp4\\|tcp6\\|udp4\\|udp6"';
           const states = "ESTABLISHED|SYN_SENT|SYN_RECV|FIN_WAIT1|FIN_WAIT_1|FIN_WAIT2|FIN_WAIT_2|TIME_WAIT|CLOSE|CLOSE_WAIT|LAST_ACK|LISTEN|CLOSING|UNKNOWN".split("|");
-          exec(cmd, { maxBuffer: 1024 * 102400 }, (error3, stdout) => {
-            if (!error3) {
+          exec(cmd, { maxBuffer: 1024 * 102400 }, (error2, stdout) => {
+            if (!error2) {
               exec("ps -axo pid,command", { maxBuffer: 1024 * 102400 }, (err2, stdout2) => {
                 let processes = stdout2.toString().split(`
 `);
@@ -28959,8 +28959,8 @@ Profile on interface`);
         if (_windows) {
           let cmd = "netstat -nao";
           try {
-            exec(cmd, util.execOptsWin, (error3, stdout) => {
-              if (!error3) {
+            exec(cmd, util.execOptsWin, (error2, stdout) => {
+              if (!error2) {
                 let lines = stdout.toString().split(`\r
 `);
                 lines.forEach((line) => {
@@ -29062,8 +29062,8 @@ Profile on interface`);
         if (_linux || _freebsd || _openbsd || _netbsd) {
           const cmd = "ip route get 1";
           try {
-            exec(cmd, { maxBuffer: 1024 * 102400 }, (error3, stdout) => {
-              if (!error3) {
+            exec(cmd, { maxBuffer: 1024 * 102400 }, (error2, stdout) => {
+              if (!error2) {
                 let lines = stdout.toString().split(`
 `);
                 const line = lines && lines[0] ? lines[0] : "";
@@ -29093,15 +29093,15 @@ Profile on interface`);
         if (_darwin) {
           let cmd = "route -n get default";
           try {
-            exec(cmd, { maxBuffer: 1024 * 102400 }, (error3, stdout) => {
-              if (!error3) {
+            exec(cmd, { maxBuffer: 1024 * 102400 }, (error2, stdout) => {
+              if (!error2) {
                 const lines = stdout.toString().split(`
 `).map((line) => line.trim());
                 result2 = util.getValue(lines, "gateway");
               }
               if (!result2) {
                 cmd = "netstat -rn | awk '/default/ {print $2}'";
-                exec(cmd, { maxBuffer: 1024 * 102400 }, (error4, stdout2) => {
+                exec(cmd, { maxBuffer: 1024 * 102400 }, (error3, stdout2) => {
                   const lines = stdout2.toString().split(`
 `).map((line) => line.trim());
                   result2 = lines.find((line) => /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(line));
@@ -29126,7 +29126,7 @@ Profile on interface`);
         }
         if (_windows) {
           try {
-            exec("netstat -r", util.execOptsWin, (error3, stdout) => {
+            exec("netstat -r", util.execOptsWin, (error2, stdout) => {
               const lines = stdout.toString().split(os4.EOL);
               lines.forEach((line) => {
                 line = line.replace(/\s+/g, " ").trim();
@@ -29620,7 +29620,7 @@ Interface `);
           }
         } else if (_darwin) {
           const cmd = "system_profiler SPAirPortDataType -json 2>/dev/null";
-          exec(cmd, { maxBuffer: 1024 * 40000 }, (error3, stdout) => {
+          exec(cmd, { maxBuffer: 1024 * 40000 }, (error2, stdout) => {
             result2 = parseWifiDarwin(stdout.toString());
             if (callback) {
               callback(result2);
@@ -29761,7 +29761,7 @@ Interface `);
           resolve(result2);
         } else if (_darwin) {
           const cmd = 'system_profiler SPNetworkDataType SPAirPortDataType -xml 2>/dev/null; echo "######" ; ioreg -n AppleBCMWLANSkywalkInterface -r 2>/dev/null';
-          exec(cmd, (error3, stdout) => {
+          exec(cmd, (error2, stdout) => {
             try {
               const parts = stdout.toString().split("######");
               const profilerObj = util.plistParser(parts[0]);
@@ -29896,7 +29896,7 @@ Interface `);
           resolve(result2);
         } else if (_darwin) {
           const cmd = "system_profiler SPNetworkDataType";
-          exec(cmd, (error3, stdout) => {
+          exec(cmd, (error2, stdout) => {
             const parts1 = stdout.toString().split(`
 
     Wi-Fi:
@@ -30196,7 +30196,7 @@ var require_processes = __commonJS((exports) => {
                         cmd += ";cat /proc/" + result2[i].pids[j] + "/stat";
                       }
                     }
-                    exec(cmd, { maxBuffer: 1024 * 102400 }, function(error3, stdout2) {
+                    exec(cmd, { maxBuffer: 1024 * 102400 }, function(error2, stdout2) {
                       let curr_processes = stdout2.toString().split(`
 `);
                       let all = parseProcStat(curr_processes.shift());
@@ -30299,8 +30299,8 @@ var require_processes = __commonJS((exports) => {
                 wincommand = `${wincommand.slice(0, -4)}"`;
               }
               wincommand += " | select Name,Caption,Started,StartMode,ProcessId | fl";
-              util.powerShell(wincommand).then((stdout, error3) => {
-                if (!error3) {
+              util.powerShell(wincommand).then((stdout, error2) => {
+                if (!error2) {
                   let serviceSections = stdout.split(/\n\s*\n/);
                   serviceSections.forEach((element) => {
                     if (element.trim() !== "") {
@@ -30681,8 +30681,8 @@ var require_processes = __commonJS((exports) => {
               cmd = "ps -Ao pid,ppid,pcpu,pmem,pri,vsz,rss,nice,stime,s,tty,user,comm";
             }
             try {
-              exec(cmd, { maxBuffer: 1024 * 102400 }, (error3, stdout) => {
-                if (!error3 && stdout.toString().trim()) {
+              exec(cmd, { maxBuffer: 1024 * 102400 }, (error2, stdout) => {
+                if (!error2 && stdout.toString().trim()) {
                   result2.list = parseProcesses(stdout.toString().split(`
 `)).slice();
                   result2.all = result2.list.length;
@@ -30700,7 +30700,7 @@ var require_processes = __commonJS((exports) => {
                     result2.list.forEach((element) => {
                       cmd += ";cat /proc/" + element.pid + "/stat";
                     });
-                    exec(cmd, { maxBuffer: 1024 * 102400 }, (error4, stdout2) => {
+                    exec(cmd, { maxBuffer: 1024 * 102400 }, (error3, stdout2) => {
                       let curr_processes = stdout2.toString().split(`
 `);
                       let all = parseProcStat(curr_processes.shift());
@@ -30747,8 +30747,8 @@ var require_processes = __commonJS((exports) => {
                   if (_sunos) {
                     cmd = "ps -o pid,ppid,vsz,rss,nice,etime,s,tty,user,comm";
                   }
-                  exec(cmd, { maxBuffer: 1024 * 102400 }, (error4, stdout2) => {
-                    if (!error4) {
+                  exec(cmd, { maxBuffer: 1024 * 102400 }, (error3, stdout2) => {
+                    if (!error3) {
                       let lines = stdout2.toString().split(`
 `);
                       lines.shift();
@@ -30785,8 +30785,8 @@ var require_processes = __commonJS((exports) => {
           } else if (_windows) {
             try {
               util.powerShell(`Get-CimInstance Win32_Process | select-Object ProcessId,ParentProcessId,ExecutionState,Caption,CommandLine,ExecutablePath,UserModeTime,KernelModeTime,WorkingSetSize,Priority,PageFileUsage,
-                @{n="CreationDate";e={$_.CreationDate.ToString("yyyy-MM-dd HH:mm:ss")}} | ConvertTo-Json -compress`).then((stdout, error3) => {
-                if (!error3) {
+                @{n="CreationDate";e={$_.CreationDate.ToString("yyyy-MM-dd HH:mm:ss")}} | ConvertTo-Json -compress`).then((stdout, error2) => {
+                if (!error2) {
                   const procs = [];
                   const procStats = [];
                   const list_new = {};
@@ -30945,8 +30945,8 @@ var require_processes = __commonJS((exports) => {
         if (procSanitized && processes2.length && processes2[0] !== "------") {
           if (_windows) {
             try {
-              util.powerShell("Get-CimInstance Win32_Process | select ProcessId,Caption,UserModeTime,KernelModeTime,WorkingSetSize | ConvertTo-Json -compress").then((stdout, error3) => {
-                if (!error3) {
+              util.powerShell("Get-CimInstance Win32_Process | select ProcessId,Caption,UserModeTime,KernelModeTime,WorkingSetSize | ConvertTo-Json -compress").then((stdout, error2) => {
+                if (!error2) {
                   const procStats = [];
                   const list_new = {};
                   let allcpuu = 0;
@@ -31147,7 +31147,7 @@ var require_processes = __commonJS((exports) => {
                       cmd += ";cat /proc/" + result2[i].pids[j] + "/stat";
                     }
                   }
-                  exec(cmd, { maxBuffer: 1024 * 102400 }, (error3, stdout2) => {
+                  exec(cmd, { maxBuffer: 1024 * 102400 }, (error2, stdout2) => {
                     let curr_processes = stdout2.toString().split(`
 `);
                     let all = parseProcStat(curr_processes.shift());
@@ -31348,14 +31348,14 @@ var require_users = __commonJS((exports) => {
       process.nextTick(() => {
         let result2 = [];
         if (_linux) {
-          exec('export LC_ALL=C; who --ips; echo "---"; w; unset LC_ALL | tail -n +2', (error3, stdout) => {
-            if (!error3) {
+          exec('export LC_ALL=C; who --ips; echo "---"; w; unset LC_ALL | tail -n +2', (error2, stdout) => {
+            if (!error2) {
               let lines = stdout.toString().split(`
 `);
               result2 = parseUsersLinux(lines, 1);
               if (result2.length === 0) {
-                exec('who; echo "---"; w | tail -n +2', (error4, stdout2) => {
-                  if (!error4) {
+                exec('who; echo "---"; w | tail -n +2', (error3, stdout2) => {
+                  if (!error3) {
                     lines = stdout2.toString().split(`
 `);
                     result2 = parseUsersLinux(lines, 2);
@@ -31380,8 +31380,8 @@ var require_users = __commonJS((exports) => {
           });
         }
         if (_freebsd || _openbsd || _netbsd) {
-          exec('who; echo "---"; w -ih', (error3, stdout) => {
-            if (!error3) {
+          exec('who; echo "---"; w -ih', (error2, stdout) => {
+            if (!error2) {
               const lines = stdout.toString().split(`
 `);
               result2 = parseUsersDarwin(lines);
@@ -31393,8 +31393,8 @@ var require_users = __commonJS((exports) => {
           });
         }
         if (_sunos) {
-          exec('who; echo "---"; w -h', (error3, stdout) => {
-            if (!error3) {
+          exec('who; echo "---"; w -h', (error2, stdout) => {
+            if (!error2) {
               const lines = stdout.toString().split(`
 `);
               result2 = parseUsersDarwin(lines);
@@ -31406,8 +31406,8 @@ var require_users = __commonJS((exports) => {
           });
         }
         if (_darwin) {
-          exec('export LC_ALL=C; who; echo "---"; w -ih; unset LC_ALL', (error3, stdout) => {
-            if (!error3) {
+          exec('export LC_ALL=C; who; echo "---"; w -ih; unset LC_ALL', (error2, stdout) => {
+            if (!error2) {
               const lines = stdout.toString().split(`
 `);
               result2 = parseUsersDarwin(lines);
@@ -32778,7 +32778,7 @@ var require_virtualbox = __commonJS((exports) => {
     return new Promise((resolve) => {
       process.nextTick(() => {
         try {
-          exec(util.getVboxmanage() + " list vms --long", (error3, stdout) => {
+          exec(util.getVboxmanage() + " list vms --long", (error2, stdout) => {
             let parts = (os4.EOL + stdout.toString()).split(os4.EOL + "Name:");
             parts.shift();
             parts.forEach((part) => {
@@ -32955,8 +32955,8 @@ var require_printer = __commonJS((exports) => {
         let result2 = [];
         if (_linux || _freebsd || _openbsd || _netbsd) {
           let cmd = "cat /etc/cups/printers.conf 2>/dev/null";
-          exec(cmd, (error3, stdout) => {
-            if (!error3) {
+          exec(cmd, (error2, stdout) => {
+            if (!error2) {
               const parts = stdout.toString().split("<Printer ");
               const printerHeader = parseLinuxCupsHeader(parts[0]);
               for (let i = 1;i < parts.length; i++) {
@@ -32972,7 +32972,7 @@ var require_printer = __commonJS((exports) => {
             if (result2.length === 0) {
               if (_linux) {
                 cmd = "export LC_ALL=C; lpstat -lp 2>/dev/null; unset LC_ALL";
-                exec(cmd, (error4, stdout2) => {
+                exec(cmd, (error3, stdout2) => {
                   const parts = (`
 ` + stdout2.toString()).split(`
 printer `);
@@ -33002,8 +33002,8 @@ printer `);
         }
         if (_darwin) {
           let cmd = "system_profiler SPPrintersDataType -json";
-          exec(cmd, (error3, stdout) => {
-            if (!error3) {
+          exec(cmd, (error2, stdout) => {
+            if (!error2) {
               try {
                 const outObj = JSON.parse(stdout.toString());
                 if (outObj.SPPrintersDataType && outObj.SPPrintersDataType.length) {
@@ -33023,8 +33023,8 @@ printer `);
           });
         }
         if (_windows) {
-          util.powerShell("Get-CimInstance Win32_Printer | select PrinterStatus,Name,DriverName,Local,Default,Shared | fl").then((stdout, error3) => {
-            if (!error3) {
+          util.powerShell("Get-CimInstance Win32_Printer | select PrinterStatus,Name,DriverName,Local,Default,Shared | fl").then((stdout, error2) => {
+            if (!error2) {
               const parts = stdout.toString().split(/\n\s*\n/);
               for (let i = 0;i < parts.length; i++) {
                 const printer2 = parseWindowsPrinters(parts[i].split(`
@@ -33264,8 +33264,8 @@ var require_usb = __commonJS((exports) => {
         let result2 = [];
         if (_linux) {
           const cmd = "export LC_ALL=C; lsusb -v 2>/dev/null; unset LC_ALL";
-          exec(cmd, { maxBuffer: 1024 * 1024 * 128 }, function(error3, stdout) {
-            if (!error3) {
+          exec(cmd, { maxBuffer: 1024 * 1024 * 128 }, function(error2, stdout) {
+            if (!error2) {
               const parts = (`
 
 ` + stdout.toString()).split(`
@@ -33284,8 +33284,8 @@ Bus `);
         }
         if (_darwin) {
           let cmd = "ioreg -p IOUSB -c AppleUSBRootHubDevice -w0 -l";
-          exec(cmd, { maxBuffer: 1024 * 1024 * 128 }, function(error3, stdout) {
-            if (!error3) {
+          exec(cmd, { maxBuffer: 1024 * 1024 * 128 }, function(error2, stdout) {
+            if (!error2) {
               const parts = stdout.toString().split(" +-o ");
               for (let i = 1;i < parts.length; i++) {
                 const usb2 = parseDarwinUsb(parts[i]);
@@ -33305,8 +33305,8 @@ Bus `);
           });
         }
         if (_windows) {
-          util.powerShell('Get-CimInstance CIM_LogicalDevice | where { $_.Description -match "USB"} | select Name,CreationClassName,DeviceId,Manufacturer | fl').then((stdout, error3) => {
-            if (!error3) {
+          util.powerShell('Get-CimInstance CIM_LogicalDevice | where { $_.Description -match "USB"} | select Name,CreationClassName,DeviceId,Manufacturer | fl').then((stdout, error2) => {
+            if (!error2) {
               const parts = stdout.toString().split(/\n\s*\n/);
               for (let i = 0;i < parts.length; i++) {
                 const usb2 = parseWindowsUsb(parts[i].split(`
@@ -33510,8 +33510,8 @@ var require_audio = __commonJS((exports) => {
         const result2 = [];
         if (_linux || _freebsd || _openbsd || _netbsd) {
           const cmd = "lspci -vmm 2>/dev/null";
-          exec(cmd, (error3, stdout) => {
-            if (!error3) {
+          exec(cmd, (error2, stdout) => {
+            if (!error2) {
               const audioPCI = getLinuxAudioPci();
               const parts = stdout.toString().split(`
 
@@ -33533,8 +33533,8 @@ var require_audio = __commonJS((exports) => {
         }
         if (_darwin) {
           const cmd = "system_profiler SPAudioDataType -json";
-          exec(cmd, (error3, stdout) => {
-            if (!error3) {
+          exec(cmd, (error2, stdout) => {
+            if (!error2) {
               try {
                 const outObj = JSON.parse(stdout.toString());
                 if (outObj.SPAudioDataType && outObj.SPAudioDataType.length && outObj.SPAudioDataType[0] && outObj.SPAudioDataType[0]["_items"] && outObj.SPAudioDataType[0]["_items"].length) {
@@ -33554,8 +33554,8 @@ var require_audio = __commonJS((exports) => {
           });
         }
         if (_windows) {
-          util.powerShell("Get-CimInstance Win32_SoundDevice | select DeviceID,StatusInfo,Name,Manufacturer | fl").then((stdout, error3) => {
-            if (!error3) {
+          util.powerShell("Get-CimInstance Win32_SoundDevice | select DeviceID,StatusInfo,Name,Manufacturer | fl").then((stdout, error2) => {
+            if (!error2) {
               const parts = stdout.toString().split(/\n\s*\n/);
               parts.forEach((element) => {
                 const lines = element.split(`
@@ -34884,8 +34884,8 @@ var require_bluetooth = __commonJS((exports) => {
         }
         if (_darwin) {
           let cmd = "system_profiler SPBluetoothDataType -json";
-          exec(cmd, (error3, stdout) => {
-            if (!error3) {
+          exec(cmd, (error2, stdout) => {
+            if (!error2) {
               try {
                 const outObj = JSON.parse(stdout.toString());
                 if (outObj.SPBluetoothDataType && outObj.SPBluetoothDataType.length && outObj.SPBluetoothDataType[0] && outObj.SPBluetoothDataType[0]["device_title"] && outObj.SPBluetoothDataType[0]["device_title"].length) {
@@ -34943,8 +34943,8 @@ var require_bluetooth = __commonJS((exports) => {
           });
         }
         if (_windows) {
-          util.powerShell("Get-CimInstance Win32_PNPEntity | select PNPClass, Name, Manufacturer, Status, Service, ConfigManagerErrorCode, Present | fl").then((stdout, error3) => {
-            if (!error3) {
+          util.powerShell("Get-CimInstance Win32_PNPEntity | select PNPClass, Name, Manufacturer, Status, Service, ConfigManagerErrorCode, Present | fl").then((stdout, error2) => {
+            if (!error2) {
               const parts = stdout.toString().split(/\n\s*\n/);
               parts.forEach((part) => {
                 const lines = part.split(`
@@ -36351,12 +36351,12 @@ function getInput(name, options) {
 }
 function setFailed(message) {
   process.exitCode = ExitCode.Failure;
-  error2(message);
+  error(message);
 }
 function debug(message) {
   issueCommand("debug", {}, message);
 }
-function error2(message, properties = {}) {
+function error(message, properties = {}) {
   issueCommand("error", toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 function warning(message, properties = {}) {
@@ -36405,8 +36405,8 @@ class Metrics {
         used: active / bytesPerMB,
         free: available / bytesPerMB
       });
-    } catch (error3) {
-      setFailed(error3);
+    } catch (error2) {
+      setFailed(error2);
     } finally {
       const nextUNIXTimeMs = unixTimeMs + this.intervalMs;
       setTimeout(() => this.append(nextUNIXTimeMs).catch(setFailed), Math.max(0, nextUNIXTimeMs - Date.now()));
@@ -37702,10 +37702,10 @@ var initializer = (inst, def) => {
 };
 var $ZodError = $constructor("$ZodError", initializer);
 var $ZodRealError = $constructor("$ZodError", initializer, { Parent: Error });
-function flattenError(error3, mapper = (issue3) => issue3.message) {
+function flattenError(error2, mapper = (issue3) => issue3.message) {
   const fieldErrors = {};
   const formErrors = [];
-  for (const sub of error3.issues) {
+  for (const sub of error2.issues) {
     if (sub.path.length > 0) {
       fieldErrors[sub.path[0]] = fieldErrors[sub.path[0]] || [];
       fieldErrors[sub.path[0]].push(mapper(sub));
@@ -37715,10 +37715,10 @@ function flattenError(error3, mapper = (issue3) => issue3.message) {
   }
   return { formErrors, fieldErrors };
 }
-function formatError(error3, mapper = (issue3) => issue3.message) {
+function formatError(error2, mapper = (issue3) => issue3.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error4) => {
-    for (const issue3 of error4.issues) {
+  const processError = (error3) => {
+    for (const issue3 of error3.issues) {
       if (issue3.code === "invalid_union" && issue3.errors.length) {
         issue3.errors.map((issues) => processError({ issues }));
       } else if (issue3.code === "invalid_key") {
@@ -37745,14 +37745,14 @@ function formatError(error3, mapper = (issue3) => issue3.message) {
       }
     }
   };
-  processError(error3);
+  processError(error2);
   return fieldErrors;
 }
-function treeifyError(error3, mapper = (issue3) => issue3.message) {
+function treeifyError(error2, mapper = (issue3) => issue3.message) {
   const result2 = { errors: [] };
-  const processError = (error4, path = []) => {
+  const processError = (error3, path = []) => {
     var _a, _b;
-    for (const issue3 of error4.issues) {
+    for (const issue3 of error3.issues) {
       if (issue3.code === "invalid_union" && issue3.errors.length) {
         issue3.errors.map((issues) => processError({ issues }, issue3.path));
       } else if (issue3.code === "invalid_key") {
@@ -37787,7 +37787,7 @@ function treeifyError(error3, mapper = (issue3) => issue3.message) {
       }
     }
   };
-  processError(error3);
+  processError(error2);
   return result2;
 }
 function toDotPath(_path) {
@@ -37808,9 +37808,9 @@ function toDotPath(_path) {
   }
   return segs.join("");
 }
-function prettifyError(error3) {
+function prettifyError(error2) {
   const lines = [];
-  const issues = [...error3.issues].sort((a, b) => (a.path ?? []).length - (b.path ?? []).length);
+  const issues = [...error2.issues].sort((a, b) => (a.path ?? []).length - (b.path ?? []).length);
   for (const issue3 of issues) {
     lines.push(`✖ ${issue3.message}`);
     if (issue3.path?.length)
@@ -40673,7 +40673,7 @@ __export(exports_locales, {
 });
 
 // node_modules/zod/v4/locales/ar.js
-var error3 = () => {
+var error2 = () => {
   const Sizable = {
     string: { unit: "حرف", verb: "أن يحوي" },
     file: { unit: "بايت", verb: "أن يحوي" },
@@ -40775,11 +40775,11 @@ var error3 = () => {
 };
 function ar_default() {
   return {
-    localeError: error3()
+    localeError: error2()
   };
 }
 // node_modules/zod/v4/locales/az.js
-var error4 = () => {
+var error3 = () => {
   const Sizable = {
     string: { unit: "simvol", verb: "olmalıdır" },
     file: { unit: "bayt", verb: "olmalıdır" },
@@ -40880,7 +40880,7 @@ var error4 = () => {
 };
 function az_default() {
   return {
-    localeError: error4()
+    localeError: error3()
   };
 }
 // node_modules/zod/v4/locales/be.js
@@ -40899,7 +40899,7 @@ function getBelarusianPlural(count, one, few, many) {
   }
   return many;
 }
-var error5 = () => {
+var error4 = () => {
   const Sizable = {
     string: {
       unit: {
@@ -41036,11 +41036,11 @@ var error5 = () => {
 };
 function be_default() {
   return {
-    localeError: error5()
+    localeError: error4()
   };
 }
 // node_modules/zod/v4/locales/bg.js
-var error6 = () => {
+var error5 = () => {
   const Sizable = {
     string: { unit: "символа", verb: "да съдържа" },
     file: { unit: "байта", verb: "да съдържа" },
@@ -41156,11 +41156,11 @@ var error6 = () => {
 };
 function bg_default() {
   return {
-    localeError: error6()
+    localeError: error5()
   };
 }
 // node_modules/zod/v4/locales/ca.js
-var error7 = () => {
+var error6 = () => {
   const Sizable = {
     string: { unit: "caràcters", verb: "contenir" },
     file: { unit: "bytes", verb: "contenir" },
@@ -41263,11 +41263,11 @@ var error7 = () => {
 };
 function ca_default() {
   return {
-    localeError: error7()
+    localeError: error6()
   };
 }
 // node_modules/zod/v4/locales/cs.js
-var error8 = () => {
+var error7 = () => {
   const Sizable = {
     string: { unit: "znaků", verb: "mít" },
     file: { unit: "bajtů", verb: "mít" },
@@ -41374,11 +41374,11 @@ var error8 = () => {
 };
 function cs_default() {
   return {
-    localeError: error8()
+    localeError: error7()
   };
 }
 // node_modules/zod/v4/locales/da.js
-var error9 = () => {
+var error8 = () => {
   const Sizable = {
     string: { unit: "tegn", verb: "havde" },
     file: { unit: "bytes", verb: "havde" },
@@ -41489,11 +41489,11 @@ var error9 = () => {
 };
 function da_default() {
   return {
-    localeError: error9()
+    localeError: error8()
   };
 }
 // node_modules/zod/v4/locales/de.js
-var error10 = () => {
+var error9 = () => {
   const Sizable = {
     string: { unit: "Zeichen", verb: "zu haben" },
     file: { unit: "Bytes", verb: "zu haben" },
@@ -41597,11 +41597,11 @@ var error10 = () => {
 };
 function de_default() {
   return {
-    localeError: error10()
+    localeError: error9()
   };
 }
 // node_modules/zod/v4/locales/en.js
-var error11 = () => {
+var error10 = () => {
   const Sizable = {
     string: { unit: "characters", verb: "to have" },
     file: { unit: "bytes", verb: "to have" },
@@ -41703,11 +41703,11 @@ var error11 = () => {
 };
 function en_default() {
   return {
-    localeError: error11()
+    localeError: error10()
   };
 }
 // node_modules/zod/v4/locales/eo.js
-var error12 = () => {
+var error11 = () => {
   const Sizable = {
     string: { unit: "karaktrojn", verb: "havi" },
     file: { unit: "bajtojn", verb: "havi" },
@@ -41812,11 +41812,11 @@ var error12 = () => {
 };
 function eo_default() {
   return {
-    localeError: error12()
+    localeError: error11()
   };
 }
 // node_modules/zod/v4/locales/es.js
-var error13 = () => {
+var error12 = () => {
   const Sizable = {
     string: { unit: "caracteres", verb: "tener" },
     file: { unit: "bytes", verb: "tener" },
@@ -41944,11 +41944,11 @@ var error13 = () => {
 };
 function es_default() {
   return {
-    localeError: error13()
+    localeError: error12()
   };
 }
 // node_modules/zod/v4/locales/fa.js
-var error14 = () => {
+var error13 = () => {
   const Sizable = {
     string: { unit: "کاراکتر", verb: "داشته باشد" },
     file: { unit: "بایت", verb: "داشته باشد" },
@@ -42058,11 +42058,11 @@ var error14 = () => {
 };
 function fa_default() {
   return {
-    localeError: error14()
+    localeError: error13()
   };
 }
 // node_modules/zod/v4/locales/fi.js
-var error15 = () => {
+var error14 = () => {
   const Sizable = {
     string: { unit: "merkkiä", subject: "merkkijonon" },
     file: { unit: "tavua", subject: "tiedoston" },
@@ -42170,11 +42170,11 @@ var error15 = () => {
 };
 function fi_default() {
   return {
-    localeError: error15()
+    localeError: error14()
   };
 }
 // node_modules/zod/v4/locales/fr.js
-var error16 = () => {
+var error15 = () => {
   const Sizable = {
     string: { unit: "caractères", verb: "avoir" },
     file: { unit: "octets", verb: "avoir" },
@@ -42278,11 +42278,11 @@ var error16 = () => {
 };
 function fr_default() {
   return {
-    localeError: error16()
+    localeError: error15()
   };
 }
 // node_modules/zod/v4/locales/fr-CA.js
-var error17 = () => {
+var error16 = () => {
   const Sizable = {
     string: { unit: "caractères", verb: "avoir" },
     file: { unit: "octets", verb: "avoir" },
@@ -42385,11 +42385,11 @@ var error17 = () => {
 };
 function fr_CA_default() {
   return {
-    localeError: error17()
+    localeError: error16()
   };
 }
 // node_modules/zod/v4/locales/he.js
-var error18 = () => {
+var error17 = () => {
   const TypeNames = {
     string: { label: "מחרוזת", gender: "f" },
     number: { label: "מספר", gender: "m" },
@@ -42578,11 +42578,11 @@ var error18 = () => {
 };
 function he_default() {
   return {
-    localeError: error18()
+    localeError: error17()
   };
 }
 // node_modules/zod/v4/locales/hu.js
-var error19 = () => {
+var error18 = () => {
   const Sizable = {
     string: { unit: "karakter", verb: "legyen" },
     file: { unit: "byte", verb: "legyen" },
@@ -42686,7 +42686,7 @@ var error19 = () => {
 };
 function hu_default() {
   return {
-    localeError: error19()
+    localeError: error18()
   };
 }
 // node_modules/zod/v4/locales/hy.js
@@ -42700,7 +42700,7 @@ function withDefiniteArticle(word) {
   const lastChar = word[word.length - 1];
   return word + (vowels.includes(lastChar) ? "ն" : "ը");
 }
-var error20 = () => {
+var error19 = () => {
   const Sizable = {
     string: {
       unit: {
@@ -42833,11 +42833,11 @@ var error20 = () => {
 };
 function hy_default() {
   return {
-    localeError: error20()
+    localeError: error19()
   };
 }
 // node_modules/zod/v4/locales/id.js
-var error21 = () => {
+var error20 = () => {
   const Sizable = {
     string: { unit: "karakter", verb: "memiliki" },
     file: { unit: "byte", verb: "memiliki" },
@@ -42939,11 +42939,11 @@ var error21 = () => {
 };
 function id_default() {
   return {
-    localeError: error21()
+    localeError: error20()
   };
 }
 // node_modules/zod/v4/locales/is.js
-var error22 = () => {
+var error21 = () => {
   const Sizable = {
     string: { unit: "stafi", verb: "að hafa" },
     file: { unit: "bæti", verb: "að hafa" },
@@ -43048,11 +43048,11 @@ var error22 = () => {
 };
 function is_default() {
   return {
-    localeError: error22()
+    localeError: error21()
   };
 }
 // node_modules/zod/v4/locales/it.js
-var error23 = () => {
+var error22 = () => {
   const Sizable = {
     string: { unit: "caratteri", verb: "avere" },
     file: { unit: "byte", verb: "avere" },
@@ -43156,11 +43156,11 @@ var error23 = () => {
 };
 function it_default() {
   return {
-    localeError: error23()
+    localeError: error22()
   };
 }
 // node_modules/zod/v4/locales/ja.js
-var error24 = () => {
+var error23 = () => {
   const Sizable = {
     string: { unit: "文字", verb: "である" },
     file: { unit: "バイト", verb: "である" },
@@ -43263,11 +43263,11 @@ var error24 = () => {
 };
 function ja_default() {
   return {
-    localeError: error24()
+    localeError: error23()
   };
 }
 // node_modules/zod/v4/locales/ka.js
-var error25 = () => {
+var error24 = () => {
   const Sizable = {
     string: { unit: "სიმბოლო", verb: "უნდა შეიცავდეს" },
     file: { unit: "ბაიტი", verb: "უნდა შეიცავდეს" },
@@ -43375,11 +43375,11 @@ var error25 = () => {
 };
 function ka_default() {
   return {
-    localeError: error25()
+    localeError: error24()
   };
 }
 // node_modules/zod/v4/locales/km.js
-var error26 = () => {
+var error25 = () => {
   const Sizable = {
     string: { unit: "តួអក្សរ", verb: "គួរមាន" },
     file: { unit: "បៃ", verb: "គួរមាន" },
@@ -43485,7 +43485,7 @@ var error26 = () => {
 };
 function km_default() {
   return {
-    localeError: error26()
+    localeError: error25()
   };
 }
 
@@ -43494,7 +43494,7 @@ function kh_default() {
   return km_default();
 }
 // node_modules/zod/v4/locales/ko.js
-var error27 = () => {
+var error26 = () => {
   const Sizable = {
     string: { unit: "문자", verb: "to have" },
     file: { unit: "바이트", verb: "to have" },
@@ -43601,7 +43601,7 @@ var error27 = () => {
 };
 function ko_default() {
   return {
-    localeError: error27()
+    localeError: error26()
   };
 }
 // node_modules/zod/v4/locales/lt.js
@@ -43618,7 +43618,7 @@ function getUnitTypeFromNumber(number2) {
     return "one";
   return "few";
 }
-var error28 = () => {
+var error27 = () => {
   const Sizable = {
     string: {
       unit: {
@@ -43804,11 +43804,11 @@ var error28 = () => {
 };
 function lt_default() {
   return {
-    localeError: error28()
+    localeError: error27()
   };
 }
 // node_modules/zod/v4/locales/mk.js
-var error29 = () => {
+var error28 = () => {
   const Sizable = {
     string: { unit: "знаци", verb: "да имаат" },
     file: { unit: "бајти", verb: "да имаат" },
@@ -43913,11 +43913,11 @@ var error29 = () => {
 };
 function mk_default() {
   return {
-    localeError: error29()
+    localeError: error28()
   };
 }
 // node_modules/zod/v4/locales/ms.js
-var error30 = () => {
+var error29 = () => {
   const Sizable = {
     string: { unit: "aksara", verb: "mempunyai" },
     file: { unit: "bait", verb: "mempunyai" },
@@ -44020,11 +44020,11 @@ var error30 = () => {
 };
 function ms_default() {
   return {
-    localeError: error30()
+    localeError: error29()
   };
 }
 // node_modules/zod/v4/locales/nl.js
-var error31 = () => {
+var error30 = () => {
   const Sizable = {
     string: { unit: "tekens", verb: "heeft" },
     file: { unit: "bytes", verb: "heeft" },
@@ -44130,11 +44130,11 @@ var error31 = () => {
 };
 function nl_default() {
   return {
-    localeError: error31()
+    localeError: error30()
   };
 }
 // node_modules/zod/v4/locales/no.js
-var error32 = () => {
+var error31 = () => {
   const Sizable = {
     string: { unit: "tegn", verb: "å ha" },
     file: { unit: "bytes", verb: "å ha" },
@@ -44238,11 +44238,11 @@ var error32 = () => {
 };
 function no_default() {
   return {
-    localeError: error32()
+    localeError: error31()
   };
 }
 // node_modules/zod/v4/locales/ota.js
-var error33 = () => {
+var error32 = () => {
   const Sizable = {
     string: { unit: "harf", verb: "olmalıdır" },
     file: { unit: "bayt", verb: "olmalıdır" },
@@ -44347,11 +44347,11 @@ var error33 = () => {
 };
 function ota_default() {
   return {
-    localeError: error33()
+    localeError: error32()
   };
 }
 // node_modules/zod/v4/locales/ps.js
-var error34 = () => {
+var error33 = () => {
   const Sizable = {
     string: { unit: "توکي", verb: "ولري" },
     file: { unit: "بایټس", verb: "ولري" },
@@ -44461,11 +44461,11 @@ var error34 = () => {
 };
 function ps_default() {
   return {
-    localeError: error34()
+    localeError: error33()
   };
 }
 // node_modules/zod/v4/locales/pl.js
-var error35 = () => {
+var error34 = () => {
   const Sizable = {
     string: { unit: "znaków", verb: "mieć" },
     file: { unit: "bajtów", verb: "mieć" },
@@ -44570,11 +44570,11 @@ var error35 = () => {
 };
 function pl_default() {
   return {
-    localeError: error35()
+    localeError: error34()
   };
 }
 // node_modules/zod/v4/locales/pt.js
-var error36 = () => {
+var error35 = () => {
   const Sizable = {
     string: { unit: "caracteres", verb: "ter" },
     file: { unit: "bytes", verb: "ter" },
@@ -44678,7 +44678,7 @@ var error36 = () => {
 };
 function pt_default() {
   return {
-    localeError: error36()
+    localeError: error35()
   };
 }
 // node_modules/zod/v4/locales/ru.js
@@ -44697,7 +44697,7 @@ function getRussianPlural(count, one, few, many) {
   }
   return many;
 }
-var error37 = () => {
+var error36 = () => {
   const Sizable = {
     string: {
       unit: {
@@ -44834,11 +44834,11 @@ var error37 = () => {
 };
 function ru_default() {
   return {
-    localeError: error37()
+    localeError: error36()
   };
 }
 // node_modules/zod/v4/locales/sl.js
-var error38 = () => {
+var error37 = () => {
   const Sizable = {
     string: { unit: "znakov", verb: "imeti" },
     file: { unit: "bajtov", verb: "imeti" },
@@ -44943,11 +44943,11 @@ var error38 = () => {
 };
 function sl_default() {
   return {
-    localeError: error38()
+    localeError: error37()
   };
 }
 // node_modules/zod/v4/locales/sv.js
-var error39 = () => {
+var error38 = () => {
   const Sizable = {
     string: { unit: "tecken", verb: "att ha" },
     file: { unit: "bytes", verb: "att ha" },
@@ -45053,11 +45053,11 @@ var error39 = () => {
 };
 function sv_default() {
   return {
-    localeError: error39()
+    localeError: error38()
   };
 }
 // node_modules/zod/v4/locales/ta.js
-var error40 = () => {
+var error39 = () => {
   const Sizable = {
     string: { unit: "எழுத்துக்கள்", verb: "கொண்டிருக்க வேண்டும்" },
     file: { unit: "பைட்டுகள்", verb: "கொண்டிருக்க வேண்டும்" },
@@ -45163,11 +45163,11 @@ var error40 = () => {
 };
 function ta_default() {
   return {
-    localeError: error40()
+    localeError: error39()
   };
 }
 // node_modules/zod/v4/locales/th.js
-var error41 = () => {
+var error40 = () => {
   const Sizable = {
     string: { unit: "ตัวอักษร", verb: "ควรมี" },
     file: { unit: "ไบต์", verb: "ควรมี" },
@@ -45273,11 +45273,11 @@ var error41 = () => {
 };
 function th_default() {
   return {
-    localeError: error41()
+    localeError: error40()
   };
 }
 // node_modules/zod/v4/locales/tr.js
-var error42 = () => {
+var error41 = () => {
   const Sizable = {
     string: { unit: "karakter", verb: "olmalı" },
     file: { unit: "bayt", verb: "olmalı" },
@@ -45378,11 +45378,11 @@ var error42 = () => {
 };
 function tr_default() {
   return {
-    localeError: error42()
+    localeError: error41()
   };
 }
 // node_modules/zod/v4/locales/uk.js
-var error43 = () => {
+var error42 = () => {
   const Sizable = {
     string: { unit: "символів", verb: "матиме" },
     file: { unit: "байтів", verb: "матиме" },
@@ -45486,7 +45486,7 @@ var error43 = () => {
 };
 function uk_default() {
   return {
-    localeError: error43()
+    localeError: error42()
   };
 }
 
@@ -45495,7 +45495,7 @@ function ua_default() {
   return uk_default();
 }
 // node_modules/zod/v4/locales/ur.js
-var error44 = () => {
+var error43 = () => {
   const Sizable = {
     string: { unit: "حروف", verb: "ہونا" },
     file: { unit: "بائٹس", verb: "ہونا" },
@@ -45601,11 +45601,11 @@ var error44 = () => {
 };
 function ur_default() {
   return {
-    localeError: error44()
+    localeError: error43()
   };
 }
 // node_modules/zod/v4/locales/uz.js
-var error45 = () => {
+var error44 = () => {
   const Sizable = {
     string: { unit: "belgi", verb: "bo‘lishi kerak" },
     file: { unit: "bayt", verb: "bo‘lishi kerak" },
@@ -45710,11 +45710,11 @@ var error45 = () => {
 };
 function uz_default() {
   return {
-    localeError: error45()
+    localeError: error44()
   };
 }
 // node_modules/zod/v4/locales/vi.js
-var error46 = () => {
+var error45 = () => {
   const Sizable = {
     string: { unit: "ký tự", verb: "có" },
     file: { unit: "byte", verb: "có" },
@@ -45818,11 +45818,11 @@ var error46 = () => {
 };
 function vi_default() {
   return {
-    localeError: error46()
+    localeError: error45()
   };
 }
 // node_modules/zod/v4/locales/zh-CN.js
-var error47 = () => {
+var error46 = () => {
   const Sizable = {
     string: { unit: "字符", verb: "包含" },
     file: { unit: "字节", verb: "包含" },
@@ -45927,11 +45927,11 @@ var error47 = () => {
 };
 function zh_CN_default() {
   return {
-    localeError: error47()
+    localeError: error46()
   };
 }
 // node_modules/zod/v4/locales/zh-TW.js
-var error48 = () => {
+var error47 = () => {
   const Sizable = {
     string: { unit: "字元", verb: "擁有" },
     file: { unit: "位元組", verb: "擁有" },
@@ -46034,11 +46034,11 @@ var error48 = () => {
 };
 function zh_TW_default() {
   return {
-    localeError: error48()
+    localeError: error47()
   };
 }
 // node_modules/zod/v4/locales/yo.js
-var error49 = () => {
+var error48 = () => {
   const Sizable = {
     string: { unit: "àmi", verb: "ní" },
     file: { unit: "bytes", verb: "ní" },
@@ -46141,7 +46141,7 @@ var error49 = () => {
 };
 function yo_default() {
   return {
-    localeError: error49()
+    localeError: error48()
   };
 }
 // node_modules/zod/v4/core/registries.js
@@ -49983,11 +49983,11 @@ async function server() {
           server2.close(() => process.exit(0));
           break;
       }
-    } catch (error50) {
+    } catch (error49) {
       response.statusCode = 500;
       response.setHeader("Content-Type", "application/json");
       response.end(JSON.stringify({ error: "Internal server error" }));
-      setFailed(error50);
+      setFailed(error49);
     }
   });
   server2.on("error", setFailed);
@@ -49995,5 +49995,5 @@ async function server() {
 }
 await server();
 
-//# debugId=9BAFAD96201F895C64756E2164756E21
+//# debugId=0EC6C1503334BA5064756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
