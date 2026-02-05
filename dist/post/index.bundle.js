@@ -58234,8 +58234,8 @@ class OrderedObjParser {
       copyright: { regex: /&(copy|#169);/g, val: "©" },
       reg: { regex: /&(reg|#174);/g, val: "®" },
       inr: { regex: /&(inr|#8377);/g, val: "₹" },
-      num_dec: { regex: /&#([0-9]{1,7});/g, val: (_2, str) => String.fromCodePoint(Number.parseInt(str, 10)) },
-      num_hex: { regex: /&#x([0-9a-fA-F]{1,6});/g, val: (_2, str) => String.fromCodePoint(Number.parseInt(str, 16)) }
+      num_dec: { regex: /&#([0-9]{1,7});/g, val: (_2, str) => fromCodePoint(str, 10, "&#") },
+      num_hex: { regex: /&#x([0-9a-fA-F]{1,6});/g, val: (_2, str) => fromCodePoint(str, 16, "&#x") }
     };
     this.addExternalEntities = addExternalEntities;
     this.parseXml = parseXml;
@@ -58711,6 +58711,14 @@ function parseValue(val, shouldParse, options) {
     } else {
       return "";
     }
+  }
+}
+function fromCodePoint(str, base, prefix) {
+  const codePoint = Number.parseInt(str, base);
+  if (codePoint >= 0 && codePoint <= 1114111) {
+    return String.fromCodePoint(codePoint);
+  } else {
+    return prefix + str + ";";
   }
 }
 
@@ -96654,5 +96662,5 @@ async function index() {
 }
 await index();
 
-//# debugId=3EAB8004F4FDD77A64756E2164756E21
+//# debugId=9EA0C5E47717B1F164756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

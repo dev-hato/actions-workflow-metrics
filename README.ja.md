@@ -51,7 +51,7 @@ jobs:
     steps:
       # ワークフローの先頭でactions-workflow-metricsを実行
       - name: Start Workflow Telemetry
-        uses: massongit/actions-workflow-metrics@v1
+        uses: dev-hato/actions-workflow-metrics@v1
 
       # 以降の通常のステップ
       - name: Checkout
