@@ -1,4 +1,4 @@
 # https://github.com/super-linter/super-linter/blob/ff76a002516303867ea0cc83fa748467362c80eb/TEMPLATES/.codespellrc
 [codespell]
 check-hidden =
-skip = */package-lock.json,*/go.mod,*/go.sum,*.log,.git
+skip = */package-lock.json,*/go.mod,*/go.sum,*.log,.git,*/.gitignore,*/bun.lock,*/dist/**
