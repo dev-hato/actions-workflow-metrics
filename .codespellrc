@@ -1,0 +1,4 @@
+# https://github.com/dev-hato/hato-bot-go/blob/main/.codespellrc
+[codespell]
+check-hidden =
+skip = */package-lock.json,*/go.mod,*/go.sum,*.log,.git
