@@ -7,6 +7,7 @@ A GitHub Actions for collecting system metrics during workflows and outputting M
 ## Features
 
 - **System Metrics Collection**: Collects CPU load and memory usage in real-time during workflow execution
+- **Per-Step Metrics**: Breaks down metrics for each workflow step using the GitHub API
 - **Mermaid Chart Generation**: Visualizes collected metrics as Mermaid stacked bar charts
 - **Job Summary Output**: Automatically displays charts in GitHub Actions job summary
 
@@ -48,6 +49,8 @@ jobs:
       # Run actions-workflow-metrics at the beginning of the workflow
       - name: Start Workflow Telemetry
         uses: dev-hato/actions-workflow-metrics@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # Subsequent regular steps
       - name: Checkout
@@ -74,6 +77,7 @@ jobs:
   - `systeminformation`: System metrics collection
   - `zod`: Schema validation
   - `@actions/core`: GitHub Actions integration
+  - `@octokit/action`: GitHub API client for per-step metrics
 
 ## Development Setup
 

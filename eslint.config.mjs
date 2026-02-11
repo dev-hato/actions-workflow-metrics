@@ -121,6 +121,7 @@ export default defineConfig([
       "n/no-missing-import": "off",
       // Allow process.exit() in CLI tools
       "n/no-process-exit": "off",
+      "n/no-unpublished-import": ["error", { ignoreTypeImport: true }],
     },
   },
   ...pluginVue.configs["flat/recommended"],
