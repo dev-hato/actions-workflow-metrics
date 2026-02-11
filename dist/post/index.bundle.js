@@ -117885,26 +117885,13 @@ async function getMetricsData() {
   }
 }
 function render(metricsData, metricsID) {
+  const stepMetricsDataEntries = metricsData.stepMap.entries();
   const renderer = new Renderer;
   return renderer.render(renderParamsListSchema.parse([
     generateRenderParamsFromCPULoadPercentages("All", metricsData.cpuLoadPercentages),
-    ...metricsData.stepMap.keys().map((k) => {
-      const stepMetricsData = metricsData.stepMap.get(k);
-      console.log(k, stepMetricsData);
-      if (stepMetricsData === undefined) {
-        return;
-      }
-      return generateRenderParamsFromCPULoadPercentages(k, stepMetricsData.cpuLoadPercentages);
-    }),
+    ...stepMetricsDataEntries.filter(([_2, { cpuLoadPercentages }]) => 0 < cpuLoadPercentages.length).map(([n, { cpuLoadPercentages }]) => generateRenderParamsFromCPULoadPercentages(n, cpuLoadPercentages)),
     generateRenderParamsFromMemoryUsageMBs("All", metricsData.memoryUsageMBs),
-    ...metricsData.stepMap.keys().map((k) => {
-      const stepMetricsData = metricsData.stepMap.get(k);
-      console.log(k, stepMetricsData);
-      if (stepMetricsData === undefined) {
-        return;
-      }
-      return generateRenderParamsFromMemoryUsageMBs(k, stepMetricsData.memoryUsageMBs);
-    })
+    ...stepMetricsDataEntries.filter(([_2, { memoryUsageMBs }]) => 0 < memoryUsageMBs.length).map(([n, { memoryUsageMBs }]) => generateRenderParamsFromMemoryUsageMBs(n, memoryUsageMBs))
   ]), metricsID);
 }
 
@@ -117983,5 +117970,5 @@ async function index() {
 }
 await index();
 
-//# debugId=508AB0978404D9F964756E2164756E21
+//# debugId=8B5CC445FF4E28B964756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
