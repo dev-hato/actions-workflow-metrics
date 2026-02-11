@@ -4,9 +4,10 @@ import { info, setFailed, summary } from "@actions/core";
 import { context } from "@actions/github";
 import { Octokit } from "@octokit/action";
 import { getMetricsData, render } from "./lib";
-import { metricsDataWithStepMapSchema, serverPort } from "../lib";
+import { serverPort } from "../lib";
 import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
+import type { metricsDataWithStepMapSchema } from "./lib";
 import type { metricsDataSchema } from "../lib";
 
 function filterMetrics(

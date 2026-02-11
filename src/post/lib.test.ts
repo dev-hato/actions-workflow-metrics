@@ -1,7 +1,8 @@
 import { describe, expect, it, beforeEach, mock } from "bun:test";
 import { getMetricsData, render } from "./lib";
 import type { z } from "zod";
-import type { metricsDataSchema, metricsDataWithStepMapSchema } from "../lib";
+import type { metricsDataWithStepMapSchema } from "./lib";
+import type { metricsDataSchema } from "../lib";
 
 /**
  * Sample metrics data for testing (base data without stepMap).

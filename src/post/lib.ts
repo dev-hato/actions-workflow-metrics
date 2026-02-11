@@ -4,7 +4,6 @@ import {
   cpuLoadPercentagesSchema,
   memoryUsageMBsSchema,
   metricsDataSchema,
-  metricsDataWithStepMapSchema,
   serverPort,
 } from "../lib";
 
@@ -24,6 +23,9 @@ export const renderParamsSchema = z.object({
   }),
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
+export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
+  stepMap: z.map(z.string(), metricsDataSchema),
+});
 
 function generateRenderParamsFromCPULoadPercentages(
   stepName: string,
