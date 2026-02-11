@@ -120,23 +120,31 @@ export function render(
         "All",
         metricsData.cpuLoadPercentages,
       ),
-      ...metricsData.stepMap
-        .keys()
-        .map((k) =>
-          generateRenderParamsFromCPULoadPercentages(
-            k,
-            metricsData.stepMap[k].cpuLoadPercentages,
-          ),
-        ),
+      ...metricsData.stepMap.keys().map((k) => {
+        const stepMetricsData = metricsData.stepMap.get(k);
+
+        if (stepMetricsData === undefined) {
+          return;
+        }
+
+        return generateRenderParamsFromCPULoadPercentages(
+          k,
+          stepMetricsData.cpuLoadPercentages,
+        );
+      }),
       generateRenderParamsFromMemoryUsageMBs("All", metricsData.memoryUsageMBs),
-      ...metricsData.stepMap
-        .keys()
-        .map((k) =>
-          generateRenderParamsFromMemoryUsageMBs(
-            k,
-            metricsData.stepMap[k].memoryUsageMBs,
-          ),
-        ),
+      ...metricsData.stepMap.keys().map((k) => {
+        const stepMetricsData = metricsData.stepMap.get(k);
+
+        if (stepMetricsData === undefined) {
+          return;
+        }
+
+        return generateRenderParamsFromMemoryUsageMBs(
+          k,
+          stepMetricsData.memoryUsageMBs,
+        );
+      }),
     ]),
     metricsID,
   );

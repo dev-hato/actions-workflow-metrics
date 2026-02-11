@@ -1,19 +1,21 @@
 import { describe, expect, it, beforeEach, mock } from "bun:test";
 import { getMetricsData, render } from "./lib";
 import type { z } from "zod";
-import type { metricsDataSchema } from "../lib";
+import type { metricsDataSchema, metricsDataWithStepMapSchema } from "../lib";
 
 /**
- * Sample metrics data for testing.
+ * Sample metrics data for testing (base data without stepMap).
  */
 const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
   cpuLoadPercentages: [
     { unixTimeMs: 1704067200000, user: 25.5, system: 10.3 },
     { unixTimeMs: 1704067205000, user: 30.2, system: 12.1 },
+    { unixTimeMs: 1704067210000, user: 35.2, system: 14.1 },
   ],
   memoryUsageMBs: [
     { unixTimeMs: 1704067200000, used: 4096, free: 8192 },
     { unixTimeMs: 1704067205000, used: 4200, free: 8000 },
+    { unixTimeMs: 1704067210000, used: 4304, free: 7808 },
   ],
 };
 
@@ -36,21 +38,59 @@ function createMockFetch(
 describe("render", () => {
   const testMetricsID: string = "1234567890";
 
-  it("should render charts with valid metrics data", () => {
-    const result: string = render(sampleMetricsData, testMetricsID);
+  it("should render charts with valid metrics data including step charts", () => {
+    const result: string = render(
+      {
+        ...sampleMetricsData,
+        stepMap: new Map([
+          [
+            "Build",
+            {
+              cpuLoadPercentages: [
+                { unixTimeMs: 1704067200000, user: 40.0, system: 20.0 },
+                { unixTimeMs: 1704067205000, user: 45.0, system: 22.0 },
+              ],
+              memoryUsageMBs: [
+                { unixTimeMs: 1704067200000, used: 6000, free: 6192 },
+                { unixTimeMs: 1704067205000, used: 6200, free: 6000 },
+              ],
+            },
+          ],
+        ]),
+      },
+      testMetricsID,
+    );
 
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
 
-    // Verify rendered result contains expected content
-    expect(result).toContain("CPU Loads");
-    expect(result).toContain("Memory Usages");
+    // Verify "All" charts
+    expect(result).toContain("CPU Loads (All)");
+    expect(result).toContain("Memory Usages (All)");
+
+    // Verify step-specific charts
+    expect(result).toContain("CPU Loads (Build)");
+    expect(result).toContain("Memory Usages (Build)");
+  });
+
+  it("should render only All charts when stepMap is empty", () => {
+    const result: string = render(
+      {
+        ...sampleMetricsData,
+        stepMap: new Map(),
+      },
+      testMetricsID,
+    );
+
+    expect(result).toContain("CPU Loads (All)");
+    expect(result).toContain("Memory Usages (All)");
   });
 
   it("should handle empty metrics data", () => {
-    const metricsData: z.TypeOf<typeof metricsDataSchema> = {
+    const metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema> = {
       cpuLoadPercentages: [],
       memoryUsageMBs: [],
+      stepMap: new Map(),
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -60,7 +100,7 @@ describe("render", () => {
   });
 
   it("should correctly map CPU load percentages", () => {
-    const metricsData: z.TypeOf<typeof metricsDataSchema> = {
+    const metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema> = {
       cpuLoadPercentages: [
         { unixTimeMs: 1704067200000, user: 20, system: 10 },
         { unixTimeMs: 1704067205000, user: 25, system: 15 },
@@ -69,6 +109,7 @@ describe("render", () => {
         { unixTimeMs: 1704067200000, used: 4000, free: 8000 },
         { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
       ],
+      stepMap: new Map(),
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -78,12 +119,13 @@ describe("render", () => {
   });
 
   it("should correctly map memory usage data", () => {
-    const metricsData: z.TypeOf<typeof metricsDataSchema> = {
+    const metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema> = {
       cpuLoadPercentages: [{ unixTimeMs: 1704067200000, user: 20, system: 10 }],
       memoryUsageMBs: [
         { unixTimeMs: 1704067200000, used: 5000, free: 10000 },
         { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
       ],
+      stepMap: new Map(),
     };
 
     const result: string = render(metricsData, testMetricsID);
