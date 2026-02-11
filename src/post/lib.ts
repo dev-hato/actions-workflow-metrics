@@ -2,14 +2,8 @@ import { z } from "zod";
 import { Renderer } from "./renderer";
 import { metricsDataSchema, serverPort } from "../lib";
 
-export const metricsInfoSchema = z.object({
-  color: z.string(),
-  name: z.string(),
-  data: z.array(z.number()),
-});
-export const metricsInfoListSchema = z.array(metricsInfoSchema);
-export const renderParamsSchema = z.object({
-  title: z.string(),
+export const metricsInfoListSchema = z.array(z.array(z.number()));
+const renderDataSchema = z.object({
   metricsInfoList: metricsInfoListSchema,
   times: z.array(z.coerce.date()),
   yAxis: z.object({
@@ -17,10 +11,31 @@ export const renderParamsSchema = z.object({
     range: z.string().optional(),
   }),
 });
+export const renderDataWithStepNameSchema = renderDataSchema.extend({
+  stepName: z.string().optional(),
+});
+const renderDataWithStepNameListSchema = z.array(renderDataWithStepNameSchema);
+export const metricsInfoSchema = z.object({
+  color: z.string(),
+  name: z.string(),
+});
+export const renderParamsSchema = z.object({
+  title: z.string(),
+  legends: z.array(metricsInfoSchema),
+  data: renderDataWithStepNameListSchema,
+});
 export const renderParamsListSchema = z.array(renderParamsSchema);
+const stepSchema = z.object({
+  stepName: z.string().optional(),
+  data: metricsDataSchema,
+});
+const stepsSchema = z.array(stepSchema);
+export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
+  steps: stepsSchema,
+});
 
 export async function getMetricsData(): Promise<
-  z.TypeOf<typeof metricsDataSchema>
+  z.TypeOf<typeof metricsDataWithStepMapSchema>
 > {
   const controller: AbortController = new AbortController();
   const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
@@ -38,14 +53,37 @@ export async function getMetricsData(): Promise<
       );
     }
 
-    return metricsDataSchema.parse(await res.json());
+    return { ...metricsDataSchema.parse(await res.json()), steps: [] };
   } finally {
     clearTimeout(timer);
   }
 }
 
+function toRenderData(
+  metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema>,
+  mapper: (
+    data: z.TypeOf<typeof metricsDataSchema>,
+  ) => z.TypeOf<typeof renderDataSchema>,
+): z.TypeOf<typeof renderDataWithStepNameListSchema> {
+  const steps: z.TypeOf<typeof stepsSchema> = [
+    { data: metricsData },
+    ...metricsData.steps,
+  ];
+  return steps.map(
+    ({
+      stepName,
+      data,
+    }: z.TypeOf<typeof stepSchema>): z.TypeOf<
+      typeof renderDataWithStepNameSchema
+    > => ({
+      stepName,
+      ...mapper(data),
+    }),
+  );
+}
+
 export function render(
-  metricsData: z.TypeOf<typeof metricsDataSchema>,
+  metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema>,
   metricsID: string,
 ): string {
   const renderer: Renderer = new Renderer();
@@ -53,54 +91,74 @@ export function render(
     renderParamsListSchema.parse([
       {
         title: "CPU Loads",
-        metricsInfoList: [
+        legends: [
           {
             color: "Orange",
             name: "System",
-            data: metricsData.cpuLoadPercentages.map(
-              ({ system }: { system: number }): number => system,
-            ),
           },
           {
             color: "Red",
             name: "User",
-            data: metricsData.cpuLoadPercentages.map(
-              ({ user }: { user: number }): number => user,
-            ),
           },
         ],
-        times: metricsData.cpuLoadPercentages.map(
-          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
+        data: toRenderData(
+          metricsData,
+          ({
+            cpuLoadPercentages,
+          }: z.TypeOf<typeof metricsDataSchema>): z.TypeOf<
+            typeof renderDataSchema
+          > => ({
+            metricsInfoList: [
+              cpuLoadPercentages.map(
+                ({ system }: { system: number }): number => system,
+              ),
+              cpuLoadPercentages.map(
+                ({ user }: { user: number }): number => user,
+              ),
+            ],
+            times: cpuLoadPercentages.map(
+              ({ unixTimeMs }: { unixTimeMs: number }): Date =>
+                new Date(unixTimeMs),
+            ),
+            yAxis: {
+              title: "%",
+              range: "0 --> 100",
+            },
+          }),
         ),
-        yAxis: {
-          title: "%",
-          range: "0 --> 100",
-        },
       },
       {
         title: "Memory Usages",
-        metricsInfoList: [
+        legends: [
           {
             color: "Green",
             name: "Free",
-            data: metricsData.memoryUsageMBs.map(
-              ({ free }: { free: number }): number => free,
-            ),
           },
           {
             color: "Blue",
             name: "Used",
-            data: metricsData.memoryUsageMBs.map(
-              ({ used }: { used: number }): number => used,
-            ),
           },
         ],
-        times: metricsData.memoryUsageMBs.map(
-          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
+        data: toRenderData(
+          metricsData,
+          ({
+            memoryUsageMBs,
+          }: z.TypeOf<typeof metricsDataSchema>): z.TypeOf<
+            typeof renderDataSchema
+          > => ({
+            metricsInfoList: [
+              memoryUsageMBs.map(({ free }: { free: number }): number => free),
+              memoryUsageMBs.map(({ used }: { used: number }): number => used),
+            ],
+            times: memoryUsageMBs.map(
+              ({ unixTimeMs }: { unixTimeMs: number }): Date =>
+                new Date(unixTimeMs),
+            ),
+            yAxis: {
+              title: "MB",
+            },
+          }),
         ),
-        yAxis: {
-          title: "MB",
-        },
       },
     ]),
     metricsID,

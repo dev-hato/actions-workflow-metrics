@@ -96640,7 +96640,26 @@ async function index() {
       }
       await new Promise((resolve2) => setTimeout(resolve2, 1000));
     }
-    await summary.addRaw(render(metricsData, metricsID)).write();
+    const octokit = new Octokit2;
+    const jobs = await octokit.paginate(octokit.rest.actions.listJobsForWorkflowRun, {
+      owner: context4.repo.owner,
+      repo: context4.repo.repo,
+      run_id: context4.runId
+    });
+    const job = jobs.find((j) => j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME);
+    if (job === undefined) {
+      return;
+    }
+    const metricsDataWithStepMap = { ...metricsData, stepMap: new Map };
+    for (const step of job.steps) {
+      const stepMetricsData = {
+        cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at)),
+        memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
+      };
+      console.log(JSON.stringify(stepMetricsData, null, 2));
+      metricsDataWithStepMap.stepMap.set(step.name, stepMetricsData);
+    }
+    await summary.addRaw(render(metricsDataWithStepMap, metricsID)).write();
   } catch (error49) {
     setFailed(error49);
   } finally {
@@ -96662,5 +96681,5 @@ async function index() {
 }
 await index();
 
-//# debugId=BB9042FADB4AC47C64756E2164756E21
+//# debugId=592F9E96388FAB7F64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

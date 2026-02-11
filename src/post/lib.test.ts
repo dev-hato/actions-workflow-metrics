@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, mock } from "bun:test";
 import { getMetricsData, render } from "./lib";
 import type { z } from "zod";
+import type { metricsDataWithStepMapSchema } from "./lib";
 import type { metricsDataSchema } from "../lib";
 
 /**
@@ -36,21 +37,60 @@ function createMockFetch(
 describe("render", () => {
   const testMetricsID: string = "1234567890";
 
-  it("should render charts with valid metrics data", () => {
-    const result: string = render(sampleMetricsData, testMetricsID);
+  it("should render charts with valid metrics data including step charts", () => {
+    const result: string = render(
+      {
+        ...sampleMetricsData,
+        steps: [
+          {
+            stepName: "Build",
+            data: {
+              cpuLoadPercentages: [
+                { unixTimeMs: 1704067200000, user: 40.0, system: 20.0 },
+                { unixTimeMs: 1704067205000, user: 45.0, system: 22.0 },
+              ],
+              memoryUsageMBs: [
+                { unixTimeMs: 1704067200000, used: 6000, free: 6192 },
+                { unixTimeMs: 1704067205000, used: 6200, free: 6000 },
+              ],
+            },
+          },
+        ],
+      },
+      testMetricsID,
+    );
 
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
 
-    // Verify rendered result contains expected content
-    expect(result).toContain("CPU Loads");
-    expect(result).toContain("Memory Usages");
+    // Verify section titles
+    expect(result).toContain("### CPU Loads");
+    expect(result).toContain("### Memory Usages");
+
+    // Verify "All" and step-specific charts
+    expect(result).toContain("#### All");
+    expect(result).toContain("#### Step `Build`");
+  });
+
+  it("should render only All charts when steps is empty", () => {
+    const result: string = render(
+      {
+        ...sampleMetricsData,
+        steps: [],
+      },
+      testMetricsID,
+    );
+
+    expect(result).toContain("### CPU Loads");
+    expect(result).toContain("### Memory Usages");
+    expect(result).toContain("#### All");
   });
 
   it("should handle empty metrics data", () => {
-    const metricsData: z.TypeOf<typeof metricsDataSchema> = {
+    const metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema> = {
       cpuLoadPercentages: [],
       memoryUsageMBs: [],
+      steps: [],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -60,7 +100,7 @@ describe("render", () => {
   });
 
   it("should correctly map CPU load percentages", () => {
-    const metricsData: z.TypeOf<typeof metricsDataSchema> = {
+    const metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema> = {
       cpuLoadPercentages: [
         { unixTimeMs: 1704067200000, user: 20, system: 10 },
         { unixTimeMs: 1704067205000, user: 25, system: 15 },
@@ -69,6 +109,7 @@ describe("render", () => {
         { unixTimeMs: 1704067200000, used: 4000, free: 8000 },
         { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
       ],
+      steps: [],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -78,12 +119,13 @@ describe("render", () => {
   });
 
   it("should correctly map memory usage data", () => {
-    const metricsData: z.TypeOf<typeof metricsDataSchema> = {
+    const metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema> = {
       cpuLoadPercentages: [{ unixTimeMs: 1704067200000, user: 20, system: 10 }],
       memoryUsageMBs: [
         { unixTimeMs: 1704067200000, used: 5000, free: 10000 },
         { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
       ],
+      steps: [],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -101,7 +143,7 @@ describe("getMetricsData", () => {
 
     const result = await getMetricsData();
 
-    expect(result).toEqual(sampleMetricsData);
+    expect(result).toEqual({ ...sampleMetricsData, steps: [] });
   });
 
   it("should throw error for invalid metrics data", async () => {

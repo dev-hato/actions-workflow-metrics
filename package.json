@@ -7,6 +7,9 @@
   "dependencies": {
     "@actions/artifact": "^6.0.0",
     "@actions/core": "^3.0.0",
+    "@actions/github": "^9.0.0",
+    "@octokit/action": "^8.0.4",
+    "@octokit/openapi-types": "^27.0.0",
     "systeminformation": "^5.30.2",
     "zod": "4.3.6"
   },
