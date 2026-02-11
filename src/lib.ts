@@ -16,5 +16,8 @@ export const metricsDataSchema = z.object({
   cpuLoadPercentages: cpuLoadPercentagesSchema,
   memoryUsageMBs: memoryUsageMBsSchema,
 });
+export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
+  stepMap: z.map(z.string(), metricsDataSchema),
+});
 
 export const serverPort: number = 7777;

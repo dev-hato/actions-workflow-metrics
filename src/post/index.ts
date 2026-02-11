@@ -1,10 +1,24 @@
 import { promises as fs } from "node:fs";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary } from "@actions/core";
+import { context } from "@actions/github";
+import { Octokit } from "@octokit/action";
 import { getMetricsData, render } from "./lib";
-import { serverPort } from "../lib";
+import { metricsDataWithStepMapSchema, serverPort } from "../lib";
+import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
+
+function filterMetrics(
+  startedAt: string,
+  completedAt: string,
+  unixTimeMs: number,
+): boolean {
+  return (
+    new Date(startedAt).getTime() <= unixTimeMs &&
+    unixTimeMs <= new Date(completedAt).getTime()
+  );
+}
 
 async function index(): Promise<void> {
   const maxRetryCount: number = 10;
@@ -59,8 +73,43 @@ async function index(): Promise<void> {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
+    const octokit: Octokit = new Octokit();
+    const jobs: components["schemas"]["job"][] = await octokit.paginate(
+      octokit.rest.actions.listJobsForWorkflowRun,
+      {
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        run_id: context.runId,
+      },
+    );
+    const job: components["schemas"]["job"] | undefined = jobs.find(
+      (j) =>
+        j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME,
+    );
+
+    if (job === undefined) {
+      return;
+    }
+
+    const metricsDataWithStepMap: z.TypeOf<
+      typeof metricsDataWithStepMapSchema
+    > = { ...metricsData, stepMap: new Map() };
+
+    for (const step of job.steps) {
+      metricsDataWithStepMap.stepMap[step.name] = {
+        cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(
+          ({ unixTimeMs }): boolean =>
+            filterMetrics(step.started_at, step.completed_at, unixTimeMs),
+        ),
+        memoryUsageMBs: metricsData.memoryUsageMBs.filter(
+          ({ unixTimeMs }): boolean =>
+            filterMetrics(step.started_at, step.completed_at, unixTimeMs),
+        ),
+      };
+    }
+
     // Render metrics
-    await summary.addRaw(render(metricsData, metricsID)).write();
+    await summary.addRaw(render(metricsDataWithStepMap, metricsID)).write();
   } catch (error) {
     setFailed(error);
   } finally {

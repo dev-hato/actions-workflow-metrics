@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { Renderer } from "./renderer";
-import { metricsDataSchema, serverPort } from "../lib";
+import {
+  cpuLoadPercentagesSchema,
+  memoryUsageMBsSchema,
+  metricsDataSchema,
+  metricsDataWithStepMapSchema,
+  serverPort,
+} from "../lib";
 
 export const metricsInfoSchema = z.object({
   color: z.string(),
@@ -18,6 +24,65 @@ export const renderParamsSchema = z.object({
   }),
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
+
+function generateRenderParamsFromCPULoadPercentages(
+  stepName: string,
+  cpuLoadPercentages: z.TypeOf<typeof cpuLoadPercentagesSchema>,
+): z.TypeOf<typeof renderParamsSchema> {
+  return {
+    title: `CPU Loads (${stepName})`,
+    metricsInfoList: [
+      {
+        color: "Orange",
+        name: "System",
+        data: cpuLoadPercentages.map(
+          ({ system }: { system: number }): number => system,
+        ),
+      },
+      {
+        color: "Red",
+        name: "User",
+        data: cpuLoadPercentages.map(
+          ({ user }: { user: number }): number => user,
+        ),
+      },
+    ],
+    times: cpuLoadPercentages.map(
+      ({ unixTimeMs }: { unixTimeMs: number }): Date => new Date(unixTimeMs),
+    ),
+    yAxis: {
+      title: "%",
+      range: "0 --> 100",
+    },
+  };
+}
+
+function generateRenderParamsFromMemoryUsageMBs(
+  stepName: string,
+  memoryUsageMBs: z.TypeOf<typeof memoryUsageMBsSchema>,
+): z.TypeOf<typeof renderParamsSchema> {
+  return {
+    title: `Memory Usages (${stepName})`,
+    metricsInfoList: [
+      {
+        color: "Green",
+        name: "Free",
+        data: memoryUsageMBs.map(({ free }: { free: number }): number => free),
+      },
+      {
+        color: "Blue",
+        name: "Used",
+        data: memoryUsageMBs.map(({ used }: { used: number }): number => used),
+      },
+    ],
+    times: memoryUsageMBs.map(
+      ({ unixTimeMs }: { unixTimeMs: number }): Date => new Date(unixTimeMs),
+    ),
+    yAxis: {
+      title: "MB",
+    },
+  };
+}
 
 export async function getMetricsData(): Promise<
   z.TypeOf<typeof metricsDataSchema>
@@ -45,63 +110,33 @@ export async function getMetricsData(): Promise<
 }
 
 export function render(
-  metricsData: z.TypeOf<typeof metricsDataSchema>,
+  metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema>,
   metricsID: string,
 ): string {
   const renderer: Renderer = new Renderer();
   return renderer.render(
     renderParamsListSchema.parse([
-      {
-        title: "CPU Loads",
-        metricsInfoList: [
-          {
-            color: "Orange",
-            name: "System",
-            data: metricsData.cpuLoadPercentages.map(
-              ({ system }: { system: number }): number => system,
-            ),
-          },
-          {
-            color: "Red",
-            name: "User",
-            data: metricsData.cpuLoadPercentages.map(
-              ({ user }: { user: number }): number => user,
-            ),
-          },
-        ],
-        times: metricsData.cpuLoadPercentages.map(
-          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
+      generateRenderParamsFromCPULoadPercentages(
+        "All",
+        metricsData.cpuLoadPercentages,
+      ),
+      ...metricsData.stepMap
+        .keys()
+        .map((k) =>
+          generateRenderParamsFromCPULoadPercentages(
+            k,
+            metricsData.stepMap[k].cpuLoadPercentages,
+          ),
         ),
-        yAxis: {
-          title: "%",
-          range: "0 --> 100",
-        },
-      },
-      {
-        title: "Memory Usages",
-        metricsInfoList: [
-          {
-            color: "Green",
-            name: "Free",
-            data: metricsData.memoryUsageMBs.map(
-              ({ free }: { free: number }): number => free,
-            ),
-          },
-          {
-            color: "Blue",
-            name: "Used",
-            data: metricsData.memoryUsageMBs.map(
-              ({ used }: { used: number }): number => used,
-            ),
-          },
-        ],
-        times: metricsData.memoryUsageMBs.map(
-          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
+      generateRenderParamsFromMemoryUsageMBs("All", metricsData.memoryUsageMBs),
+      ...metricsData.stepMap
+        .keys()
+        .map((k) =>
+          generateRenderParamsFromMemoryUsageMBs(
+            k,
+            metricsData.stepMap[k].memoryUsageMBs,
+          ),
         ),
-        yAxis: {
-          title: "MB",
-        },
-      },
     ]),
     metricsID,
   );
