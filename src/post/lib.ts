@@ -124,6 +124,7 @@ export function render(
       ),
       ...metricsData.stepMap.keys().map((k) => {
         const stepMetricsData = metricsData.stepMap.get(k);
+        console.log(k,stepMetricsData);
 
         if (stepMetricsData === undefined) {
           return;
@@ -137,6 +138,7 @@ export function render(
       generateRenderParamsFromMemoryUsageMBs("All", metricsData.memoryUsageMBs),
       ...metricsData.stepMap.keys().map((k) => {
         const stepMetricsData = metricsData.stepMap.get(k);
+        console.log(k,stepMetricsData);
 
         if (stepMetricsData === undefined) {
           return;
