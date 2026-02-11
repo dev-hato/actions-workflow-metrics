@@ -11,13 +11,13 @@ import type { metricsDataWithStepMapSchema } from "./lib";
 import type { metricsDataSchema } from "../lib";
 
 function filterMetrics(
-  startedAt: string,
-  completedAt: string,
   unixTimeMs: number,
+  startedAt?: string,
+  completedAt?: string,
 ): boolean {
   return (
-    new Date(startedAt).getTime() <= unixTimeMs &&
-    unixTimeMs <= new Date(completedAt).getTime()
+    (startedAt === undefined || new Date(startedAt).getTime() <= unixTimeMs) &&
+    (completedAt === undefined || unixTimeMs <= new Date(completedAt).getTime())
   );
 }
 
@@ -100,11 +100,11 @@ async function index(): Promise<void> {
       metricsDataWithStepMap.stepMap[step.name] = {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(
           ({ unixTimeMs }): boolean =>
-            filterMetrics(step.started_at, step.completed_at, unixTimeMs),
+            filterMetrics(unixTimeMs, step.started_at, step.completed_at),
         ),
         memoryUsageMBs: metricsData.memoryUsageMBs.filter(
           ({ unixTimeMs }): boolean =>
-            filterMetrics(step.started_at, step.completed_at, unixTimeMs),
+            filterMetrics(unixTimeMs, step.started_at, step.completed_at),
         ),
       };
     }
