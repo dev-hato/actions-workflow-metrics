@@ -117891,13 +117891,16 @@ function render(metricsData, metricsID) {
     generateRenderParamsFromCPULoadPercentages("All", metricsData.cpuLoadPercentages),
     ...stepMetricsDataEntries.filter(([_2, { cpuLoadPercentages }]) => 0 < cpuLoadPercentages.length).map(([n, { cpuLoadPercentages }]) => generateRenderParamsFromCPULoadPercentages(n, cpuLoadPercentages)),
     generateRenderParamsFromMemoryUsageMBs("All", metricsData.memoryUsageMBs),
-    ...stepMetricsDataEntries.filter(([_2, { memoryUsageMBs }]) => 0 < memoryUsageMBs.length).map(([n, { memoryUsageMBs }]) => generateRenderParamsFromMemoryUsageMBs(n, memoryUsageMBs))
+    ...stepMetricsDataEntries.filter(([_2, { memoryUsageMBs }]) => {
+      console.log(memoryUsageMBs);
+      return 0 < memoryUsageMBs.length;
+    }).map(([n, { memoryUsageMBs }]) => generateRenderParamsFromMemoryUsageMBs(n, memoryUsageMBs))
   ]), metricsID);
 }
 
 // src/post/index.ts
 function filterMetrics(unixTimeMs, startedAt, completedAt) {
-  return (startedAt === undefined || new Date(startedAt).getTime() <= unixTimeMs) && (completedAt === undefined || unixTimeMs <= new Date(completedAt).getTime());
+  return (startedAt === undefined || startedAt === null || new Date(startedAt).getTime() <= unixTimeMs) && (completedAt === undefined || completedAt === null || unixTimeMs <= new Date(completedAt).getTime());
 }
 async function index() {
   const maxRetryCount = 10;
@@ -117970,5 +117973,5 @@ async function index() {
 }
 await index();
 
-//# debugId=8B5CC445FF4E28B964756E2164756E21
+//# debugId=46F1AF332DC2382064756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
