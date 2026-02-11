@@ -110,7 +110,6 @@ async function index(): Promise<void> {
     }
 
     // Render metrics
-    console.log(JSON.stringify(metricsDataWithStepMap, null, 2));
     await summary.addRaw(render(metricsDataWithStepMap, metricsID)).write();
   } catch (error) {
     setFailed(error);
