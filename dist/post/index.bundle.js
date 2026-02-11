@@ -117890,6 +117890,7 @@ function render(metricsData, metricsID) {
     generateRenderParamsFromCPULoadPercentages("All", metricsData.cpuLoadPercentages),
     ...metricsData.stepMap.keys().map((k) => {
       const stepMetricsData = metricsData.stepMap.get(k);
+      console.log(k, stepMetricsData);
       if (stepMetricsData === undefined) {
         return;
       }
@@ -117898,6 +117899,7 @@ function render(metricsData, metricsID) {
     generateRenderParamsFromMemoryUsageMBs("All", metricsData.memoryUsageMBs),
     ...metricsData.stepMap.keys().map((k) => {
       const stepMetricsData = metricsData.stepMap.get(k);
+      console.log(k, stepMetricsData);
       if (stepMetricsData === undefined) {
         return;
       }
@@ -117959,7 +117961,6 @@ async function index() {
         memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
       };
     }
-    console.log(JSON.stringify(metricsDataWithStepMap, null, 2));
     await summary.addRaw(render(metricsDataWithStepMap, metricsID)).write();
   } catch (error49) {
     setFailed(error49);
@@ -117982,5 +117983,5 @@ async function index() {
 }
 await index();
 
-//# debugId=21557BC72F15E34264756E2164756E21
+//# debugId=6BA76E2A44D12A3D64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
