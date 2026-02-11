@@ -115,6 +115,9 @@ export function render(
   metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema>,
   metricsID: string,
 ): string {
+  const stepMetricsDataEntries: MapIterator<
+    [string, z.TypeOf<typeof metricsDataSchema>]
+  > = metricsData.stepMap.entries();
   const renderer: Renderer = new Renderer();
   return renderer.render(
     renderParamsListSchema.parse([
@@ -122,31 +125,35 @@ export function render(
         "All",
         metricsData.cpuLoadPercentages,
       ),
-      ...metricsData.stepMap.keys().map((k) => {
-        const stepMetricsData = metricsData.stepMap.get(k);
-
-        if (stepMetricsData === undefined) {
-          return;
-        }
-
-        return generateRenderParamsFromCPULoadPercentages(
-          k,
-          stepMetricsData.cpuLoadPercentages,
-        );
-      }),
+      ...stepMetricsDataEntries
+        .filter(
+          ([_, { cpuLoadPercentages }]: [
+            string,
+            z.TypeOf<typeof metricsDataSchema>,
+          ]): boolean => 0 < cpuLoadPercentages.length,
+        )
+        .map(
+          ([n, { cpuLoadPercentages }]: [
+            string,
+            z.TypeOf<typeof metricsDataSchema>,
+          ]): z.TypeOf<typeof renderParamsSchema> =>
+            generateRenderParamsFromCPULoadPercentages(n, cpuLoadPercentages),
+        ),
       generateRenderParamsFromMemoryUsageMBs("All", metricsData.memoryUsageMBs),
-      ...metricsData.stepMap.keys().map((k) => {
-        const stepMetricsData = metricsData.stepMap.get(k);
-
-        if (stepMetricsData === undefined) {
-          return;
-        }
-
-        return generateRenderParamsFromMemoryUsageMBs(
-          k,
-          stepMetricsData.memoryUsageMBs,
-        );
-      }),
+      ...stepMetricsDataEntries
+        .filter(
+          ([_, { memoryUsageMBs }]: [
+            string,
+            z.TypeOf<typeof metricsDataSchema>,
+          ]): boolean => 0 < memoryUsageMBs.length,
+        )
+        .map(
+          ([n, { memoryUsageMBs }]: [
+            string,
+            z.TypeOf<typeof metricsDataSchema>,
+          ]): z.TypeOf<typeof renderParamsSchema> =>
+            generateRenderParamsFromMemoryUsageMBs(n, memoryUsageMBs),
+        ),
     ]),
     metricsID,
   );
