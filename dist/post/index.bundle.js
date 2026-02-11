@@ -117954,6 +117954,7 @@ async function index() {
     }
     const metricsDataWithStepMap = { ...metricsData, stepMap: new Map };
     for (const step of job.steps) {
+      console.log(step);
       metricsDataWithStepMap.stepMap[step.name] = {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(step.started_at, step.completed_at, unixTimeMs)),
         memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(step.started_at, step.completed_at, unixTimeMs))
@@ -117981,5 +117982,5 @@ async function index() {
 }
 await index();
 
-//# debugId=9782B9E17E29F5A664756E2164756E21
+//# debugId=98F3D79F628E353964756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
