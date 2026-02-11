@@ -117907,8 +117907,8 @@ function render(metricsData, metricsID) {
 }
 
 // src/post/index.ts
-function filterMetrics(startedAt, completedAt, unixTimeMs) {
-  return new Date(startedAt).getTime() <= unixTimeMs && unixTimeMs <= new Date(completedAt).getTime();
+function filterMetrics(unixTimeMs, startedAt, completedAt) {
+  return (startedAt === undefined || new Date(startedAt).getTime() <= unixTimeMs) && (completedAt === undefined || unixTimeMs <= new Date(completedAt).getTime());
 }
 async function index() {
   const maxRetryCount = 10;
@@ -117954,10 +117954,9 @@ async function index() {
     }
     const metricsDataWithStepMap = { ...metricsData, stepMap: new Map };
     for (const step of job.steps) {
-      console.log(step);
       metricsDataWithStepMap.stepMap[step.name] = {
-        cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(step.started_at, step.completed_at, unixTimeMs)),
-        memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(step.started_at, step.completed_at, unixTimeMs))
+        cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at)),
+        memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
       };
     }
     await summary.addRaw(render(metricsDataWithStepMap, metricsID)).write();
@@ -117982,5 +117981,5 @@ async function index() {
 }
 await index();
 
-//# debugId=98F3D79F628E353964756E2164756E21
+//# debugId=5D5E3D3FCAF9DDB164756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
