@@ -1,18 +1,35 @@
 import { promises as fs } from "node:fs";
 import { DefaultArtifactClient } from "@actions/artifact";
-import { info, setFailed, summary } from "@actions/core";
+import { info, setFailed, summary, warning } from "@actions/core";
+import { context } from "@actions/github";
+import { Octokit } from "@octokit/action";
 import { getMetricsData, render } from "./lib";
 import { serverPort } from "../lib";
+import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
-import type { metricsDataSchema } from "../lib";
+import type { metricsDataWithStepsSchema } from "./lib";
 
 async function index(): Promise<void> {
   const maxRetryCount: number = 10;
-  let metricsData: z.TypeOf<typeof metricsDataSchema>;
+  let metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>;
+
+  let jobs: components["schemas"]["job"][] = [];
+
+  try {
+    const octokit: Octokit = new Octokit();
+    jobs = await octokit.paginate(octokit.rest.actions.listJobsForWorkflowRun, {
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      run_id: context.runId,
+    });
+  } catch (error) {
+    console.warn(error);
+    warning(error);
+  }
 
   for (let i = 0; i < maxRetryCount; i++) {
     try {
-      metricsData = await getMetricsData();
+      metricsData = await getMetricsData(jobs);
       break;
     } catch (error) {
       if (

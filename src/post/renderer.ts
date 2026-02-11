@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type {
+  renderDataWithStepNameSchema,
   renderParamsListSchema,
   renderParamsSchema,
   metricsInfoListSchema,
@@ -18,44 +19,51 @@ export class Renderer {
 ${metricsID}
 
 ${renderParamsList
-  .filter(
-    ({
-      metricsInfoList,
-    }: {
-      metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
-    }): boolean => metricsInfoList.length > 0,
-  )
-  .map((p: z.TypeOf<typeof renderParamsSchema>): string => {
-    const colors: string[] = p.metricsInfoList.map(
+  .flatMap((p: z.TypeOf<typeof renderParamsSchema>): string[] => {
+    const colors: string[] = p.legends.map(
       ({ color }: { color: string }): string => color,
     );
-    const stackedDatum: number[][] = p.metricsInfoList
-      .toReversed()
-      .reduce(
-        (
-          prev: number[][],
-          { data }: { data: number[] },
-          i: number,
-        ): number[][] => {
-          prev.push(data.map((d: number, j: number): number => d + prev[i][j]));
-          return prev;
-        },
-        [p.metricsInfoList[0].data.map((): number => 0)],
-      )
-      .slice(1)
-      .toReversed();
-    return `### ${p.title}
+    return [
+      `### ${p.title}
 
 #### Legends
 
-${p.metricsInfoList
+${p.legends
   .map(
-    (i: z.TypeOf<typeof metricsInfoSchema>): string =>
-      `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`,
+    (l: z.TypeOf<typeof metricsInfoSchema>): string =>
+      `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`,
   )
-  .join("\n")}
+  .join("\n")}`,
+      ...p.data
+        .filter(
+          ({
+            metricsInfoList,
+          }: {
+            metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
+          }): boolean => metricsInfoList.length > 0,
+        )
+        .map((s: z.TypeOf<typeof renderDataWithStepNameSchema>): string => {
+          const stackedDatum: number[][] = s.metricsInfoList
+            .toReversed()
+            .reduce(
+              (prev: number[][], values: number[], i: number): number[][] => {
+                prev.push(
+                  values.map((v: number, j: number): number => v + prev[i][j]),
+                );
+                return prev;
+              },
+              [s.metricsInfoList[0].map((): number => 0)],
+            )
+            .slice(1)
+            .toReversed();
+          return `${
+            s.stepName === undefined
+              ? "#### All"
+              : `#### Step \`${s.stepName}\`
 
-#### Chart
+<details>
+<summary>Chart</summary>`
+          }
 
 \`\`\`mermaid
 %%{
@@ -70,13 +78,21 @@ ${p.metricsInfoList
 xychart
 
 x-axis "Time" ${JSON.stringify(
-      p.times.map((d: Date): string =>
-        d.toLocaleTimeString("en-GB", { hour12: false }),
-      ),
-    )}
-y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
-${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
-\`\`\``;
+            s.times.map((t: Date): string =>
+              t.toLocaleTimeString("en-GB", { hour12: false }),
+            ),
+          )}
+y-axis "${s.yAxis.title}"${s.yAxis.range ? ` ${s.yAxis.range}` : ""}
+${stackedDatum.map((r: number[]): string => `bar ${JSON.stringify(r)}`).join("\n")}
+\`\`\`${
+            s.stepName === undefined
+              ? ""
+              : `
+
+</details>`
+          }`;
+        }),
+    ];
   })
   .join("\n\n")}`;
   }
