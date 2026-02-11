@@ -117956,10 +117956,10 @@ async function index() {
     }
     const metricsDataWithStepMap = { ...metricsData, stepMap: new Map };
     for (const step of job.steps) {
-      metricsDataWithStepMap.stepMap[step.name] = {
+      metricsDataWithStepMap.stepMap.set(step.name, {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at)),
         memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
-      };
+      });
     }
     await summary.addRaw(render(metricsDataWithStepMap, metricsID)).write();
   } catch (error49) {
@@ -117983,5 +117983,5 @@ async function index() {
 }
 await index();
 
-//# debugId=6BA76E2A44D12A3D64756E2164756E21
+//# debugId=508AB0978404D9F964756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
