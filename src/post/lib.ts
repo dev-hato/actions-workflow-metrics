@@ -145,10 +145,7 @@ export function render(
           ([_, { memoryUsageMBs }]: [
             string,
             z.TypeOf<typeof metricsDataSchema>,
-          ]): boolean => {
-            console.log(memoryUsageMBs);
-            return 0 < memoryUsageMBs.length;
-          },
+          ]): boolean => 0 < memoryUsageMBs.length,
         )
         .map(
           ([n, { memoryUsageMBs }]: [
