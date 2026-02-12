@@ -7,11 +7,7 @@ import {
   serverPort,
 } from "../lib";
 
-export const metricsInfoListSchema = z.array(
-  z.object({
-    data: z.array(z.number()),
-  }),
-);
+export const metricsInfoListSchema = z.array(z.array(z.number()));
 export const renderDataSchema = z.object({
   stepName: z.string().optional(),
   metricsInfoList: metricsInfoListSchema,
@@ -106,14 +102,8 @@ export function render(
             ]): z.TypeOf<typeof renderDataSchema> => ({
               stepName,
               metricsInfoList: [
-                {
-                  data: c.map(
-                    ({ system }: { system: number }): number => system,
-                  ),
-                },
-                {
-                  data: c.map(({ user }: { user: number }): number => user),
-                },
+                c.map(({ system }: { system: number }): number => system),
+                c.map(({ user }: { user: number }): number => user),
               ],
               times: c.map(
                 ({ unixTimeMs }: { unixTimeMs: number }): Date =>
@@ -163,12 +153,8 @@ export function render(
             ]): z.TypeOf<typeof renderDataSchema> => ({
               stepName,
               metricsInfoList: [
-                {
-                  data: m.map(({ free }: { free: number }): number => free),
-                },
-                {
-                  data: m.map(({ used }: { used: number }): number => used),
-                },
+                m.map(({ free }: { free: number }): number => free),
+                m.map(({ used }: { used: number }): number => used),
               ],
               times: m.map(
                 ({ unixTimeMs }: { unixTimeMs: number }): Date =>

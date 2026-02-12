@@ -46,17 +46,13 @@ ${p.legends
           const stackedDatum: number[][] = d.metricsInfoList
             .toReversed()
             .reduce(
-              (
-                prev: number[][],
-                { data }: { data: number[] },
-                i: number,
-              ): number[][] => {
+              (prev: number[][], data: number[], i: number): number[][] => {
                 prev.push(
                   data.map((d: number, j: number): number => d + prev[i][j]),
                 );
                 return prev;
               },
-              [d.metricsInfoList[0].data.map((): number => 0)],
+              [d.metricsInfoList[0].map((): number => 0)],
             )
             .slice(1)
             .toReversed();

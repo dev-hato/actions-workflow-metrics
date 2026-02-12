@@ -42,11 +42,7 @@ describe("Renderer", () => {
           data: [
             {
               stepName: undefined,
-              metricsInfoList: [
-                {
-                  data: [10, 20, 30],
-                },
-              ],
+              metricsInfoList: [[10, 20, 30]],
               times: [new Date("2024-01-01T00:00:00Z")],
               yAxis: {
                 title: "Percentage",
@@ -99,12 +95,8 @@ describe("Renderer", () => {
             {
               stepName: undefined,
               metricsInfoList: [
-                {
-                  data: [10, 20, 30],
-                },
-                {
-                  data: [5, 10, 15],
-                },
+                [10, 20, 30],
+                [5, 10, 15],
               ],
               times: [
                 new Date("2024-01-01T00:00:00Z"),
@@ -160,11 +152,7 @@ describe("Renderer", () => {
           data: [
             {
               stepName: undefined,
-              metricsInfoList: [
-                {
-                  data: [100, 200, 300],
-                },
-              ],
+              metricsInfoList: [[100, 200, 300]],
               times: [new Date()],
               yAxis: {
                 title: "MB",
@@ -205,17 +193,7 @@ describe("Renderer", () => {
           data: [
             {
               stepName: undefined,
-              metricsInfoList: [
-                {
-                  data: [1],
-                },
-                {
-                  data: [2],
-                },
-                {
-                  data: [3],
-                },
-              ],
+              metricsInfoList: [[1], [2], [3]],
               times: [new Date()],
               yAxis: {
                 title: "Units",
@@ -261,12 +239,8 @@ describe("Renderer", () => {
             {
               stepName: undefined,
               metricsInfoList: [
-                {
-                  data: [10, 20, 30],
-                },
-                {
-                  data: [5, 10, 15],
-                },
+                [10, 20, 30],
+                [5, 10, 15],
               ],
               times: [
                 new Date("2024-01-01T00:00:00Z"),
@@ -314,15 +288,9 @@ describe("Renderer", () => {
             {
               stepName: undefined,
               metricsInfoList: [
-                {
-                  data: [10, 20],
-                },
-                {
-                  data: [5, 10],
-                },
-                {
-                  data: [3, 6],
-                },
+                [10, 20],
+                [5, 10],
+                [3, 6],
               ],
               times: [
                 new Date("2024-01-01T00:00:00Z"),
@@ -379,11 +347,7 @@ describe("Renderer", () => {
           data: [
             {
               stepName: undefined,
-              metricsInfoList: [
-                {
-                  data: [10, 20, 30],
-                },
-              ],
+              metricsInfoList: [[10, 20, 30]],
               times: [
                 new Date("2024-01-01T09:15:30Z"),
                 new Date("2024-01-01T14:30:45Z"),
@@ -418,11 +382,7 @@ describe("Renderer", () => {
           data: [
             {
               stepName: undefined,
-              metricsInfoList: [
-                {
-                  data: [100],
-                },
-              ],
+              metricsInfoList: [[100]],
               times: [new Date()],
               yAxis: {
                 title: "Units",
@@ -467,11 +427,7 @@ describe("Renderer", () => {
           data: [
             {
               stepName: undefined,
-              metricsInfoList: [
-                {
-                  data: [42],
-                },
-              ],
+              metricsInfoList: [[42]],
               times: [new Date("2024-01-01T12:00:00Z")],
               yAxis: {
                 title: "Value",
