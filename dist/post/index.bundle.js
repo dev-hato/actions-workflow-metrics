@@ -117835,7 +117835,7 @@ var renderParamsSchema = exports_external.object({
 });
 var renderParamsListSchema = exports_external.array(renderParamsSchema);
 var metricsDataWithStepMapSchema = metricsDataSchema.extend({
-  stepMap: exports_external.map(exports_external.string(), metricsDataSchema)
+  stepMap: exports_external.record(exports_external.string(), metricsDataSchema)
 });
 async function getMetricsData() {
   const controller = new AbortController;
@@ -117847,13 +117847,13 @@ async function getMetricsData() {
     if (!res.ok) {
       throw new Error(`Failed to fetch metrics: ${res.status} ${res.statusText}`);
     }
-    return { ...metricsDataSchema.parse(await res.json()), stepMap: new Map };
+    return { ...metricsDataSchema.parse(await res.json()), stepMap: {} };
   } finally {
     clearTimeout(timer);
   }
 }
 function render(metricsData, metricsID) {
-  const stepMetricsDataEntries = Array.from(metricsData.stepMap.entries());
+  const stepMetricsDataEntries = Object.entries(metricsData.stepMap);
   const renderer = new Renderer;
   return renderer.render(renderParamsListSchema.parse([
     {
@@ -117946,10 +117946,10 @@ async function index() {
       run_id: context4.runId
     });
     for (const step of jobs.find((j) => j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME)?.steps ?? []) {
-      metricsData.stepMap.set(step.name, {
+      metricsData.stepMap[step.name] = {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at)),
         memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
-      });
+      };
     }
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
@@ -117990,5 +117990,5 @@ async function index() {
 }
 await index();
 
-//# debugId=2DDF3938D27F513464756E2164756E21
+//# debugId=30CDBBA18289771564756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
