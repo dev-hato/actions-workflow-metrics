@@ -2,6 +2,7 @@ import type { z } from "zod";
 import type {
   renderDataSchema,
   renderParamsListSchema,
+  renderParamsSchema,
   metricsInfoListSchema,
   metricsInfoSchema,
 } from "./lib";
@@ -18,9 +19,9 @@ export class Renderer {
 ${metricsID}
 
 ${renderParamsList
-  .flatMap((p) => [
+  .flatMap((p: z.TypeOf<typeof renderParamsSchema>): string[] => [
     `### ${p.title}`,
-    p.data
+    ...p.data
       .filter(
         ({
           metricsInfoList,

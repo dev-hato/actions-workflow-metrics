@@ -22,12 +22,11 @@ export const renderDataSchema = z.object({
     range: z.string().optional(),
   }),
 });
-export const renderParamsListSchema = z.array(
-  z.object({
-    title: z.string(),
-    data: z.array(renderDataSchema),
-  }),
-);
+export const renderParamsSchema = z.object({
+  title: z.string(),
+  data: z.array(renderDataSchema),
+});
+export const renderParamsListSchema = z.array(renderParamsSchema);
 export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
   stepMap: z.map(z.string(), metricsDataSchema),
 });

@@ -27,7 +27,7 @@ describe("Renderer", () => {
         testMetricsID,
       ),
     ).toBe(
-      `## Workflow Metrics\n\n### Metrics ID\n\n${testMetricsID}\n\n### Test\n\n`,
+      `## Workflow Metrics\n\n### Metrics ID\n\n${testMetricsID}\n\n### Test`,
     );
   });
 
