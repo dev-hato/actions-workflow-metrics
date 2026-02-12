@@ -117886,15 +117886,13 @@ async function getMetricsData() {
 }
 function render(metricsData, metricsID) {
   const stepMetricsDataEntries = metricsData.stepMap.entries();
+  console.log(JSON.stringify(stepMetricsDataEntries, null, 2));
   const renderer = new Renderer;
   return renderer.render(renderParamsListSchema.parse([
     generateRenderParamsFromCPULoadPercentages("All", metricsData.cpuLoadPercentages),
     ...stepMetricsDataEntries.filter(([_2, { cpuLoadPercentages }]) => 0 < cpuLoadPercentages.length).map(([n, { cpuLoadPercentages }]) => generateRenderParamsFromCPULoadPercentages(n, cpuLoadPercentages)),
     generateRenderParamsFromMemoryUsageMBs("All", metricsData.memoryUsageMBs),
-    ...stepMetricsDataEntries.filter(([_2, { memoryUsageMBs }]) => {
-      console.log(memoryUsageMBs);
-      return 0 < memoryUsageMBs.length;
-    }).map(([n, { memoryUsageMBs }]) => generateRenderParamsFromMemoryUsageMBs(n, memoryUsageMBs))
+    ...stepMetricsDataEntries.filter(([_2, { memoryUsageMBs }]) => 0 < memoryUsageMBs.length).map(([n, { memoryUsageMBs }]) => generateRenderParamsFromMemoryUsageMBs(n, memoryUsageMBs))
   ]), metricsID);
 }
 
@@ -117973,5 +117971,5 @@ async function index() {
 }
 await index();
 
-//# debugId=46F1AF332DC2382064756E2164756E21
+//# debugId=FE31C57A9FB2E13E64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
