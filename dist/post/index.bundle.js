@@ -117747,24 +117747,23 @@ class Renderer {
 
 ${metricsID}
 
-${renderParamsList.flatMap((p) => [
-      `### ${p.title}`,
-      ...p.data.filter(({
-        metricsInfoList
-      }) => metricsInfoList.length > 0).map((d) => {
-        const colors = d.metricsInfoList.map(({ color }) => color);
-        const stackedDatum = d.metricsInfoList.toReversed().reduce((prev, { data }, i) => {
-          prev.push(data.map((d2, j) => d2 + prev[i][j]));
-          return prev;
-        }, [d.metricsInfoList[0].data.map(() => 0)]).slice(1).toReversed();
-        return `#### ${d.stepName === undefined ? "All" : `Step \`${d.stepName}\``}
+${renderParamsList.flatMap((p) => {
+      const colors = p.legends.map(({ color }) => color);
+      return [
+        `### ${p.title}
 
-##### Legends
+#### Legends
 
-${d.metricsInfoList.map((i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`).join(`
-`)}
-
-##### Chart
+${p.legends.map((l) => `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`).join(`
+`)}`,
+        ...p.data.filter(({
+          metricsInfoList
+        }) => metricsInfoList.length > 0).map((d) => {
+          const stackedDatum = d.metricsInfoList.toReversed().reduce((prev, data, i) => {
+            prev.push(data.map((d2, j) => d2 + prev[i][j]));
+            return prev;
+          }, [d.metricsInfoList[0].map(() => 0)]).slice(1).toReversed();
+          return `#### ${d.stepName === undefined ? "All" : `Step \`${d.stepName}\``}
 
 \`\`\`mermaid
 %%{
@@ -117783,8 +117782,9 @@ y-axis "${d.yAxis.title}"${d.yAxis.range ? ` ${d.yAxis.range}` : ""}
 ${stackedDatum.map((d2) => `bar ${JSON.stringify(d2)}`).join(`
 `)}
 \`\`\``;
-      })
-    ]).join(`
+        })
+      ];
+    }).join(`
 
 `)}`;
   }
@@ -117810,12 +117810,7 @@ var metricsDataSchema = exports_external.object({
 var serverPort = 7777;
 
 // src/post/lib.ts
-var metricsInfoSchema = exports_external.object({
-  color: exports_external.string(),
-  name: exports_external.string(),
-  data: exports_external.array(exports_external.number())
-});
-var metricsInfoListSchema = exports_external.array(metricsInfoSchema);
+var metricsInfoListSchema = exports_external.array(exports_external.array(exports_external.number()));
 var renderDataSchema = exports_external.object({
   stepName: exports_external.string().optional(),
   metricsInfoList: metricsInfoListSchema,
@@ -117825,8 +117820,13 @@ var renderDataSchema = exports_external.object({
     range: exports_external.string().optional()
   })
 });
+var metricsInfoSchema = exports_external.object({
+  color: exports_external.string(),
+  name: exports_external.string()
+});
 var renderParamsSchema = exports_external.object({
   title: exports_external.string(),
+  legends: exports_external.array(metricsInfoSchema),
   data: exports_external.array(renderDataSchema)
 });
 var renderParamsListSchema = exports_external.array(renderParamsSchema);
@@ -117854,6 +117854,16 @@ function render(metricsData, metricsID) {
   return renderer.render(renderParamsListSchema.parse([
     {
       title: "CPU Loads",
+      legends: [
+        {
+          color: "Orange",
+          name: "System"
+        },
+        {
+          color: "Red",
+          name: "User"
+        }
+      ],
       data: [
         [undefined, metricsData.cpuLoadPercentages],
         ...stepMetricsDataEntries.map(([stepName, { cpuLoadPercentages }]) => [
@@ -117863,16 +117873,8 @@ function render(metricsData, metricsID) {
       ].filter(([_2, c]) => 0 < c.length).map(([stepName, c]) => ({
         stepName,
         metricsInfoList: [
-          {
-            color: "Orange",
-            name: "System",
-            data: c.map(({ system }) => system)
-          },
-          {
-            color: "Red",
-            name: "User",
-            data: c.map(({ user }) => user)
-          }
+          c.map(({ system }) => system),
+          c.map(({ user }) => user)
         ],
         times: c.map(({ unixTimeMs }) => new Date(unixTimeMs)),
         yAxis: {
@@ -117883,6 +117885,16 @@ function render(metricsData, metricsID) {
     },
     {
       title: "Memory Usages",
+      legends: [
+        {
+          color: "Green",
+          name: "Free"
+        },
+        {
+          color: "Blue",
+          name: "Used"
+        }
+      ],
       data: [
         [undefined, metricsData.memoryUsageMBs],
         ...stepMetricsDataEntries.map(([stepName, { memoryUsageMBs }]) => [
@@ -117892,16 +117904,8 @@ function render(metricsData, metricsID) {
       ].filter(([_2, m]) => 0 < m.length).map(([stepName, m]) => ({
         stepName,
         metricsInfoList: [
-          {
-            color: "Green",
-            name: "Free",
-            data: m.map(({ free }) => free)
-          },
-          {
-            color: "Blue",
-            name: "Used",
-            data: m.map(({ used }) => used)
-          }
+          m.map(({ free }) => free),
+          m.map(({ used }) => used)
         ],
         times: m.map(({ unixTimeMs }) => new Date(unixTimeMs)),
         yAxis: {
@@ -117960,7 +117964,7 @@ async function index() {
     }
     const metricsDataWithStepMap = { ...metricsData, stepMap: new Map };
     for (const step of job.steps) {
-      metricsDataWithStepMap.stepMap.set(`${step.name} (No. ${step.number})`, {
+      metricsDataWithStepMap.stepMap.set(step.name, {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at)),
         memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
       });
@@ -117987,5 +117991,5 @@ async function index() {
 }
 await index();
 
-//# debugId=F90F6B7CFE6F265064756E2164756E21
+//# debugId=3DE532FE2BD83BF364756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
