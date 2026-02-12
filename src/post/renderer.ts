@@ -40,7 +40,7 @@ ${p.legends
             metricsInfoList,
           }: {
             metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
-          }): boolean => metricsInfoList.length > 0,
+          }): boolean => 0 < metricsInfoList.length,
         )
         .map((d: z.TypeOf<typeof renderDataSchema>): string => {
           const stackedDatum: number[][] = d.metricsInfoList
