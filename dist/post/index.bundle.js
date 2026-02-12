@@ -117960,7 +117960,7 @@ async function index() {
     }
     const metricsDataWithStepMap = { ...metricsData, stepMap: new Map };
     for (const step of job.steps) {
-      metricsDataWithStepMap.stepMap.set(step.name, {
+      metricsDataWithStepMap.stepMap.set(`${step.name} (No. ${step.number})`, {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at)),
         memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
       });
@@ -117987,5 +117987,5 @@ async function index() {
 }
 await index();
 
-//# debugId=3BD7326CCC8EBF3364756E2164756E21
+//# debugId=F90F6B7CFE6F265064756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
