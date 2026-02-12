@@ -32,65 +32,6 @@ export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
   stepMap: z.map(z.string(), metricsDataSchema),
 });
 
-function generateRenderParamsFromCPULoadPercentages(
-  stepName: string,
-  cpuLoadPercentages: z.TypeOf<typeof cpuLoadPercentagesSchema>,
-): z.TypeOf<typeof renderDataSchema> {
-  return {
-    stepName,
-    metricsInfoList: [
-      {
-        color: "Orange",
-        name: "System",
-        data: cpuLoadPercentages.map(
-          ({ system }: { system: number }): number => system,
-        ),
-      },
-      {
-        color: "Red",
-        name: "User",
-        data: cpuLoadPercentages.map(
-          ({ user }: { user: number }): number => user,
-        ),
-      },
-    ],
-    times: cpuLoadPercentages.map(
-      ({ unixTimeMs }: { unixTimeMs: number }): Date => new Date(unixTimeMs),
-    ),
-    yAxis: {
-      title: "%",
-      range: "0 --> 100",
-    },
-  };
-}
-
-function generateRenderParamsFromMemoryUsageMBs(
-  stepName: string,
-  memoryUsageMBs: z.TypeOf<typeof memoryUsageMBsSchema>,
-): z.TypeOf<typeof renderDataSchema> {
-  return {
-    stepName,
-    metricsInfoList: [
-      {
-        color: "Green",
-        name: "Free",
-        data: memoryUsageMBs.map(({ free }: { free: number }): number => free),
-      },
-      {
-        color: "Blue",
-        name: "Used",
-        data: memoryUsageMBs.map(({ used }: { used: number }): number => used),
-      },
-    ],
-    times: memoryUsageMBs.map(
-      ({ unixTimeMs }: { unixTimeMs: number }): Date => new Date(unixTimeMs),
-    ),
-    yAxis: {
-      title: "MB",
-    },
-  };
-}
-
 export async function getMetricsData(): Promise<
   z.TypeOf<typeof metricsDataSchema>
 > {
@@ -127,52 +68,102 @@ export function render(
     renderParamsListSchema.parse([
       {
         title: "CPU Loads",
-        data: [
-          generateRenderParamsFromCPULoadPercentages(
-            "All",
-            metricsData.cpuLoadPercentages,
-          ),
-          ...stepMetricsDataEntries
-            .filter(
-              ([_, { cpuLoadPercentages }]: [
+        data: [["All", metricsData.cpuLoadPercentages]]
+          .concat(
+            stepMetricsDataEntries.map(
+              ([stepName, { cpuLoadPercentages }]: [
                 string,
                 z.TypeOf<typeof metricsDataSchema>,
-              ]): boolean => 0 < cpuLoadPercentages.length,
-            )
-            .map(
-              ([n, { cpuLoadPercentages }]: [
-                string,
-                z.TypeOf<typeof metricsDataSchema>,
-              ]): z.TypeOf<typeof renderDataSchema> =>
-                generateRenderParamsFromCPULoadPercentages(
-                  n,
-                  cpuLoadPercentages,
-                ),
+              ]): [string, z.TypeOf<typeof cpuLoadPercentagesSchema>] => [
+                stepName,
+                cpuLoadPercentages,
+              ],
             ),
-        ],
+          )
+          .filter(
+            ([_, c]: [
+              string,
+              z.TypeOf<typeof cpuLoadPercentagesSchema>,
+            ]): boolean => 0 < c.length,
+          )
+          .map(
+            ([stepName, c]: [
+              string,
+              z.TypeOf<typeof cpuLoadPercentagesSchema>,
+            ]): z.TypeOf<typeof renderDataSchema> => ({
+              stepName,
+              metricsInfoList: [
+                {
+                  color: "Orange",
+                  name: "System",
+                  data: c.map(
+                    ({ system }: { system: number }): number => system,
+                  ),
+                },
+                {
+                  color: "Red",
+                  name: "User",
+                  data: c.map(({ user }: { user: number }): number => user),
+                },
+              ],
+              times: c.map(
+                ({ unixTimeMs }: { unixTimeMs: number }): Date =>
+                  new Date(unixTimeMs),
+              ),
+              yAxis: {
+                title: "%",
+                range: "0 --> 100",
+              },
+            }),
+          ),
       },
       {
         title: "Memory Usages",
-        data: [
-          generateRenderParamsFromMemoryUsageMBs(
-            "All",
-            metricsData.memoryUsageMBs,
-          ),
-          ...stepMetricsDataEntries
-            .filter(
-              ([_, { memoryUsageMBs }]: [
+        data: [["All", metricsData.memoryUsageMBs]]
+          .concat(
+            stepMetricsDataEntries.map(
+              ([stepName, { memoryUsageMBs }]: [
                 string,
                 z.TypeOf<typeof metricsDataSchema>,
-              ]): boolean => 0 < memoryUsageMBs.length,
-            )
-            .map(
-              ([n, { memoryUsageMBs }]: [
-                string,
-                z.TypeOf<typeof metricsDataSchema>,
-              ]): z.TypeOf<typeof renderDataSchema> =>
-                generateRenderParamsFromMemoryUsageMBs(n, memoryUsageMBs),
+              ]): [string, z.TypeOf<typeof memoryUsageMBsSchema>] => [
+                stepName,
+                memoryUsageMBs,
+              ],
             ),
-        ],
+          )
+          .filter(
+            ([_, m]: [
+              string,
+              z.TypeOf<typeof memoryUsageMBsSchema>,
+            ]): boolean => 0 < m.length,
+          )
+          .map(
+            ([stepName, m]: [
+              string,
+              z.TypeOf<typeof memoryUsageMBsSchema>,
+            ]): z.TypeOf<typeof renderDataSchema> => ({
+              stepName,
+              metricsInfoList: [
+                {
+                  color: "Green",
+                  name: "Free",
+                  data: m.map(({ free }: { free: number }): number => free),
+                },
+                {
+                  color: "Blue",
+                  name: "Used",
+                  data: m.map(({ used }: { used: number }): number => used),
+                },
+              ],
+              times: m.map(
+                ({ unixTimeMs }: { unixTimeMs: number }): Date =>
+                  new Date(unixTimeMs),
+              ),
+              yAxis: {
+                title: "MB",
+              },
+            }),
+          ),
       },
     ]),
     metricsID,
