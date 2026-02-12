@@ -60,7 +60,7 @@ async function index(): Promise<void> {
       (j) =>
         j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME,
     )?.steps ?? []) {
-      metricsData.stepMap.set(step.name, {
+      metricsData.stepMap[step.name] = {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(
           ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
             filterMetrics(unixTimeMs, step.started_at, step.completed_at),
@@ -69,7 +69,7 @@ async function index(): Promise<void> {
           ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
             filterMetrics(unixTimeMs, step.started_at, step.completed_at),
         ),
-      });
+      };
     }
 
     const fileBaseName: string = "workflow_metrics";

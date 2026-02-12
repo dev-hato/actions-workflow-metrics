@@ -28,7 +28,7 @@ export const renderParamsSchema = z.object({
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
 export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
-  stepMap: z.map(z.string(), metricsDataSchema),
+  stepMap: z.record(z.string(), metricsDataSchema),
 });
 
 export async function getMetricsData(): Promise<
@@ -50,7 +50,7 @@ export async function getMetricsData(): Promise<
       );
     }
 
-    return { ...metricsDataSchema.parse(await res.json()), stepMap: new Map() };
+    return { ...metricsDataSchema.parse(await res.json()), stepMap: {} };
   } finally {
     clearTimeout(timer);
   }
@@ -61,7 +61,7 @@ export function render(
   metricsID: string,
 ): string {
   const stepMetricsDataEntries: [string, z.TypeOf<typeof metricsDataSchema>][] =
-    Array.from(metricsData.stepMap.entries());
+    Object.entries(metricsData.stepMap);
   const renderer: Renderer = new Renderer();
   return renderer.render(
     renderParamsListSchema.parse([

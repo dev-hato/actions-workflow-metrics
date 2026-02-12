@@ -43,21 +43,18 @@ describe("render", () => {
     const result: string = render(
       {
         ...sampleMetricsData,
-        stepMap: new Map([
-          [
-            "Build",
-            {
-              cpuLoadPercentages: [
-                { unixTimeMs: 1704067200000, user: 40.0, system: 20.0 },
-                { unixTimeMs: 1704067205000, user: 45.0, system: 22.0 },
-              ],
-              memoryUsageMBs: [
-                { unixTimeMs: 1704067200000, used: 6000, free: 6192 },
-                { unixTimeMs: 1704067205000, used: 6200, free: 6000 },
-              ],
-            },
-          ],
-        ]),
+        stepMap: {
+          Build: {
+            cpuLoadPercentages: [
+              { unixTimeMs: 1704067200000, user: 40.0, system: 20.0 },
+              { unixTimeMs: 1704067205000, user: 45.0, system: 22.0 },
+            ],
+            memoryUsageMBs: [
+              { unixTimeMs: 1704067200000, used: 6000, free: 6192 },
+              { unixTimeMs: 1704067205000, used: 6200, free: 6000 },
+            ],
+          },
+        },
       },
       testMetricsID,
     );
@@ -78,7 +75,7 @@ describe("render", () => {
     const result: string = render(
       {
         ...sampleMetricsData,
-        stepMap: new Map(),
+        stepMap: {},
       },
       testMetricsID,
     );
@@ -92,7 +89,7 @@ describe("render", () => {
     const metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema> = {
       cpuLoadPercentages: [],
       memoryUsageMBs: [],
-      stepMap: new Map(),
+      stepMap: {},
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -111,7 +108,7 @@ describe("render", () => {
         { unixTimeMs: 1704067200000, used: 4000, free: 8000 },
         { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
       ],
-      stepMap: new Map(),
+      stepMap: {},
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -127,7 +124,7 @@ describe("render", () => {
         { unixTimeMs: 1704067200000, used: 5000, free: 10000 },
         { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
       ],
-      stepMap: new Map(),
+      stepMap: {},
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -145,7 +142,7 @@ describe("getMetricsData", () => {
 
     const result = await getMetricsData();
 
-    expect(result).toEqual({ ...sampleMetricsData, stepMap: new Map() });
+    expect(result).toEqual({ ...sampleMetricsData, stepMap: {} });
   });
 
   it("should throw error for invalid metrics data", async () => {
