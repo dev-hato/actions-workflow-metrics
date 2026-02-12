@@ -101,7 +101,7 @@ async function index(): Promise<void> {
     > = { ...metricsData, stepMap: new Map() };
 
     for (const step of job.steps) {
-      metricsDataWithStepMap.stepMap.set(step.name, {
+      metricsDataWithStepMap.stepMap.set(`${step.name} (No. ${step.number})`, {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(
           ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
             filterMetrics(unixTimeMs, step.started_at, step.completed_at),
