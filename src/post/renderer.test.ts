@@ -12,6 +12,7 @@ describe("Renderer", () => {
         [
           {
             title: "Test",
+            legends: [],
             data: [
               {
                 stepName: undefined,
@@ -27,7 +28,7 @@ describe("Renderer", () => {
         testMetricsID,
       ),
     ).toBe(
-      `## Workflow Metrics\n\n### Metrics ID\n\n${testMetricsID}\n\n### Test`,
+      `## Workflow Metrics\n\n### Metrics ID\n\n${testMetricsID}\n\n### Test\n\n#### Legends\n\n`,
     );
   });
 
@@ -37,13 +38,12 @@ describe("Renderer", () => {
       [
         {
           title: "CPU Usage",
+          legends: [{ color: "Red", name: "User CPU" }],
           data: [
             {
               stepName: undefined,
               metricsInfoList: [
                 {
-                  color: "Red",
-                  name: "User CPU",
                   data: [10, 20, 30],
                 },
               ],
@@ -81,7 +81,7 @@ describe("Renderer", () => {
     expect(result).toContain("bar");
 
     // Verify legend is included
-    expect(result).toContain("##### Legends");
+    expect(result).toContain("#### Legends");
     expect(result).toContain("Red: User CPU");
   });
 
@@ -91,18 +91,18 @@ describe("Renderer", () => {
       [
         {
           title: "System Metrics",
+          legends: [
+            { color: "Red", name: "User CPU" },
+            { color: "Orange", name: "System CPU" },
+          ],
           data: [
             {
               stepName: undefined,
               metricsInfoList: [
                 {
-                  color: "Red",
-                  name: "User CPU",
                   data: [10, 20, 30],
                 },
                 {
-                  color: "Orange",
-                  name: "System CPU",
                   data: [5, 10, 15],
                 },
               ],
@@ -156,13 +156,12 @@ describe("Renderer", () => {
       [
         {
           title: "Memory Usage",
+          legends: [{ color: "Blue", name: "Used Memory" }],
           data: [
             {
               stepName: undefined,
               metricsInfoList: [
                 {
-                  color: "Blue",
-                  name: "Used Memory",
                   data: [100, 200, 300],
                 },
               ],
@@ -198,23 +197,22 @@ describe("Renderer", () => {
       [
         {
           title: "Test",
+          legends: [
+            { color: "Red", name: "Metric 1" },
+            { color: "Blue", name: "Metric 2" },
+            { color: "Green", name: "Metric 3" },
+          ],
           data: [
             {
               stepName: undefined,
               metricsInfoList: [
                 {
-                  color: "Red",
-                  name: "Metric 1",
                   data: [1],
                 },
                 {
-                  color: "Blue",
-                  name: "Metric 2",
                   data: [2],
                 },
                 {
-                  color: "Green",
-                  name: "Metric 3",
                   data: [3],
                 },
               ],
@@ -255,18 +253,18 @@ describe("Renderer", () => {
       [
         {
           title: "Stacked Test",
+          legends: [
+            { color: "Red", name: "Base Metric" },
+            { color: "Blue", name: "Stacked Metric" },
+          ],
           data: [
             {
               stepName: undefined,
               metricsInfoList: [
                 {
-                  color: "Red",
-                  name: "Base Metric",
                   data: [10, 20, 30],
                 },
                 {
-                  color: "Blue",
-                  name: "Stacked Metric",
                   data: [5, 10, 15],
                 },
               ],
@@ -307,23 +305,22 @@ describe("Renderer", () => {
       [
         {
           title: "Multi-layer Stack",
+          legends: [
+            { color: "Red", name: "Layer 1" },
+            { color: "Orange", name: "Layer 2" },
+            { color: "Yellow", name: "Layer 3" },
+          ],
           data: [
             {
               stepName: undefined,
               metricsInfoList: [
                 {
-                  color: "Red",
-                  name: "Layer 1",
                   data: [10, 20],
                 },
                 {
-                  color: "Orange",
-                  name: "Layer 2",
                   data: [5, 10],
                 },
                 {
-                  color: "Yellow",
-                  name: "Layer 3",
                   data: [3, 6],
                 },
               ],
@@ -378,13 +375,12 @@ describe("Renderer", () => {
       [
         {
           title: "Time Format Test",
+          legends: [{ color: "Blue", name: "Test Metric" }],
           data: [
             {
               stepName: undefined,
               metricsInfoList: [
                 {
-                  color: "Blue",
-                  name: "Test Metric",
                   data: [10, 20, 30],
                 },
               ],
@@ -418,13 +414,12 @@ describe("Renderer", () => {
       [
         {
           title: "Structure Test",
+          legends: [{ color: "Green", name: "Test" }],
           data: [
             {
               stepName: undefined,
               metricsInfoList: [
                 {
-                  color: "Green",
-                  name: "Test",
                   data: [100],
                 },
               ],
@@ -454,7 +449,7 @@ describe("Renderer", () => {
     expect(result).toContain("xychart");
 
     // Verify legends section is included
-    expect(result).toContain("##### Legends");
+    expect(result).toContain("#### Legends");
 
     // Verify LaTeX format legend is included
     expect(result).toContain("$$");
@@ -468,13 +463,12 @@ describe("Renderer", () => {
       [
         {
           title: "Single Point",
+          legends: [{ color: "Purple", name: "Single Metric" }],
           data: [
             {
               stepName: undefined,
               metricsInfoList: [
                 {
-                  color: "Purple",
-                  name: "Single Metric",
                   data: [42],
                 },
               ],

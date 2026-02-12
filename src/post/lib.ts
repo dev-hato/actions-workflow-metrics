@@ -7,12 +7,11 @@ import {
   serverPort,
 } from "../lib";
 
-export const metricsInfoSchema = z.object({
-  color: z.string(),
-  name: z.string(),
-  data: z.array(z.number()),
-});
-export const metricsInfoListSchema = z.array(metricsInfoSchema);
+export const metricsInfoListSchema = z.array(
+  z.object({
+    data: z.array(z.number()),
+  }),
+);
 export const renderDataSchema = z.object({
   stepName: z.string().optional(),
   metricsInfoList: metricsInfoListSchema,
@@ -22,8 +21,13 @@ export const renderDataSchema = z.object({
     range: z.string().optional(),
   }),
 });
+export const metricsInfoSchema = z.object({
+  color: z.string(),
+  name: z.string(),
+});
 export const renderParamsSchema = z.object({
   title: z.string(),
+  legends: z.array(metricsInfoSchema),
   data: z.array(renderDataSchema),
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
@@ -67,6 +71,16 @@ export function render(
     renderParamsListSchema.parse([
       {
         title: "CPU Loads",
+        legends: [
+          {
+            color: "Orange",
+            name: "System",
+          },
+          {
+            color: "Red",
+            name: "User",
+          },
+        ],
         data: [
           [undefined, metricsData.cpuLoadPercentages],
           ...stepMetricsDataEntries.map(
@@ -93,15 +107,11 @@ export function render(
               stepName,
               metricsInfoList: [
                 {
-                  color: "Orange",
-                  name: "System",
                   data: c.map(
                     ({ system }: { system: number }): number => system,
                   ),
                 },
                 {
-                  color: "Red",
-                  name: "User",
                   data: c.map(({ user }: { user: number }): number => user),
                 },
               ],
@@ -118,6 +128,16 @@ export function render(
       },
       {
         title: "Memory Usages",
+        legends: [
+          {
+            color: "Green",
+            name: "Free",
+          },
+          {
+            color: "Blue",
+            name: "Used",
+          },
+        ],
         data: [
           [undefined, metricsData.memoryUsageMBs],
           ...stepMetricsDataEntries.map(
@@ -144,13 +164,9 @@ export function render(
               stepName,
               metricsInfoList: [
                 {
-                  color: "Green",
-                  name: "Free",
                   data: m.map(({ free }: { free: number }): number => free),
                 },
                 {
-                  color: "Blue",
-                  name: "Used",
                   data: m.map(({ used }: { used: number }): number => used),
                 },
               ],
