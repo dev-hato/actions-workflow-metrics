@@ -117885,7 +117885,7 @@ async function getMetricsData() {
   }
 }
 function render(metricsData, metricsID) {
-  const stepMetricsDataEntries = metricsData.stepMap.entries();
+  const stepMetricsDataEntries = Array.from(metricsData.stepMap.entries());
   console.log(JSON.stringify(metricsData, null, 2));
   console.log(JSON.stringify(stepMetricsDataEntries, null, 2));
   const renderer = new Renderer;
@@ -117974,5 +117974,5 @@ async function index() {
 }
 await index();
 
-//# debugId=592F9E96388FAB7F64756E2164756E21
+//# debugId=EEFB8C8A979842BE64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
