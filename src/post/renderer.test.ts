@@ -12,16 +12,23 @@ describe("Renderer", () => {
         [
           {
             title: "Test",
-            metricsInfoList: [],
-            times: [],
-            yAxis: {
-              title: "Units",
-            },
+            data: [
+              {
+                stepName: "All",
+                metricsInfoList: [],
+                times: [],
+                yAxis: {
+                  title: "Units",
+                },
+              },
+            ],
           },
         ],
         testMetricsID,
       ),
-    ).toBe(`## Workflow Metrics\n\n### Metrics ID\n\n${testMetricsID}\n\n`);
+    ).toBe(
+      `## Workflow Metrics\n\n### Metrics ID\n\n${testMetricsID}\n\n### Test\n\n`,
+    );
   });
 
   it("should render with single metric", () => {
@@ -30,18 +37,23 @@ describe("Renderer", () => {
       [
         {
           title: "CPU Usage",
-          metricsInfoList: [
+          data: [
             {
-              color: "Red",
-              name: "User CPU",
-              data: [10, 20, 30],
+              stepName: "All",
+              metricsInfoList: [
+                {
+                  color: "Red",
+                  name: "User CPU",
+                  data: [10, 20, 30],
+                },
+              ],
+              times: [new Date("2024-01-01T00:00:00Z")],
+              yAxis: {
+                title: "Percentage",
+                range: "0 --> 100",
+              },
             },
           ],
-          times: [new Date("2024-01-01T00:00:00Z")],
-          yAxis: {
-            title: "Percentage",
-            range: "0 --> 100",
-          },
         },
       ],
       testMetricsID,
@@ -50,8 +62,9 @@ describe("Renderer", () => {
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
 
-    // Verify title is included
+    // Verify section title and step name
     expect(result).toContain("### CPU Usage");
+    expect(result).toContain("#### All");
 
     // Verify Mermaid block is included
     expect(result).toContain("```mermaid");
@@ -68,7 +81,7 @@ describe("Renderer", () => {
     expect(result).toContain("bar");
 
     // Verify legend is included
-    expect(result).toContain("#### Legends");
+    expect(result).toContain("##### Legends");
     expect(result).toContain("Red: User CPU");
   });
 
@@ -78,27 +91,32 @@ describe("Renderer", () => {
       [
         {
           title: "System Metrics",
-          metricsInfoList: [
+          data: [
             {
-              color: "Red",
-              name: "User CPU",
-              data: [10, 20, 30],
-            },
-            {
-              color: "Orange",
-              name: "System CPU",
-              data: [5, 10, 15],
+              stepName: "All",
+              metricsInfoList: [
+                {
+                  color: "Red",
+                  name: "User CPU",
+                  data: [10, 20, 30],
+                },
+                {
+                  color: "Orange",
+                  name: "System CPU",
+                  data: [5, 10, 15],
+                },
+              ],
+              times: [
+                new Date("2024-01-01T00:00:00Z"),
+                new Date("2024-01-01T00:00:05Z"),
+                new Date("2024-01-01T00:00:10Z"),
+              ],
+              yAxis: {
+                title: "%",
+                range: "0 --> 100",
+              },
             },
           ],
-          times: [
-            new Date("2024-01-01T00:00:00Z"),
-            new Date("2024-01-01T00:00:05Z"),
-            new Date("2024-01-01T00:00:10Z"),
-          ],
-          yAxis: {
-            title: "%",
-            range: "0 --> 100",
-          },
         },
       ],
       testMetricsID,
@@ -107,8 +125,9 @@ describe("Renderer", () => {
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
 
-    // Verify title is included
+    // Verify section title and step name
     expect(result).toContain("### System Metrics");
+    expect(result).toContain("#### All");
 
     // Verify multiple colors are set in color palette
     expect(result).toContain('"plotColorPalette": "Red, Orange"');
@@ -137,17 +156,22 @@ describe("Renderer", () => {
       [
         {
           title: "Memory Usage",
-          metricsInfoList: [
+          data: [
             {
-              color: "Blue",
-              name: "Used Memory",
-              data: [100, 200, 300],
+              stepName: "All",
+              metricsInfoList: [
+                {
+                  color: "Blue",
+                  name: "Used Memory",
+                  data: [100, 200, 300],
+                },
+              ],
+              times: [new Date()],
+              yAxis: {
+                title: "MB",
+              },
             },
           ],
-          times: [new Date()],
-          yAxis: {
-            title: "MB",
-          },
         },
       ],
       testMetricsID,
@@ -156,8 +180,9 @@ describe("Renderer", () => {
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
 
-    // Verify title is included
+    // Verify section title and step name
     expect(result).toContain("### Memory Usage");
+    expect(result).toContain("#### All");
 
     // Verify y-axis includes only title, not range
     expect(result).toContain('y-axis "MB"');
@@ -173,27 +198,32 @@ describe("Renderer", () => {
       [
         {
           title: "Test",
-          metricsInfoList: [
+          data: [
             {
-              color: "Red",
-              name: "Metric 1",
-              data: [1],
-            },
-            {
-              color: "Blue",
-              name: "Metric 2",
-              data: [2],
-            },
-            {
-              color: "Green",
-              name: "Metric 3",
-              data: [3],
+              stepName: "All",
+              metricsInfoList: [
+                {
+                  color: "Red",
+                  name: "Metric 1",
+                  data: [1],
+                },
+                {
+                  color: "Blue",
+                  name: "Metric 2",
+                  data: [2],
+                },
+                {
+                  color: "Green",
+                  name: "Metric 3",
+                  data: [3],
+                },
+              ],
+              times: [new Date()],
+              yAxis: {
+                title: "Units",
+              },
             },
           ],
-          times: [new Date()],
-          yAxis: {
-            title: "Units",
-          },
         },
       ],
       testMetricsID,
@@ -225,26 +255,31 @@ describe("Renderer", () => {
       [
         {
           title: "Stacked Test",
-          metricsInfoList: [
+          data: [
             {
-              color: "Red",
-              name: "Base Metric",
-              data: [10, 20, 30],
-            },
-            {
-              color: "Blue",
-              name: "Stacked Metric",
-              data: [5, 10, 15],
+              stepName: "All",
+              metricsInfoList: [
+                {
+                  color: "Red",
+                  name: "Base Metric",
+                  data: [10, 20, 30],
+                },
+                {
+                  color: "Blue",
+                  name: "Stacked Metric",
+                  data: [5, 10, 15],
+                },
+              ],
+              times: [
+                new Date("2024-01-01T00:00:00Z"),
+                new Date("2024-01-01T00:00:05Z"),
+                new Date("2024-01-01T00:00:10Z"),
+              ],
+              yAxis: {
+                title: "Value",
+              },
             },
           ],
-          times: [
-            new Date("2024-01-01T00:00:00Z"),
-            new Date("2024-01-01T00:00:05Z"),
-            new Date("2024-01-01T00:00:10Z"),
-          ],
-          yAxis: {
-            title: "Value",
-          },
         },
       ],
       testMetricsID,
@@ -272,30 +307,35 @@ describe("Renderer", () => {
       [
         {
           title: "Multi-layer Stack",
-          metricsInfoList: [
+          data: [
             {
-              color: "Red",
-              name: "Layer 1",
-              data: [10, 20],
-            },
-            {
-              color: "Orange",
-              name: "Layer 2",
-              data: [5, 10],
-            },
-            {
-              color: "Yellow",
-              name: "Layer 3",
-              data: [3, 6],
+              stepName: "All",
+              metricsInfoList: [
+                {
+                  color: "Red",
+                  name: "Layer 1",
+                  data: [10, 20],
+                },
+                {
+                  color: "Orange",
+                  name: "Layer 2",
+                  data: [5, 10],
+                },
+                {
+                  color: "Yellow",
+                  name: "Layer 3",
+                  data: [3, 6],
+                },
+              ],
+              times: [
+                new Date("2024-01-01T00:00:00Z"),
+                new Date("2024-01-01T00:00:05Z"),
+              ],
+              yAxis: {
+                title: "Units",
+              },
             },
           ],
-          times: [
-            new Date("2024-01-01T00:00:00Z"),
-            new Date("2024-01-01T00:00:05Z"),
-          ],
-          yAxis: {
-            title: "Units",
-          },
         },
       ],
       testMetricsID,
@@ -338,21 +378,26 @@ describe("Renderer", () => {
       [
         {
           title: "Time Format Test",
-          metricsInfoList: [
+          data: [
             {
-              color: "Blue",
-              name: "Test Metric",
-              data: [10, 20, 30],
+              stepName: "All",
+              metricsInfoList: [
+                {
+                  color: "Blue",
+                  name: "Test Metric",
+                  data: [10, 20, 30],
+                },
+              ],
+              times: [
+                new Date("2024-01-01T09:15:30Z"),
+                new Date("2024-01-01T14:30:45Z"),
+                new Date("2024-01-01T23:59:59Z"),
+              ],
+              yAxis: {
+                title: "Value",
+              },
             },
           ],
-          times: [
-            new Date("2024-01-01T09:15:30Z"),
-            new Date("2024-01-01T14:30:45Z"),
-            new Date("2024-01-01T23:59:59Z"),
-          ],
-          yAxis: {
-            title: "Value",
-          },
         },
       ],
       testMetricsID,
@@ -373,18 +418,23 @@ describe("Renderer", () => {
       [
         {
           title: "Structure Test",
-          metricsInfoList: [
+          data: [
             {
-              color: "Green",
-              name: "Test",
-              data: [100],
+              stepName: "All",
+              metricsInfoList: [
+                {
+                  color: "Green",
+                  name: "Test",
+                  data: [100],
+                },
+              ],
+              times: [new Date()],
+              yAxis: {
+                title: "Units",
+                range: "0 --> 200",
+              },
             },
           ],
-          times: [new Date()],
-          yAxis: {
-            title: "Units",
-            range: "0 --> 200",
-          },
         },
       ],
       testMetricsID,
@@ -404,7 +454,7 @@ describe("Renderer", () => {
     expect(result).toContain("xychart");
 
     // Verify legends section is included
-    expect(result).toContain("#### Legends");
+    expect(result).toContain("##### Legends");
 
     // Verify LaTeX format legend is included
     expect(result).toContain("$$");
@@ -418,17 +468,22 @@ describe("Renderer", () => {
       [
         {
           title: "Single Point",
-          metricsInfoList: [
+          data: [
             {
-              color: "Purple",
-              name: "Single Metric",
-              data: [42],
+              stepName: "All",
+              metricsInfoList: [
+                {
+                  color: "Purple",
+                  name: "Single Metric",
+                  data: [42],
+                },
+              ],
+              times: [new Date("2024-01-01T12:00:00Z")],
+              yAxis: {
+                title: "Value",
+              },
             },
           ],
-          times: [new Date("2024-01-01T12:00:00Z")],
-          yAxis: {
-            title: "Value",
-          },
         },
       ],
       testMetricsID,
@@ -436,6 +491,7 @@ describe("Renderer", () => {
 
     expect(result).toBeTruthy();
     expect(result).toContain("### Single Point");
+    expect(result).toContain("#### All");
     expect(result).toContain("bar [42]");
     expect(result).toContain("12:00:00");
     expect(result).toContain("Purple: Single Metric");

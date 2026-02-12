@@ -13,8 +13,8 @@ export const metricsInfoSchema = z.object({
   data: z.array(z.number()),
 });
 export const metricsInfoListSchema = z.array(metricsInfoSchema);
-export const renderParamsSchema = z.object({
-  title: z.string(),
+export const renderDataSchema = z.object({
+  stepName: z.string(),
   metricsInfoList: metricsInfoListSchema,
   times: z.array(z.coerce.date()),
   yAxis: z.object({
@@ -22,7 +22,12 @@ export const renderParamsSchema = z.object({
     range: z.string().optional(),
   }),
 });
-export const renderParamsListSchema = z.array(renderParamsSchema);
+export const renderParamsListSchema = z.array(
+  z.object({
+    title: z.string(),
+    data: z.array(renderDataSchema),
+  }),
+);
 export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
   stepMap: z.map(z.string(), metricsDataSchema),
 });
@@ -30,9 +35,9 @@ export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
 function generateRenderParamsFromCPULoadPercentages(
   stepName: string,
   cpuLoadPercentages: z.TypeOf<typeof cpuLoadPercentagesSchema>,
-): z.TypeOf<typeof renderParamsSchema> {
+): z.TypeOf<typeof renderDataSchema> {
   return {
-    title: `CPU Loads (${stepName})`,
+    stepName,
     metricsInfoList: [
       {
         color: "Orange",
@@ -62,9 +67,9 @@ function generateRenderParamsFromCPULoadPercentages(
 function generateRenderParamsFromMemoryUsageMBs(
   stepName: string,
   memoryUsageMBs: z.TypeOf<typeof memoryUsageMBsSchema>,
-): z.TypeOf<typeof renderParamsSchema> {
+): z.TypeOf<typeof renderDataSchema> {
   return {
-    title: `Memory Usages (${stepName})`,
+    stepName,
     metricsInfoList: [
       {
         color: "Green",
@@ -120,39 +125,55 @@ export function render(
   const renderer: Renderer = new Renderer();
   return renderer.render(
     renderParamsListSchema.parse([
-      generateRenderParamsFromCPULoadPercentages(
-        "All",
-        metricsData.cpuLoadPercentages,
-      ),
-      ...stepMetricsDataEntries
-        .filter(
-          ([_, { cpuLoadPercentages }]: [
-            string,
-            z.TypeOf<typeof metricsDataSchema>,
-          ]): boolean => 0 < cpuLoadPercentages.length,
-        )
-        .map(
-          ([n, { cpuLoadPercentages }]: [
-            string,
-            z.TypeOf<typeof metricsDataSchema>,
-          ]): z.TypeOf<typeof renderParamsSchema> =>
-            generateRenderParamsFromCPULoadPercentages(n, cpuLoadPercentages),
-        ),
-      generateRenderParamsFromMemoryUsageMBs("All", metricsData.memoryUsageMBs),
-      ...stepMetricsDataEntries
-        .filter(
-          ([_, { memoryUsageMBs }]: [
-            string,
-            z.TypeOf<typeof metricsDataSchema>,
-          ]): boolean => 0 < memoryUsageMBs.length,
-        )
-        .map(
-          ([n, { memoryUsageMBs }]: [
-            string,
-            z.TypeOf<typeof metricsDataSchema>,
-          ]): z.TypeOf<typeof renderParamsSchema> =>
-            generateRenderParamsFromMemoryUsageMBs(n, memoryUsageMBs),
-        ),
+      {
+        title: "CPU Loads",
+        data: [
+          generateRenderParamsFromCPULoadPercentages(
+            "All",
+            metricsData.cpuLoadPercentages,
+          ),
+          ...stepMetricsDataEntries
+            .filter(
+              ([_, { cpuLoadPercentages }]: [
+                string,
+                z.TypeOf<typeof metricsDataSchema>,
+              ]): boolean => 0 < cpuLoadPercentages.length,
+            )
+            .map(
+              ([n, { cpuLoadPercentages }]: [
+                string,
+                z.TypeOf<typeof metricsDataSchema>,
+              ]): z.TypeOf<typeof renderDataSchema> =>
+                generateRenderParamsFromCPULoadPercentages(
+                  n,
+                  cpuLoadPercentages,
+                ),
+            ),
+        ],
+      },
+      {
+        title: "Memory Usages",
+        data: [
+          generateRenderParamsFromMemoryUsageMBs(
+            "All",
+            metricsData.memoryUsageMBs,
+          ),
+          ...stepMetricsDataEntries
+            .filter(
+              ([_, { memoryUsageMBs }]: [
+                string,
+                z.TypeOf<typeof metricsDataSchema>,
+              ]): boolean => 0 < memoryUsageMBs.length,
+            )
+            .map(
+              ([n, { memoryUsageMBs }]: [
+                string,
+                z.TypeOf<typeof metricsDataSchema>,
+              ]): z.TypeOf<typeof renderDataSchema> =>
+                generateRenderParamsFromMemoryUsageMBs(n, memoryUsageMBs),
+            ),
+        ],
+      },
     ]),
     metricsID,
   );

@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import type {
+  renderDataSchema,
   renderParamsListSchema,
-  renderParamsSchema,
   metricsInfoListSchema,
   metricsInfoSchema,
 } from "./lib";
@@ -18,44 +18,49 @@ export class Renderer {
 ${metricsID}
 
 ${renderParamsList
-  .filter(
-    ({
-      metricsInfoList,
-    }: {
-      metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
-    }): boolean => metricsInfoList.length > 0,
-  )
-  .map((p: z.TypeOf<typeof renderParamsSchema>): string => {
-    const colors: string[] = p.metricsInfoList.map(
-      ({ color }: { color: string }): string => color,
-    );
-    const stackedDatum: number[][] = p.metricsInfoList
-      .toReversed()
-      .reduce(
-        (
-          prev: number[][],
-          { data }: { data: number[] },
-          i: number,
-        ): number[][] => {
-          prev.push(data.map((d: number, j: number): number => d + prev[i][j]));
-          return prev;
-        },
-        [p.metricsInfoList[0].data.map((): number => 0)],
+  .flatMap((p) => [
+    `### ${p.title}`,
+    p.data
+      .filter(
+        ({
+          metricsInfoList,
+        }: {
+          metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
+        }): boolean => metricsInfoList.length > 0,
       )
-      .slice(1)
-      .toReversed();
-    return `### ${p.title}
+      .map((d: z.TypeOf<typeof renderDataSchema>): string => {
+        const colors: string[] = d.metricsInfoList.map(
+          ({ color }: { color: string }): string => color,
+        );
+        const stackedDatum: number[][] = d.metricsInfoList
+          .toReversed()
+          .reduce(
+            (
+              prev: number[][],
+              { data }: { data: number[] },
+              i: number,
+            ): number[][] => {
+              prev.push(
+                data.map((d: number, j: number): number => d + prev[i][j]),
+              );
+              return prev;
+            },
+            [d.metricsInfoList[0].data.map((): number => 0)],
+          )
+          .slice(1)
+          .toReversed();
+        return `#### ${d.stepName}
 
-#### Legends
+##### Legends
 
-${p.metricsInfoList
+${d.metricsInfoList
   .map(
     (i: z.TypeOf<typeof metricsInfoSchema>): string =>
       `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`,
   )
   .join("\n")}
 
-#### Chart
+##### Chart
 
 \`\`\`mermaid
 %%{
@@ -70,14 +75,15 @@ ${p.metricsInfoList
 xychart
 
 x-axis "Time" ${JSON.stringify(
-      p.times.map((d: Date): string =>
-        d.toLocaleTimeString("en-GB", { hour12: false }),
-      ),
-    )}
-y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
+          d.times.map((d: Date): string =>
+            d.toLocaleTimeString("en-GB", { hour12: false }),
+          ),
+        )}
+y-axis "${d.yAxis.title}"${d.yAxis.range ? ` ${d.yAxis.range}` : ""}
 ${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
 \`\`\``;
-  })
+      }),
+  ])
   .join("\n\n")}`;
   }
 }

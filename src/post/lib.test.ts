@@ -65,13 +65,13 @@ describe("render", () => {
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
 
-    // Verify "All" charts
-    expect(result).toContain("CPU Loads (All)");
-    expect(result).toContain("Memory Usages (All)");
+    // Verify section titles
+    expect(result).toContain("### CPU Loads");
+    expect(result).toContain("### Memory Usages");
 
-    // Verify step-specific charts
-    expect(result).toContain("CPU Loads (Build)");
-    expect(result).toContain("Memory Usages (Build)");
+    // Verify "All" and step-specific charts
+    expect(result).toContain("#### All");
+    expect(result).toContain("#### Build");
   });
 
   it("should render only All charts when stepMap is empty", () => {
@@ -83,8 +83,9 @@ describe("render", () => {
       testMetricsID,
     );
 
-    expect(result).toContain("CPU Loads (All)");
-    expect(result).toContain("Memory Usages (All)");
+    expect(result).toContain("### CPU Loads");
+    expect(result).toContain("### Memory Usages");
+    expect(result).toContain("#### All");
   });
 
   it("should handle empty metrics data", () => {
