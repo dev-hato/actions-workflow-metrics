@@ -112,10 +112,7 @@ async function index(): Promise<void> {
         ),
       };
       console.log(JSON.stringify(stepMetricsData, null, 2));
-      metricsDataWithStepMap.stepMap = metricsDataWithStepMap.stepMap.set(
-        step.name,
-        stepMetricsData,
-      );
+      metricsDataWithStepMap.stepMap.set(step.name, stepMetricsData);
     }
 
     // Render metrics
