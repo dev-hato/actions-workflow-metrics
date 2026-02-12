@@ -14,7 +14,7 @@ describe("Renderer", () => {
             title: "Test",
             data: [
               {
-                stepName: "All",
+                stepName: undefined,
                 metricsInfoList: [],
                 times: [],
                 yAxis: {
@@ -39,7 +39,7 @@ describe("Renderer", () => {
           title: "CPU Usage",
           data: [
             {
-              stepName: "All",
+              stepName: undefined,
               metricsInfoList: [
                 {
                   color: "Red",
@@ -93,7 +93,7 @@ describe("Renderer", () => {
           title: "System Metrics",
           data: [
             {
-              stepName: "All",
+              stepName: undefined,
               metricsInfoList: [
                 {
                   color: "Red",
@@ -158,7 +158,7 @@ describe("Renderer", () => {
           title: "Memory Usage",
           data: [
             {
-              stepName: "All",
+              stepName: undefined,
               metricsInfoList: [
                 {
                   color: "Blue",
@@ -200,7 +200,7 @@ describe("Renderer", () => {
           title: "Test",
           data: [
             {
-              stepName: "All",
+              stepName: undefined,
               metricsInfoList: [
                 {
                   color: "Red",
@@ -257,7 +257,7 @@ describe("Renderer", () => {
           title: "Stacked Test",
           data: [
             {
-              stepName: "All",
+              stepName: undefined,
               metricsInfoList: [
                 {
                   color: "Red",
@@ -309,7 +309,7 @@ describe("Renderer", () => {
           title: "Multi-layer Stack",
           data: [
             {
-              stepName: "All",
+              stepName: undefined,
               metricsInfoList: [
                 {
                   color: "Red",
@@ -380,7 +380,7 @@ describe("Renderer", () => {
           title: "Time Format Test",
           data: [
             {
-              stepName: "All",
+              stepName: undefined,
               metricsInfoList: [
                 {
                   color: "Blue",
@@ -420,7 +420,7 @@ describe("Renderer", () => {
           title: "Structure Test",
           data: [
             {
-              stepName: "All",
+              stepName: undefined,
               metricsInfoList: [
                 {
                   color: "Green",
@@ -470,7 +470,7 @@ describe("Renderer", () => {
           title: "Single Point",
           data: [
             {
-              stepName: "All",
+              stepName: undefined,
               metricsInfoList: [
                 {
                   color: "Purple",

@@ -50,7 +50,7 @@ ${renderParamsList
           )
           .slice(1)
           .toReversed();
-        return `#### ${d.stepName}
+        return `#### ${d.stepName === undefined ? "All" : `Step \`${d.stepName}\``}
 
 ##### Legends
 

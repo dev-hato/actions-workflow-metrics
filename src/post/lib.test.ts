@@ -71,7 +71,7 @@ describe("render", () => {
 
     // Verify "All" and step-specific charts
     expect(result).toContain("#### All");
-    expect(result).toContain("#### Build");
+    expect(result).toContain("#### Step `Build`");
   });
 
   it("should render only All charts when stepMap is empty", () => {
