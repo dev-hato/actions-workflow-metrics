@@ -117886,7 +117886,7 @@ async function getMetricsData() {
 }
 function render(metricsData, metricsID) {
   const stepMetricsDataEntries = metricsData.stepMap.entries();
-  console.log(JSON.stringify(stepMetricsDataEntries, null, 2));
+  console.log(JSON.stringify(metricsData, null, 2));
   const renderer = new Renderer;
   return renderer.render(renderParamsListSchema.parse([
     generateRenderParamsFromCPULoadPercentages("All", metricsData.cpuLoadPercentages),
@@ -117971,5 +117971,5 @@ async function index() {
 }
 await index();
 
-//# debugId=FE31C57A9FB2E13E64756E2164756E21
+//# debugId=8589E1DCFB77441A64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
