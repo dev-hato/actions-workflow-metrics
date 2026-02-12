@@ -145,7 +145,7 @@ describe("getMetricsData", () => {
 
     const result = await getMetricsData();
 
-    expect(result).toEqual(sampleMetricsData);
+    expect(result).toEqual({ ...sampleMetricsData, stepMap: new Map() });
   });
 
   it("should throw error for invalid metrics data", async () => {

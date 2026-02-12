@@ -32,7 +32,7 @@ export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
 });
 
 export async function getMetricsData(): Promise<
-  z.TypeOf<typeof metricsDataSchema>
+  z.TypeOf<typeof metricsDataWithStepMapSchema>
 > {
   const controller: AbortController = new AbortController();
   const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
@@ -50,7 +50,7 @@ export async function getMetricsData(): Promise<
       );
     }
 
-    return metricsDataSchema.parse(await res.json());
+    return { ...metricsDataSchema.parse(await res.json()), stepMap: new Map() };
   } finally {
     clearTimeout(timer);
   }
