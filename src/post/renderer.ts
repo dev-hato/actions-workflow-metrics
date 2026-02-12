@@ -58,6 +58,8 @@ ${p.legends
             .toReversed();
           return `#### ${d.stepName === undefined ? "All" : `Step \`${d.stepName}\``}
 
+${d.stepName === undefined ? "" : "<details>"}
+
 \`\`\`mermaid
 %%{
   init: {
@@ -77,7 +79,9 @@ x-axis "Time" ${JSON.stringify(
           )}
 y-axis "${d.yAxis.title}"${d.yAxis.range ? ` ${d.yAxis.range}` : ""}
 ${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
-\`\`\``;
+\`\`\`
+
+${d.stepName === undefined ? "" : "</details>"}`;
         }),
     ];
   })
