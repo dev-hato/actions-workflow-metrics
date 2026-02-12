@@ -101,7 +101,7 @@ async function index(): Promise<void> {
     > = { ...metricsData, stepMap: new Map() };
 
     for (const step of job.steps) {
-      metricsDataWithStepMap.stepMap.set(step.name, {
+      const stepMetricsData: z.TypeOf<typeof metricsDataSchema> = {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(
           ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
             filterMetrics(unixTimeMs, step.started_at, step.completed_at),
@@ -110,7 +110,9 @@ async function index(): Promise<void> {
           ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
             filterMetrics(unixTimeMs, step.started_at, step.completed_at),
         ),
-      });
+      };
+      console.log(JSON.stringify(stepMetricsData, null, 2));
+      metricsDataWithStepMap.stepMap.set(step.name, stepMetricsData);
     }
 
     // Render metrics
