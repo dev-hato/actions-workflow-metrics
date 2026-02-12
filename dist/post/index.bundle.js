@@ -117747,22 +117747,24 @@ class Renderer {
 
 ${metricsID}
 
-${renderParamsList.filter(({
-      metricsInfoList
-    }) => metricsInfoList.length > 0).map((p) => {
-      const colors = p.metricsInfoList.map(({ color }) => color);
-      const stackedDatum = p.metricsInfoList.toReversed().reduce((prev, { data }, i) => {
-        prev.push(data.map((d, j) => d + prev[i][j]));
-        return prev;
-      }, [p.metricsInfoList[0].data.map(() => 0)]).slice(1).toReversed();
-      return `### ${p.title}
+${renderParamsList.flatMap((p) => [
+      `### ${p.title}`,
+      p.data.filter(({
+        metricsInfoList
+      }) => metricsInfoList.length > 0).map((d) => {
+        const colors = d.metricsInfoList.map(({ color }) => color);
+        const stackedDatum = d.metricsInfoList.toReversed().reduce((prev, { data }, i) => {
+          prev.push(data.map((d2, j) => d2 + prev[i][j]));
+          return prev;
+        }, [d.metricsInfoList[0].data.map(() => 0)]).slice(1).toReversed();
+        return `#### ${d.stepName}
 
-#### Legends
+##### Legends
 
-${p.metricsInfoList.map((i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`).join(`
+${d.metricsInfoList.map((i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`).join(`
 `)}
 
-#### Chart
+##### Chart
 
 \`\`\`mermaid
 %%{
@@ -117776,12 +117778,13 @@ ${p.metricsInfoList.map((i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i
 }%%
 xychart
 
-x-axis "Time" ${JSON.stringify(p.times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false })))}
-y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
-${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join(`
+x-axis "Time" ${JSON.stringify(d.times.map((d2) => d2.toLocaleTimeString("en-GB", { hour12: false })))}
+y-axis "${d.yAxis.title}"${d.yAxis.range ? ` ${d.yAxis.range}` : ""}
+${stackedDatum.map((d2) => `bar ${JSON.stringify(d2)}`).join(`
 `)}
 \`\`\``;
-    }).join(`
+      })
+    ]).join(`
 
 `)}`;
   }
@@ -117813,8 +117816,8 @@ var metricsInfoSchema = exports_external.object({
   data: exports_external.array(exports_external.number())
 });
 var metricsInfoListSchema = exports_external.array(metricsInfoSchema);
-var renderParamsSchema = exports_external.object({
-  title: exports_external.string(),
+var renderDataSchema = exports_external.object({
+  stepName: exports_external.string(),
   metricsInfoList: metricsInfoListSchema,
   times: exports_external.array(exports_external.coerce.date()),
   yAxis: exports_external.object({
@@ -117822,53 +117825,13 @@ var renderParamsSchema = exports_external.object({
     range: exports_external.string().optional()
   })
 });
-var renderParamsListSchema = exports_external.array(renderParamsSchema);
+var renderParamsListSchema = exports_external.array(exports_external.object({
+  title: exports_external.string(),
+  data: exports_external.array(renderDataSchema)
+}));
 var metricsDataWithStepMapSchema = metricsDataSchema.extend({
   stepMap: exports_external.map(exports_external.string(), metricsDataSchema)
 });
-function generateRenderParamsFromCPULoadPercentages(stepName, cpuLoadPercentages) {
-  return {
-    title: `CPU Loads (${stepName})`,
-    metricsInfoList: [
-      {
-        color: "Orange",
-        name: "System",
-        data: cpuLoadPercentages.map(({ system }) => system)
-      },
-      {
-        color: "Red",
-        name: "User",
-        data: cpuLoadPercentages.map(({ user }) => user)
-      }
-    ],
-    times: cpuLoadPercentages.map(({ unixTimeMs }) => new Date(unixTimeMs)),
-    yAxis: {
-      title: "%",
-      range: "0 --> 100"
-    }
-  };
-}
-function generateRenderParamsFromMemoryUsageMBs(stepName, memoryUsageMBs) {
-  return {
-    title: `Memory Usages (${stepName})`,
-    metricsInfoList: [
-      {
-        color: "Green",
-        name: "Free",
-        data: memoryUsageMBs.map(({ free }) => free)
-      },
-      {
-        color: "Blue",
-        name: "Used",
-        data: memoryUsageMBs.map(({ used }) => used)
-      }
-    ],
-    times: memoryUsageMBs.map(({ unixTimeMs }) => new Date(unixTimeMs)),
-    yAxis: {
-      title: "MB"
-    }
-  };
-}
 async function getMetricsData() {
   const controller = new AbortController;
   const timer = setTimeout(() => controller.abort(), 10 * 1000);
@@ -117888,10 +117851,57 @@ function render(metricsData, metricsID) {
   const stepMetricsDataEntries = Array.from(metricsData.stepMap.entries());
   const renderer = new Renderer;
   return renderer.render(renderParamsListSchema.parse([
-    generateRenderParamsFromCPULoadPercentages("All", metricsData.cpuLoadPercentages),
-    ...stepMetricsDataEntries.filter(([_2, { cpuLoadPercentages }]) => 0 < cpuLoadPercentages.length).map(([n, { cpuLoadPercentages }]) => generateRenderParamsFromCPULoadPercentages(n, cpuLoadPercentages)),
-    generateRenderParamsFromMemoryUsageMBs("All", metricsData.memoryUsageMBs),
-    ...stepMetricsDataEntries.filter(([_2, { memoryUsageMBs }]) => 0 < memoryUsageMBs.length).map(([n, { memoryUsageMBs }]) => generateRenderParamsFromMemoryUsageMBs(n, memoryUsageMBs))
+    {
+      title: "CPU Loads",
+      data: [["All", metricsData.cpuLoadPercentages]].concat(stepMetricsDataEntries.map(([stepName, { cpuLoadPercentages }]) => [
+        stepName,
+        cpuLoadPercentages
+      ])).filter(([_2, c]) => 0 < c.length).map(([stepName, c]) => ({
+        stepName,
+        metricsInfoList: [
+          {
+            color: "Orange",
+            name: "System",
+            data: c.map(({ system }) => system)
+          },
+          {
+            color: "Red",
+            name: "User",
+            data: c.map(({ user }) => user)
+          }
+        ],
+        times: c.map(({ unixTimeMs }) => new Date(unixTimeMs)),
+        yAxis: {
+          title: "%",
+          range: "0 --> 100"
+        }
+      }))
+    },
+    {
+      title: "Memory Usages",
+      data: [["All", metricsData.memoryUsageMBs]].concat(stepMetricsDataEntries.map(([stepName, { memoryUsageMBs }]) => [
+        stepName,
+        memoryUsageMBs
+      ])).filter(([_2, m]) => 0 < m.length).map(([stepName, m]) => ({
+        stepName,
+        metricsInfoList: [
+          {
+            color: "Green",
+            name: "Free",
+            data: m.map(({ free }) => free)
+          },
+          {
+            color: "Blue",
+            name: "Used",
+            data: m.map(({ used }) => used)
+          }
+        ],
+        times: m.map(({ unixTimeMs }) => new Date(unixTimeMs)),
+        yAxis: {
+          title: "MB"
+        }
+      }))
+    }
   ]), metricsID);
 }
 
@@ -117970,5 +117980,5 @@ async function index() {
 }
 await index();
 
-//# debugId=D91128E47B4A1D6064756E2164756E21
+//# debugId=DECA03C022592A7964756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
