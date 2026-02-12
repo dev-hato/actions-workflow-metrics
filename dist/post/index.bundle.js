@@ -117749,7 +117749,7 @@ ${metricsID}
 
 ${renderParamsList.flatMap((p) => [
       `### ${p.title}`,
-      p.data.filter(({
+      ...p.data.filter(({
         metricsInfoList
       }) => metricsInfoList.length > 0).map((d) => {
         const colors = d.metricsInfoList.map(({ color }) => color);
@@ -117825,10 +117825,11 @@ var renderDataSchema = exports_external.object({
     range: exports_external.string().optional()
   })
 });
-var renderParamsListSchema = exports_external.array(exports_external.object({
+var renderParamsSchema = exports_external.object({
   title: exports_external.string(),
   data: exports_external.array(renderDataSchema)
-}));
+});
+var renderParamsListSchema = exports_external.array(renderParamsSchema);
 var metricsDataWithStepMapSchema = metricsDataSchema.extend({
   stepMap: exports_external.map(exports_external.string(), metricsDataSchema)
 });
@@ -117980,5 +117981,5 @@ async function index() {
 }
 await index();
 
-//# debugId=DECA03C022592A7964756E2164756E21
+//# debugId=3FCFBF041911C59A64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
