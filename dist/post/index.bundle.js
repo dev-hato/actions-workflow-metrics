@@ -117757,7 +117757,7 @@ ${renderParamsList.flatMap((p) => [
           prev.push(data.map((d2, j) => d2 + prev[i][j]));
           return prev;
         }, [d.metricsInfoList[0].data.map(() => 0)]).slice(1).toReversed();
-        return `#### ${d.stepName}
+        return `#### ${d.stepName === undefined ? "All" : `Step \`${d.stepName}\``}
 
 ##### Legends
 
@@ -117817,7 +117817,7 @@ var metricsInfoSchema = exports_external.object({
 });
 var metricsInfoListSchema = exports_external.array(metricsInfoSchema);
 var renderDataSchema = exports_external.object({
-  stepName: exports_external.string(),
+  stepName: exports_external.string().optional(),
   metricsInfoList: metricsInfoListSchema,
   times: exports_external.array(exports_external.coerce.date()),
   yAxis: exports_external.object({
@@ -117854,10 +117854,13 @@ function render(metricsData, metricsID) {
   return renderer.render(renderParamsListSchema.parse([
     {
       title: "CPU Loads",
-      data: [["All", metricsData.cpuLoadPercentages]].concat(stepMetricsDataEntries.map(([stepName, { cpuLoadPercentages }]) => [
-        stepName,
-        cpuLoadPercentages
-      ])).filter(([_2, c]) => 0 < c.length).map(([stepName, c]) => ({
+      data: [
+        [undefined, metricsData.cpuLoadPercentages],
+        ...stepMetricsDataEntries.map(([stepName, { cpuLoadPercentages }]) => [
+          stepName,
+          cpuLoadPercentages
+        ])
+      ].filter(([_2, c]) => 0 < c.length).map(([stepName, c]) => ({
         stepName,
         metricsInfoList: [
           {
@@ -117880,10 +117883,13 @@ function render(metricsData, metricsID) {
     },
     {
       title: "Memory Usages",
-      data: [["All", metricsData.memoryUsageMBs]].concat(stepMetricsDataEntries.map(([stepName, { memoryUsageMBs }]) => [
-        stepName,
-        memoryUsageMBs
-      ])).filter(([_2, m]) => 0 < m.length).map(([stepName, m]) => ({
+      data: [
+        [undefined, metricsData.memoryUsageMBs],
+        ...stepMetricsDataEntries.map(([stepName, { memoryUsageMBs }]) => [
+          stepName,
+          memoryUsageMBs
+        ])
+      ].filter(([_2, m]) => 0 < m.length).map(([stepName, m]) => ({
         stepName,
         metricsInfoList: [
           {
@@ -117981,5 +117987,5 @@ async function index() {
 }
 await index();
 
-//# debugId=3FCFBF041911C59A64756E2164756E21
+//# debugId=3BD7326CCC8EBF3364756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
