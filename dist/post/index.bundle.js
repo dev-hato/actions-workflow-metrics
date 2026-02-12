@@ -117763,7 +117763,9 @@ ${p.legends.map((l) => `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}
             prev.push(data.map((d2, j) => d2 + prev[i][j]));
             return prev;
           }, [d.metricsInfoList[0].map(() => 0)]).slice(1).toReversed();
-          return `#### ${d.stepName === undefined ? "All" : `Step \`${d.stepName}\``}
+          return `${d.stepName === undefined ? "#### All" : `#### Step \`${d.stepName}\`
+
+<details>`}
 
 \`\`\`mermaid
 %%{
@@ -117781,7 +117783,9 @@ x-axis "Time" ${JSON.stringify(d.times.map((d2) => d2.toLocaleTimeString("en-GB"
 y-axis "${d.yAxis.title}"${d.yAxis.range ? ` ${d.yAxis.range}` : ""}
 ${stackedDatum.map((d2) => `bar ${JSON.stringify(d2)}`).join(`
 `)}
-\`\`\``;
+\`\`\`${d.stepName === undefined ? "" : `
+
+</details>`}`;
         })
       ];
     }).join(`
@@ -117991,5 +117995,5 @@ async function index() {
 }
 await index();
 
-//# debugId=3DE532FE2BD83BF364756E2164756E21
+//# debugId=2D9F2AF7A6073A7C64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
