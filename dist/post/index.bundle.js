@@ -117950,7 +117950,7 @@ async function index() {
         memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
       };
       console.log(JSON.stringify(stepMetricsData, null, 2));
-      metricsDataWithStepMap.stepMap = metricsDataWithStepMap.stepMap.set(step.name, stepMetricsData);
+      metricsDataWithStepMap.stepMap.set(step.name, stepMetricsData);
     }
     await summary.addRaw(render(metricsDataWithStepMap, metricsID)).write();
   } catch (error49) {
@@ -117974,5 +117974,5 @@ async function index() {
 }
 await index();
 
-//# debugId=C58AE70B8D1BEC9D64756E2164756E21
+//# debugId=592F9E96388FAB7F64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
