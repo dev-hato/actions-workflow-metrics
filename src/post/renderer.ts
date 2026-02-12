@@ -1,10 +1,10 @@
 import type { z } from "zod";
 import type {
+  metricsInfoListSchema,
+  metricsInfoSchema,
   renderDataSchema,
   renderParamsListSchema,
   renderParamsSchema,
-  metricsInfoListSchema,
-  metricsInfoSchema,
 } from "./lib";
 
 export class Renderer {
@@ -56,9 +56,13 @@ ${p.legends
             )
             .slice(1)
             .toReversed();
-          return `#### ${d.stepName === undefined ? "All" : `Step \`${d.stepName}\``}
+          return `${
+            d.stepName === undefined
+              ? "#### All"
+              : `#### Step \`${d.stepName}\`
 
-${d.stepName === undefined ? "" : "<details>"}
+<details>`
+          }
 
 \`\`\`mermaid
 %%{
@@ -79,9 +83,13 @@ x-axis "Time" ${JSON.stringify(
           )}
 y-axis "${d.yAxis.title}"${d.yAxis.range ? ` ${d.yAxis.range}` : ""}
 ${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
-\`\`\`
+\`\`\`${
+            d.stepName === undefined
+              ? ""
+              : `
 
-${d.stepName === undefined ? "" : "</details>"}`;
+</details>`
+          }`;
         }),
     ];
   })
