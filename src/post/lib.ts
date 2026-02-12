@@ -117,8 +117,6 @@ export function render(
 ): string {
   const stepMetricsDataEntries: [string, z.TypeOf<typeof metricsDataSchema>][] =
     Array.from(metricsData.stepMap.entries());
-  console.log(JSON.stringify(metricsData, null, 2));
-  console.log(JSON.stringify(stepMetricsDataEntries, null, 2));
   const renderer: Renderer = new Renderer();
   return renderer.render(
     renderParamsListSchema.parse([
