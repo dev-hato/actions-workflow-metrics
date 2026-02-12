@@ -117886,8 +117886,6 @@ async function getMetricsData() {
 }
 function render(metricsData, metricsID) {
   const stepMetricsDataEntries = Array.from(metricsData.stepMap.entries());
-  console.log(JSON.stringify(metricsData, null, 2));
-  console.log(JSON.stringify(stepMetricsDataEntries, null, 2));
   const renderer = new Renderer;
   return renderer.render(renderParamsListSchema.parse([
     generateRenderParamsFromCPULoadPercentages("All", metricsData.cpuLoadPercentages),
@@ -117945,12 +117943,10 @@ async function index() {
     }
     const metricsDataWithStepMap = { ...metricsData, stepMap: new Map };
     for (const step of job.steps) {
-      const stepMetricsData = {
+      metricsDataWithStepMap.stepMap.set(step.name, {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at)),
         memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
-      };
-      console.log(JSON.stringify(stepMetricsData, null, 2));
-      metricsDataWithStepMap.stepMap.set(step.name, stepMetricsData);
+      });
     }
     await summary.addRaw(render(metricsDataWithStepMap, metricsID)).write();
   } catch (error49) {
@@ -117974,5 +117970,5 @@ async function index() {
 }
 await index();
 
-//# debugId=EEFB8C8A979842BE64756E2164756E21
+//# debugId=D91128E47B4A1D6064756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
