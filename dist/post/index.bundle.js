@@ -117758,7 +117758,7 @@ ${p.legends.map((l) => `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}
 `)}`,
         ...p.data.filter(({
           metricsInfoList
-        }) => metricsInfoList.length > 0).map((d) => {
+        }) => 0 < metricsInfoList.length).map((d) => {
           const stackedDatum = d.metricsInfoList.toReversed().reduce((prev, data, i) => {
             prev.push(data.map((d2, j) => d2 + prev[i][j]));
             return prev;
@@ -117847,7 +117847,7 @@ async function getMetricsData() {
     if (!res.ok) {
       throw new Error(`Failed to fetch metrics: ${res.status} ${res.statusText}`);
     }
-    return metricsDataSchema.parse(await res.json());
+    return { ...metricsDataSchema.parse(await res.json()), stepMap: new Map };
   } finally {
     clearTimeout(timer);
   }
@@ -117939,6 +117939,18 @@ async function index() {
     await new Promise((resolve2) => setTimeout(resolve2, 1000));
   }
   try {
+    const octokit = new Octokit2;
+    const jobs = await octokit.paginate(octokit.rest.actions.listJobsForWorkflowRun, {
+      owner: context4.repo.owner,
+      repo: context4.repo.repo,
+      run_id: context4.runId
+    });
+    for (const step of jobs.find((j) => j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME)?.steps ?? []) {
+      metricsData.stepMap.set(step.name, {
+        cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at)),
+        memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
+      });
+    }
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
     await fs5.writeFile(fileName, JSON.stringify(metricsData));
@@ -117956,24 +117968,7 @@ async function index() {
       }
       await new Promise((resolve2) => setTimeout(resolve2, 1000));
     }
-    const octokit = new Octokit2;
-    const jobs = await octokit.paginate(octokit.rest.actions.listJobsForWorkflowRun, {
-      owner: context4.repo.owner,
-      repo: context4.repo.repo,
-      run_id: context4.runId
-    });
-    const job = jobs.find((j) => j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME);
-    if (job === undefined) {
-      return;
-    }
-    const metricsDataWithStepMap = { ...metricsData, stepMap: new Map };
-    for (const step of job.steps) {
-      metricsDataWithStepMap.stepMap.set(step.name, {
-        cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at)),
-        memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
-      });
-    }
-    await summary.addRaw(render(metricsDataWithStepMap, metricsID)).write();
+    await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error49) {
     setFailed(error49);
   } finally {
@@ -117995,5 +117990,5 @@ async function index() {
 }
 await index();
 
-//# debugId=2D9F2AF7A6073A7C64756E2164756E21
+//# debugId=2DDF3938D27F513464756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
