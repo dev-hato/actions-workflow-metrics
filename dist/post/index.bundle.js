@@ -117834,8 +117834,12 @@ var renderParamsSchema = exports_external.object({
   data: exports_external.array(renderDataSchema)
 });
 var renderParamsListSchema = exports_external.array(renderParamsSchema);
+var stepMapSchema = exports_external.object({
+  stepName: exports_external.string().optional(),
+  data: metricsDataSchema
+});
 var metricsDataWithStepMapSchema = metricsDataSchema.extend({
-  stepMap: exports_external.record(exports_external.string(), metricsDataSchema)
+  stepMap: exports_external.array(stepMapSchema)
 });
 async function getMetricsData() {
   const controller = new AbortController;
@@ -117847,13 +117851,12 @@ async function getMetricsData() {
     if (!res.ok) {
       throw new Error(`Failed to fetch metrics: ${res.status} ${res.statusText}`);
     }
-    return { ...metricsDataSchema.parse(await res.json()), stepMap: {} };
+    return { ...metricsDataSchema.parse(await res.json()), stepMap: [] };
   } finally {
     clearTimeout(timer);
   }
 }
 function render(metricsData, metricsID) {
-  const stepMetricsDataEntries = Object.entries(metricsData.stepMap);
   const renderer = new Renderer;
   return renderer.render(renderParamsListSchema.parse([
     {
@@ -117869,18 +117872,18 @@ function render(metricsData, metricsID) {
         }
       ],
       data: [
-        [undefined, metricsData.cpuLoadPercentages],
-        ...stepMetricsDataEntries.map(([stepName, { cpuLoadPercentages }]) => [
-          stepName,
-          cpuLoadPercentages
-        ])
-      ].filter(([_2, c]) => 0 < c.length).map(([stepName, c]) => ({
+        { stepName: undefined, data: metricsData },
+        ...metricsData.stepMap
+      ].map(({
+        stepName,
+        data
+      }) => ({
         stepName,
         metricsInfoList: [
-          c.map(({ system }) => system),
-          c.map(({ user }) => user)
+          data.cpuLoadPercentages.map(({ system }) => system),
+          data.cpuLoadPercentages.map(({ user }) => user)
         ],
-        times: c.map(({ unixTimeMs }) => new Date(unixTimeMs)),
+        times: data.cpuLoadPercentages.map(({ unixTimeMs }) => new Date(unixTimeMs)),
         yAxis: {
           title: "%",
           range: "0 --> 100"
@@ -117900,18 +117903,18 @@ function render(metricsData, metricsID) {
         }
       ],
       data: [
-        [undefined, metricsData.memoryUsageMBs],
-        ...stepMetricsDataEntries.map(([stepName, { memoryUsageMBs }]) => [
-          stepName,
-          memoryUsageMBs
-        ])
-      ].filter(([_2, m]) => 0 < m.length).map(([stepName, m]) => ({
+        { stepName: undefined, data: metricsData },
+        ...metricsData.stepMap
+      ].map(({
+        stepName,
+        data
+      }) => ({
         stepName,
         metricsInfoList: [
-          m.map(({ free }) => free),
-          m.map(({ used }) => used)
+          data.memoryUsageMBs.map(({ free }) => free),
+          data.memoryUsageMBs.map(({ used }) => used)
         ],
-        times: m.map(({ unixTimeMs }) => new Date(unixTimeMs)),
+        times: data.memoryUsageMBs.map(({ unixTimeMs }) => new Date(unixTimeMs)),
         yAxis: {
           title: "MB"
         }
@@ -117946,10 +117949,17 @@ async function index() {
       run_id: context4.runId
     });
     for (const step of jobs.find((j) => j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME)?.steps ?? []) {
-      metricsData.stepMap[step.name] = {
+      const data = {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at)),
         memoryUsageMBs: metricsData.memoryUsageMBs.filter(({ unixTimeMs }) => filterMetrics(unixTimeMs, step.started_at, step.completed_at))
       };
+      if (data.cpuLoadPercentages.length === 0 || data.memoryUsageMBs.length === 0) {
+        continue;
+      }
+      metricsData.stepMap.push({
+        stepName: step.name,
+        data
+      });
     }
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
@@ -117990,5 +118000,5 @@ async function index() {
 }
 await index();
 
-//# debugId=30CDBBA18289771564756E2164756E21
+//# debugId=65F29026A55EFCBE64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
