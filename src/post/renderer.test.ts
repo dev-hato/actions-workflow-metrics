@@ -3,6 +3,15 @@ import { Renderer } from "./renderer";
 
 describe("Renderer", () => {
   const testMetricsID: string = "1234567890";
+  const twoMetricsInfoList: number[][] = [
+    [10, 20, 30],
+    [5, 10, 15],
+  ];
+  const threeTimes: Date[] = [
+    new Date("2024-01-01T00:00:00Z"),
+    new Date("2024-01-01T00:00:05Z"),
+    new Date("2024-01-01T00:00:10Z"),
+  ];
 
   it("should return only header for empty metricsInfo", () => {
     const renderer: Renderer = new Renderer();
@@ -55,9 +64,6 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
-
     // Verify section title and step name
     expect(result).toContain("### CPU Usage");
     expect(result).toContain("#### All");
@@ -94,15 +100,8 @@ describe("Renderer", () => {
           data: [
             {
               stepName: undefined,
-              metricsInfoList: [
-                [10, 20, 30],
-                [5, 10, 15],
-              ],
-              times: [
-                new Date("2024-01-01T00:00:00Z"),
-                new Date("2024-01-01T00:00:05Z"),
-                new Date("2024-01-01T00:00:10Z"),
-              ],
+              metricsInfoList: twoMetricsInfoList,
+              times: threeTimes,
               yAxis: {
                 title: "%",
                 range: "0 --> 100",
@@ -113,9 +112,6 @@ describe("Renderer", () => {
       ],
       testMetricsID,
     );
-
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
 
     // Verify section title and step name
     expect(result).toContain("### System Metrics");
@@ -164,9 +160,6 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
-
     // Verify section title and step name
     expect(result).toContain("### Memory Usage");
     expect(result).toContain("#### All");
@@ -205,9 +198,6 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
-
     // Verify all colors are included in color palette
     expect(result).toContain('"plotColorPalette": "Red, Blue, Green"');
 
@@ -238,15 +228,8 @@ describe("Renderer", () => {
           data: [
             {
               stepName: undefined,
-              metricsInfoList: [
-                [10, 20, 30],
-                [5, 10, 15],
-              ],
-              times: [
-                new Date("2024-01-01T00:00:00Z"),
-                new Date("2024-01-01T00:00:05Z"),
-                new Date("2024-01-01T00:00:10Z"),
-              ],
+              metricsInfoList: twoMetricsInfoList,
+              times: threeTimes,
               yAxis: {
                 title: "Value",
               },
@@ -257,9 +240,6 @@ describe("Renderer", () => {
       testMetricsID,
     );
 
-    // The result should be a valid-rendered template
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
     expect(result).toContain("### Stacked Test");
 
     // Verify stacked data is calculated correctly
@@ -305,9 +285,6 @@ describe("Renderer", () => {
       ],
       testMetricsID,
     );
-
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
 
     // Verify title is included
     expect(result).toContain("### Multi-layer Stack");

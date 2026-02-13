@@ -2,7 +2,7 @@ import type { z } from "zod";
 import type {
   metricsInfoListSchema,
   metricsInfoSchema,
-  renderDataSchema,
+  renderDataWithStepNameSchema,
   renderParamsListSchema,
   renderParamsSchema,
 } from "./lib";
@@ -42,7 +42,7 @@ ${p.legends
             metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
           }): boolean => 0 < metricsInfoList.length,
         )
-        .map((d: z.TypeOf<typeof renderDataSchema>): string => {
+        .map((d: z.TypeOf<typeof renderDataWithStepNameSchema>): string => {
           const stackedDatum: number[][] = d.metricsInfoList
             .toReversed()
             .reduce(

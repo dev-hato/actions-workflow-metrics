@@ -3,8 +3,7 @@ import { Renderer } from "./renderer";
 import { metricsDataSchema, serverPort } from "../lib";
 
 export const metricsInfoListSchema = z.array(z.array(z.number()));
-export const renderDataSchema = z.object({
-  stepName: z.string().optional(),
+const renderDataSchema = z.object({
   metricsInfoList: metricsInfoListSchema,
   times: z.array(z.coerce.date()),
   yAxis: z.object({
@@ -12,6 +11,10 @@ export const renderDataSchema = z.object({
     range: z.string().optional(),
   }),
 });
+export const renderDataWithStepNameSchema = renderDataSchema.extend({
+  stepName: z.string().optional(),
+});
+const renderDataWithStepNameListSchema = z.array(renderDataWithStepNameSchema);
 export const metricsInfoSchema = z.object({
   color: z.string(),
   name: z.string(),
@@ -19,15 +22,16 @@ export const metricsInfoSchema = z.object({
 export const renderParamsSchema = z.object({
   title: z.string(),
   legends: z.array(metricsInfoSchema),
-  data: z.array(renderDataSchema),
+  data: renderDataWithStepNameListSchema,
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
-const stepsSchema = z.object({
+const stepSchema = z.object({
   stepName: z.string().optional(),
   data: metricsDataSchema,
 });
+const stepsSchema = z.array(stepSchema);
 export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
-  steps: z.array(stepsSchema),
+  steps: stepsSchema,
 });
 
 export async function getMetricsData(): Promise<
@@ -55,6 +59,29 @@ export async function getMetricsData(): Promise<
   }
 }
 
+function toRenderData(
+  metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema>,
+  mapper: (
+    data: z.TypeOf<typeof metricsDataSchema>,
+  ) => z.TypeOf<typeof renderDataSchema>,
+): z.TypeOf<typeof renderDataWithStepNameListSchema> {
+  const steps: z.TypeOf<typeof stepsSchema> = [
+    { data: metricsData },
+    ...metricsData.steps,
+  ];
+  return steps.map(
+    ({
+      stepName,
+      data,
+    }: z.TypeOf<typeof stepSchema>): z.TypeOf<
+      typeof renderDataWithStepNameSchema
+    > => ({
+      stepName,
+      ...mapper(data),
+    }),
+  );
+}
+
 export function render(
   metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema>,
   metricsID: string,
@@ -74,26 +101,22 @@ export function render(
             name: "User",
           },
         ],
-        data: [
-          { stepName: undefined, data: metricsData },
-          ...metricsData.steps,
-        ].map(
+        data: toRenderData(
+          metricsData,
           ({
-            stepName,
-            data,
-          }: z.TypeOf<typeof stepsSchema>): z.TypeOf<
+            cpuLoadPercentages,
+          }: z.TypeOf<typeof metricsDataSchema>): z.TypeOf<
             typeof renderDataSchema
           > => ({
-            stepName,
             metricsInfoList: [
-              data.cpuLoadPercentages.map(
+              cpuLoadPercentages.map(
                 ({ system }: { system: number }): number => system,
               ),
-              data.cpuLoadPercentages.map(
+              cpuLoadPercentages.map(
                 ({ user }: { user: number }): number => user,
               ),
             ],
-            times: data.cpuLoadPercentages.map(
+            times: cpuLoadPercentages.map(
               ({ unixTimeMs }: { unixTimeMs: number }): Date =>
                 new Date(unixTimeMs),
             ),
@@ -116,26 +139,18 @@ export function render(
             name: "Used",
           },
         ],
-        data: [
-          { stepName: undefined, data: metricsData },
-          ...metricsData.steps,
-        ].map(
+        data: toRenderData(
+          metricsData,
           ({
-            stepName,
-            data,
-          }: z.TypeOf<typeof stepsSchema>): z.TypeOf<
+            memoryUsageMBs,
+          }: z.TypeOf<typeof metricsDataSchema>): z.TypeOf<
             typeof renderDataSchema
           > => ({
-            stepName,
             metricsInfoList: [
-              data.memoryUsageMBs.map(
-                ({ free }: { free: number }): number => free,
-              ),
-              data.memoryUsageMBs.map(
-                ({ used }: { used: number }): number => used,
-              ),
+              memoryUsageMBs.map(({ free }: { free: number }): number => free),
+              memoryUsageMBs.map(({ used }: { used: number }): number => used),
             ],
-            times: data.memoryUsageMBs.map(
+            times: memoryUsageMBs.map(
               ({ unixTimeMs }: { unixTimeMs: number }): Date =>
                 new Date(unixTimeMs),
             ),
