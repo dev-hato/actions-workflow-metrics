@@ -40,7 +40,7 @@ ${p.legends
             metricsInfoList,
           }: {
             metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
-          }): boolean => 0 < metricsInfoList.length,
+          }): boolean => metricsInfoList.length > 0,
         )
         .map((d: z.TypeOf<typeof renderDataWithStepNameSchema>): string => {
           const stackedDatum: number[][] = d.metricsInfoList
@@ -61,7 +61,8 @@ ${p.legends
               ? "#### All"
               : `#### Step \`${d.stepName}\`
 
-<details>`
+<details>
+<summary>Chart</summary>`
           }
 
 \`\`\`mermaid

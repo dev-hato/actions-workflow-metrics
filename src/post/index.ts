@@ -1,33 +1,18 @@
 import { promises as fs } from "node:fs";
 import { DefaultArtifactClient } from "@actions/artifact";
-import { info, setFailed, summary } from "@actions/core";
+import { info, setFailed, warning, summary } from "@actions/core";
 import { context } from "@actions/github";
 import { Octokit } from "@octokit/action";
-import { getMetricsData, render } from "./lib";
+import { filterStepMetrics, getMetricsData, render } from "./lib";
 import { serverPort } from "../lib";
 import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
-import type { metricsDataWithStepMapSchema } from "./lib";
+import type { metricsDataWithStepsSchema } from "./lib";
 import type { metricsDataSchema } from "../lib";
-
-function filterMetrics(
-  unixTimeMs: number,
-  startedAt?: string | null,
-  completedAt?: string | null,
-): boolean {
-  return (
-    (startedAt === undefined ||
-      startedAt === null ||
-      new Date(startedAt).getTime() <= unixTimeMs) &&
-    (completedAt === undefined ||
-      completedAt === null ||
-      unixTimeMs <= new Date(completedAt).getTime())
-  );
-}
 
 async function index(): Promise<void> {
   const maxRetryCount: number = 10;
-  let metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema>;
+  let metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>;
 
   for (let i = 0; i < maxRetryCount; i++) {
     try {
@@ -47,42 +32,43 @@ async function index(): Promise<void> {
   }
 
   try {
-    const octokit: Octokit = new Octokit();
-    const jobs: components["schemas"]["job"][] = await octokit.paginate(
-      octokit.rest.actions.listJobsForWorkflowRun,
-      {
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        run_id: context.runId,
-      },
-    );
+    try {
+      const octokit: Octokit = new Octokit();
+      const jobs: components["schemas"]["job"][] = await octokit.paginate(
+        octokit.rest.actions.listJobsForWorkflowRun,
+        {
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          run_id: context.runId,
+        },
+      );
 
-    for (const step of jobs.find(
-      (j) =>
-        j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME,
-    )?.steps ?? []) {
-      const data: z.TypeOf<typeof metricsDataSchema> = {
-        cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(
-          ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
-            filterMetrics(unixTimeMs, step.started_at, step.completed_at),
-        ),
-        memoryUsageMBs: metricsData.memoryUsageMBs.filter(
-          ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
-            filterMetrics(unixTimeMs, step.started_at, step.completed_at),
-        ),
-      };
+      for (const step of jobs.find(
+        (j) =>
+          j.status === "in_progress" &&
+          j.runner_name === process.env.RUNNER_NAME,
+      )?.steps ?? []) {
+        const data: z.TypeOf<typeof metricsDataSchema> = filterStepMetrics(
+          metricsData,
+          step.started_at,
+          step.completed_at,
+        );
 
-      if (
-        data.cpuLoadPercentages.length === 0 ||
-        data.memoryUsageMBs.length === 0
-      ) {
-        continue;
+        if (
+          data.cpuLoadPercentages.length === 0 ||
+          data.memoryUsageMBs.length === 0
+        ) {
+          continue;
+        }
+
+        metricsData.steps.push({
+          stepName: step.name,
+          data,
+        });
       }
-
-      metricsData.steps.push({
-        stepName: step.name,
-        data,
-      });
+    } catch (error) {
+      console.warn(error);
+      warning(error instanceof Error ? error.message : error);
     }
 
     const fileBaseName: string = "workflow_metrics";
@@ -119,6 +105,7 @@ async function index(): Promise<void> {
     // Render metrics
     await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error) {
+    console.error(error);
     setFailed(error);
   } finally {
     const controller: AbortController = new AbortController();

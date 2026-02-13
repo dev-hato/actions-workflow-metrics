@@ -423,4 +423,41 @@ describe("Renderer", () => {
     expect(result).toContain("12:00:00");
     expect(result).toContain("Purple: Single Metric");
   });
+
+  it("should render step charts inside collapsible details", () => {
+    const renderer: Renderer = new Renderer();
+    const result: string = renderer.render(
+      [
+        {
+          title: "CPU Usage",
+          legends: [{ color: "Red", name: "User CPU" }],
+          data: [
+            {
+              stepName: undefined,
+              metricsInfoList: [[10, 20]],
+              times: threeTimes.slice(0, 2),
+              yAxis: { title: "%" },
+            },
+            {
+              stepName: "Build",
+              metricsInfoList: [[15]],
+              times: [threeTimes[0]],
+              yAxis: { title: "%" },
+            },
+          ],
+        },
+      ],
+      testMetricsID,
+    );
+
+    // "All" section should NOT be inside <details>
+    expect(result).toContain("#### All");
+    expect(result).not.toContain("#### All\n\n<details>");
+
+    // Step section should be inside <details> with <summary>
+    expect(result).toContain("#### Step `Build`");
+    expect(result).toContain("<details>");
+    expect(result).toContain("<summary>Chart</summary>");
+    expect(result).toContain("</details>");
+  });
 });

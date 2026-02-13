@@ -30,12 +30,30 @@ const stepSchema = z.object({
   data: metricsDataSchema,
 });
 const stepsSchema = z.array(stepSchema);
-export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
+export const metricsDataWithStepsSchema = metricsDataSchema.extend({
   steps: stepsSchema,
 });
 
+export function filterStepMetrics(
+  metricsData: z.TypeOf<typeof metricsDataSchema>,
+  startedAt?: string | null,
+  completedAt?: string | null,
+): z.TypeOf<typeof metricsDataSchema> {
+  const startMs: number | undefined =
+    startedAt === null ? undefined : new Date(startedAt).getTime();
+  const endMs: number | undefined =
+    completedAt === null ? undefined : new Date(completedAt).getTime();
+  const filter = ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
+    (startMs === undefined || startMs <= unixTimeMs) &&
+    (endMs === undefined || unixTimeMs <= endMs);
+  return {
+    cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(filter),
+    memoryUsageMBs: metricsData.memoryUsageMBs.filter(filter),
+  };
+}
+
 export async function getMetricsData(): Promise<
-  z.TypeOf<typeof metricsDataWithStepMapSchema>
+  z.TypeOf<typeof metricsDataWithStepsSchema>
 > {
   const controller: AbortController = new AbortController();
   const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
@@ -60,7 +78,7 @@ export async function getMetricsData(): Promise<
 }
 
 function toRenderData(
-  metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema>,
+  metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>,
   mapper: (
     data: z.TypeOf<typeof metricsDataSchema>,
   ) => z.TypeOf<typeof renderDataSchema>,
@@ -83,7 +101,7 @@ function toRenderData(
 }
 
 export function render(
-  metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema>,
+  metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>,
   metricsID: string,
 ): string {
   const renderer: Renderer = new Renderer();
