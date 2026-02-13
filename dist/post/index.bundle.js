@@ -117816,7 +117816,6 @@ var serverPort = 7777;
 // src/post/lib.ts
 var metricsInfoListSchema = exports_external.array(exports_external.array(exports_external.number()));
 var renderDataSchema = exports_external.object({
-  stepName: exports_external.string().optional(),
   metricsInfoList: metricsInfoListSchema,
   times: exports_external.array(exports_external.coerce.date()),
   yAxis: exports_external.object({
@@ -117824,6 +117823,10 @@ var renderDataSchema = exports_external.object({
     range: exports_external.string().optional()
   })
 });
+var renderDataWithStepNameSchema = renderDataSchema.extend({
+  stepName: exports_external.string().optional()
+});
+var renderDataWithStepNameListSchema = exports_external.array(renderDataWithStepNameSchema);
 var metricsInfoSchema = exports_external.object({
   color: exports_external.string(),
   name: exports_external.string()
@@ -117831,15 +117834,16 @@ var metricsInfoSchema = exports_external.object({
 var renderParamsSchema = exports_external.object({
   title: exports_external.string(),
   legends: exports_external.array(metricsInfoSchema),
-  data: exports_external.array(renderDataSchema)
+  data: renderDataWithStepNameListSchema
 });
 var renderParamsListSchema = exports_external.array(renderParamsSchema);
-var stepsSchema = exports_external.object({
+var stepSchema = exports_external.object({
   stepName: exports_external.string().optional(),
   data: metricsDataSchema
 });
+var stepsSchema = exports_external.array(stepSchema);
 var metricsDataWithStepMapSchema = metricsDataSchema.extend({
-  steps: exports_external.array(stepsSchema)
+  steps: stepsSchema
 });
 async function getMetricsData() {
   const controller = new AbortController;
@@ -117856,6 +117860,19 @@ async function getMetricsData() {
     clearTimeout(timer);
   }
 }
+function toRenderData(metricsData, mapper) {
+  const steps = [
+    { data: metricsData },
+    ...metricsData.steps
+  ];
+  return steps.map(({
+    stepName,
+    data
+  }) => ({
+    stepName,
+    ...mapper(data)
+  }));
+}
 function render(metricsData, metricsID) {
   const renderer = new Renderer;
   return renderer.render(renderParamsListSchema.parse([
@@ -117871,19 +117888,14 @@ function render(metricsData, metricsID) {
           name: "User"
         }
       ],
-      data: [
-        { stepName: undefined, data: metricsData },
-        ...metricsData.steps
-      ].map(({
-        stepName,
-        data
+      data: toRenderData(metricsData, ({
+        cpuLoadPercentages
       }) => ({
-        stepName,
         metricsInfoList: [
-          data.cpuLoadPercentages.map(({ system }) => system),
-          data.cpuLoadPercentages.map(({ user }) => user)
+          cpuLoadPercentages.map(({ system }) => system),
+          cpuLoadPercentages.map(({ user }) => user)
         ],
-        times: data.cpuLoadPercentages.map(({ unixTimeMs }) => new Date(unixTimeMs)),
+        times: cpuLoadPercentages.map(({ unixTimeMs }) => new Date(unixTimeMs)),
         yAxis: {
           title: "%",
           range: "0 --> 100"
@@ -117902,19 +117914,14 @@ function render(metricsData, metricsID) {
           name: "Used"
         }
       ],
-      data: [
-        { stepName: undefined, data: metricsData },
-        ...metricsData.steps
-      ].map(({
-        stepName,
-        data
+      data: toRenderData(metricsData, ({
+        memoryUsageMBs
       }) => ({
-        stepName,
         metricsInfoList: [
-          data.memoryUsageMBs.map(({ free }) => free),
-          data.memoryUsageMBs.map(({ used }) => used)
+          memoryUsageMBs.map(({ free }) => free),
+          memoryUsageMBs.map(({ used }) => used)
         ],
-        times: data.memoryUsageMBs.map(({ unixTimeMs }) => new Date(unixTimeMs)),
+        times: memoryUsageMBs.map(({ unixTimeMs }) => new Date(unixTimeMs)),
         yAxis: {
           title: "MB"
         }
@@ -118000,5 +118007,5 @@ async function index() {
 }
 await index();
 
-//# debugId=C51A9A9568B552A964756E2164756E21
+//# debugId=1CE7764C6607F89E64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
