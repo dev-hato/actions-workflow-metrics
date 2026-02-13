@@ -43,7 +43,7 @@ describe("render", () => {
     const result: string = render(
       {
         ...sampleMetricsData,
-        stepMap: [
+        steps: [
           {
             stepName: "Build",
             data: {
@@ -74,11 +74,11 @@ describe("render", () => {
     expect(result).toContain("#### Step `Build`");
   });
 
-  it("should render only All charts when stepMap is empty", () => {
+  it("should render only All charts when steps is empty", () => {
     const result: string = render(
       {
         ...sampleMetricsData,
-        stepMap: [],
+        steps: [],
       },
       testMetricsID,
     );
@@ -92,7 +92,7 @@ describe("render", () => {
     const metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema> = {
       cpuLoadPercentages: [],
       memoryUsageMBs: [],
-      stepMap: [],
+      steps: [],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -111,7 +111,7 @@ describe("render", () => {
         { unixTimeMs: 1704067200000, used: 4000, free: 8000 },
         { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
       ],
-      stepMap: [],
+      steps: [],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -127,7 +127,7 @@ describe("render", () => {
         { unixTimeMs: 1704067200000, used: 5000, free: 10000 },
         { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
       ],
-      stepMap: [],
+      steps: [],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -145,7 +145,7 @@ describe("getMetricsData", () => {
 
     const result = await getMetricsData();
 
-    expect(result).toEqual({ ...sampleMetricsData, stepMap: [] });
+    expect(result).toEqual({ ...sampleMetricsData, steps: [] });
   });
 
   it("should throw error for invalid metrics data", async () => {

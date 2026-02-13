@@ -22,12 +22,12 @@ export const renderParamsSchema = z.object({
   data: z.array(renderDataSchema),
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
-const stepMapSchema = z.object({
+const stepsSchema = z.object({
   stepName: z.string().optional(),
   data: metricsDataSchema,
 });
 export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
-  stepMap: z.array(stepMapSchema),
+  steps: z.array(stepsSchema),
 });
 
 export async function getMetricsData(): Promise<
@@ -49,7 +49,7 @@ export async function getMetricsData(): Promise<
       );
     }
 
-    return { ...metricsDataSchema.parse(await res.json()), stepMap: [] };
+    return { ...metricsDataSchema.parse(await res.json()), steps: [] };
   } finally {
     clearTimeout(timer);
   }
@@ -76,12 +76,12 @@ export function render(
         ],
         data: [
           { stepName: undefined, data: metricsData },
-          ...metricsData.stepMap,
+          ...metricsData.steps,
         ].map(
           ({
             stepName,
             data,
-          }: z.TypeOf<typeof stepMapSchema>): z.TypeOf<
+          }: z.TypeOf<typeof stepsSchema>): z.TypeOf<
             typeof renderDataSchema
           > => ({
             stepName,
@@ -118,12 +118,12 @@ export function render(
         ],
         data: [
           { stepName: undefined, data: metricsData },
-          ...metricsData.stepMap,
+          ...metricsData.steps,
         ].map(
           ({
             stepName,
             data,
-          }: z.TypeOf<typeof stepMapSchema>): z.TypeOf<
+          }: z.TypeOf<typeof stepsSchema>): z.TypeOf<
             typeof renderDataSchema
           > => ({
             stepName,

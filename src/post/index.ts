@@ -79,7 +79,7 @@ async function index(): Promise<void> {
         continue;
       }
 
-      metricsData.stepMap.push({
+      metricsData.steps.push({
         stepName: step.name,
         data,
       });
