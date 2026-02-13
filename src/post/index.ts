@@ -8,6 +8,7 @@ import { serverPort } from "../lib";
 import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
 import type { metricsDataWithStepMapSchema } from "./lib";
+import type { metricsDataSchema } from "../lib";
 
 function filterMetrics(
   unixTimeMs: number,
@@ -60,7 +61,7 @@ async function index(): Promise<void> {
       (j) =>
         j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME,
     )?.steps ?? []) {
-      metricsData.stepMap[step.name] = {
+      const data: z.TypeOf<typeof metricsDataSchema> = {
         cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(
           ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
             filterMetrics(unixTimeMs, step.started_at, step.completed_at),
@@ -70,6 +71,18 @@ async function index(): Promise<void> {
             filterMetrics(unixTimeMs, step.started_at, step.completed_at),
         ),
       };
+
+      if (
+        data.cpuLoadPercentages.length === 0 ||
+        data.memoryUsageMBs.length === 0
+      ) {
+        continue;
+      }
+
+      metricsData.stepMap.push({
+        stepName: step.name,
+        data,
+      });
     }
 
     const fileBaseName: string = "workflow_metrics";

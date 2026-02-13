@@ -1,11 +1,6 @@
 import { z } from "zod";
 import { Renderer } from "./renderer";
-import {
-  cpuLoadPercentagesSchema,
-  memoryUsageMBsSchema,
-  metricsDataSchema,
-  serverPort,
-} from "../lib";
+import { metricsDataSchema, serverPort } from "../lib";
 
 export const metricsInfoListSchema = z.array(z.array(z.number()));
 export const renderDataSchema = z.object({
@@ -27,8 +22,12 @@ export const renderParamsSchema = z.object({
   data: z.array(renderDataSchema),
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
+const stepMapSchema = z.object({
+  stepName: z.string().optional(),
+  data: metricsDataSchema,
+});
 export const metricsDataWithStepMapSchema = metricsDataSchema.extend({
-  stepMap: z.record(z.string(), metricsDataSchema),
+  stepMap: z.array(stepMapSchema),
 });
 
 export async function getMetricsData(): Promise<
@@ -50,7 +49,7 @@ export async function getMetricsData(): Promise<
       );
     }
 
-    return { ...metricsDataSchema.parse(await res.json()), stepMap: {} };
+    return { ...metricsDataSchema.parse(await res.json()), stepMap: [] };
   } finally {
     clearTimeout(timer);
   }
@@ -60,8 +59,6 @@ export function render(
   metricsData: z.TypeOf<typeof metricsDataWithStepMapSchema>,
   metricsID: string,
 ): string {
-  const stepMetricsDataEntries: [string, z.TypeOf<typeof metricsDataSchema>][] =
-    Object.entries(metricsData.stepMap);
   const renderer: Renderer = new Renderer();
   return renderer.render(
     renderParamsListSchema.parse([
@@ -78,43 +75,34 @@ export function render(
           },
         ],
         data: [
-          [undefined, metricsData.cpuLoadPercentages],
-          ...stepMetricsDataEntries.map(
-            ([stepName, { cpuLoadPercentages }]: [
-              string,
-              z.TypeOf<typeof metricsDataSchema>,
-            ]): [string, z.TypeOf<typeof cpuLoadPercentagesSchema>] => [
-              stepName,
-              cpuLoadPercentages,
-            ],
-          ),
-        ]
-          .filter(
-            ([_, c]: [
-              string | undefined,
-              z.TypeOf<typeof cpuLoadPercentagesSchema>,
-            ]): boolean => 0 < c.length,
-          )
-          .map(
-            ([stepName, c]: [
-              string | undefined,
-              z.TypeOf<typeof cpuLoadPercentagesSchema>,
-            ]): z.TypeOf<typeof renderDataSchema> => ({
-              stepName,
-              metricsInfoList: [
-                c.map(({ system }: { system: number }): number => system),
-                c.map(({ user }: { user: number }): number => user),
-              ],
-              times: c.map(
-                ({ unixTimeMs }: { unixTimeMs: number }): Date =>
-                  new Date(unixTimeMs),
+          { stepName: undefined, data: metricsData },
+          ...metricsData.stepMap,
+        ].map(
+          ({
+            stepName,
+            data,
+          }: z.TypeOf<typeof stepMapSchema>): z.TypeOf<
+            typeof renderDataSchema
+          > => ({
+            stepName,
+            metricsInfoList: [
+              data.cpuLoadPercentages.map(
+                ({ system }: { system: number }): number => system,
               ),
-              yAxis: {
-                title: "%",
-                range: "0 --> 100",
-              },
-            }),
-          ),
+              data.cpuLoadPercentages.map(
+                ({ user }: { user: number }): number => user,
+              ),
+            ],
+            times: data.cpuLoadPercentages.map(
+              ({ unixTimeMs }: { unixTimeMs: number }): Date =>
+                new Date(unixTimeMs),
+            ),
+            yAxis: {
+              title: "%",
+              range: "0 --> 100",
+            },
+          }),
+        ),
       },
       {
         title: "Memory Usages",
@@ -129,42 +117,33 @@ export function render(
           },
         ],
         data: [
-          [undefined, metricsData.memoryUsageMBs],
-          ...stepMetricsDataEntries.map(
-            ([stepName, { memoryUsageMBs }]: [
-              string,
-              z.TypeOf<typeof metricsDataSchema>,
-            ]): [string, z.TypeOf<typeof memoryUsageMBsSchema>] => [
-              stepName,
-              memoryUsageMBs,
-            ],
-          ),
-        ]
-          .filter(
-            ([_, m]: [
-              string | undefined,
-              z.TypeOf<typeof memoryUsageMBsSchema>,
-            ]): boolean => 0 < m.length,
-          )
-          .map(
-            ([stepName, m]: [
-              string | undefined,
-              z.TypeOf<typeof memoryUsageMBsSchema>,
-            ]): z.TypeOf<typeof renderDataSchema> => ({
-              stepName,
-              metricsInfoList: [
-                m.map(({ free }: { free: number }): number => free),
-                m.map(({ used }: { used: number }): number => used),
-              ],
-              times: m.map(
-                ({ unixTimeMs }: { unixTimeMs: number }): Date =>
-                  new Date(unixTimeMs),
+          { stepName: undefined, data: metricsData },
+          ...metricsData.stepMap,
+        ].map(
+          ({
+            stepName,
+            data,
+          }: z.TypeOf<typeof stepMapSchema>): z.TypeOf<
+            typeof renderDataSchema
+          > => ({
+            stepName,
+            metricsInfoList: [
+              data.memoryUsageMBs.map(
+                ({ free }: { free: number }): number => free,
               ),
-              yAxis: {
-                title: "MB",
-              },
-            }),
-          ),
+              data.memoryUsageMBs.map(
+                ({ used }: { used: number }): number => used,
+              ),
+            ],
+            times: data.memoryUsageMBs.map(
+              ({ unixTimeMs }: { unixTimeMs: number }): Date =>
+                new Date(unixTimeMs),
+            ),
+            yAxis: {
+              title: "MB",
+            },
+          }),
+        ),
       },
     ]),
     metricsID,
