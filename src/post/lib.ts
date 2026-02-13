@@ -40,9 +40,13 @@ export function filterStepMetrics(
   completedAt?: string | null,
 ): z.TypeOf<typeof metricsDataSchema> {
   const startMs: number | undefined =
-    startedAt === undefined || startedAt === null ? undefined : new Date(startedAt).getTime();
+    startedAt === undefined || startedAt === null
+      ? undefined
+      : new Date(startedAt).getTime();
   const endMs: number | undefined =
-    completedAt === undefined || completedAt === null ? undefined : new Date(completedAt).getTime();
+    completedAt === undefined || completedAt === null
+      ? undefined
+      : new Date(completedAt).getTime();
   const filter = ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
     (startMs === undefined || startMs <= unixTimeMs) &&
     (endMs === undefined || unixTimeMs <= endMs);
