@@ -117834,12 +117834,12 @@ var renderParamsSchema = exports_external.object({
   data: exports_external.array(renderDataSchema)
 });
 var renderParamsListSchema = exports_external.array(renderParamsSchema);
-var stepMapSchema = exports_external.object({
+var stepsSchema = exports_external.object({
   stepName: exports_external.string().optional(),
   data: metricsDataSchema
 });
 var metricsDataWithStepMapSchema = metricsDataSchema.extend({
-  stepMap: exports_external.array(stepMapSchema)
+  steps: exports_external.array(stepsSchema)
 });
 async function getMetricsData() {
   const controller = new AbortController;
@@ -117851,7 +117851,7 @@ async function getMetricsData() {
     if (!res.ok) {
       throw new Error(`Failed to fetch metrics: ${res.status} ${res.statusText}`);
     }
-    return { ...metricsDataSchema.parse(await res.json()), stepMap: [] };
+    return { ...metricsDataSchema.parse(await res.json()), steps: [] };
   } finally {
     clearTimeout(timer);
   }
@@ -117873,7 +117873,7 @@ function render(metricsData, metricsID) {
       ],
       data: [
         { stepName: undefined, data: metricsData },
-        ...metricsData.stepMap
+        ...metricsData.steps
       ].map(({
         stepName,
         data
@@ -117904,7 +117904,7 @@ function render(metricsData, metricsID) {
       ],
       data: [
         { stepName: undefined, data: metricsData },
-        ...metricsData.stepMap
+        ...metricsData.steps
       ].map(({
         stepName,
         data
@@ -117956,7 +117956,7 @@ async function index() {
       if (data.cpuLoadPercentages.length === 0 || data.memoryUsageMBs.length === 0) {
         continue;
       }
-      metricsData.stepMap.push({
+      metricsData.steps.push({
         stepName: step.name,
         data
       });
@@ -118000,5 +118000,5 @@ async function index() {
 }
 await index();
 
-//# debugId=65F29026A55EFCBE64756E2164756E21
+//# debugId=C51A9A9568B552A964756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
