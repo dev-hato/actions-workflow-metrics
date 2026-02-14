@@ -11,6 +11,10 @@ const stepsSchema = z.array(stepSchema);
 export const metricsDataWithStepsSchema = metricsDataSchema.extend({
   steps: stepsSchema,
 });
+export const metricsInfoSchema = z.object({
+  color: z.string(),
+  name: z.string(),
+});
 export const metricsInfoListSchema = z.array(z.array(z.number()));
 const renderDataSchema = z.object({
   metricsInfoList: metricsInfoListSchema,
@@ -24,10 +28,6 @@ export const renderDataWithStepNameSchema = renderDataSchema.extend({
   stepName: z.string().optional(),
 });
 const renderDataWithStepNameListSchema = z.array(renderDataWithStepNameSchema);
-export const metricsInfoSchema = z.object({
-  color: z.string(),
-  name: z.string(),
-});
 export const legendsSchema = z.array(metricsInfoSchema);
 export const renderParamsSchema = z.object({
   title: z.string(),
