@@ -13,24 +13,21 @@ async function index(): Promise<void> {
   const maxRetryCount: number = 10;
   let metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>;
 
+  let jobs: components["schemas"]["job"][] = [];
+
+  try {
+    const octokit: Octokit = new Octokit();
+    jobs = await octokit.paginate(octokit.rest.actions.listJobsForWorkflowRun, {
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      run_id: context.runId,
+    });
+  } catch (error) {
+    console.warn(error);
+    warning(error);
+  }
+
   for (let i = 0; i < maxRetryCount; i++) {
-    let jobs: components["schemas"]["job"][] = [];
-
-    try {
-      const octokit: Octokit = new Octokit();
-      jobs = await octokit.paginate(
-        octokit.rest.actions.listJobsForWorkflowRun,
-        {
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          run_id: context.runId,
-        },
-      );
-    } catch (error) {
-      console.warn(error);
-      warning(error);
-    }
-
     try {
       metricsData = await getMetricsData(jobs);
       break;

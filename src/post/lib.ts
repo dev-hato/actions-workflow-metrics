@@ -68,11 +68,9 @@ export async function getMetricsData(
       )
         .map((s): z.TypeOf<typeof stepSchema> => {
           const startMs: number | undefined =
-            s.started_at === undefined || s.started_at === null
-              ? undefined
-              : new Date(s.started_at).getTime();
+            s.started_at == null ? undefined : new Date(s.started_at).getTime();
           const endMs: number | undefined =
-            s.completed_at === undefined || s.completed_at === null
+            s.completed_at == null
               ? undefined
               : new Date(s.completed_at).getTime();
           const filter = ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
@@ -103,8 +101,9 @@ function toRenderData(
     data: z.TypeOf<typeof metricsDataSchema>,
   ) => z.TypeOf<typeof renderDataSchema>,
 ): z.TypeOf<typeof renderDataWithStepNameListSchema> {
+  const { cpuLoadPercentages, memoryUsageMBs } = metricsData;
   const steps: z.TypeOf<typeof stepsSchema> = [
-    { data: metricsData },
+    { data: { cpuLoadPercentages, memoryUsageMBs } },
     ...metricsData.steps,
   ];
   return steps.map(
