@@ -88,48 +88,53 @@ describe("render", () => {
   });
 
   it("should handle empty metrics data", () => {
-    const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
-      cpuLoadPercentages: [],
-      memoryUsageMBs: [],
-      steps: [],
-    };
-
-    const result: string = render(metricsData, testMetricsID);
-
     // Empty data results in empty string (no charts to render)
-    expect(typeof result).toBe("string");
+    expect(
+      typeof render(
+        {
+          cpuLoadPercentages: [],
+          memoryUsageMBs: [],
+          steps: [],
+        },
+        testMetricsID,
+      ),
+    ).toBe("string");
   });
 
   it("should correctly map CPU load percentages", () => {
-    const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
-      cpuLoadPercentages: [
-        { unixTimeMs: 1704067200000, user: 20, system: 10 },
-        { unixTimeMs: 1704067205000, user: 25, system: 15 },
-      ],
-      memoryUsageMBs: [
-        { unixTimeMs: 1704067200000, used: 4000, free: 8000 },
-        { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
-      ],
-      steps: [],
-    };
-
-    const result: string = render(metricsData, testMetricsID);
+    const result: string = render(
+      {
+        cpuLoadPercentages: [
+          { unixTimeMs: 1704067200000, user: 20, system: 10 },
+          { unixTimeMs: 1704067205000, user: 25, system: 15 },
+        ],
+        memoryUsageMBs: [
+          { unixTimeMs: 1704067200000, used: 4000, free: 8000 },
+          { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
+        ],
+        steps: [],
+      },
+      testMetricsID,
+    );
 
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
   });
 
   it("should correctly map memory usage data", () => {
-    const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
-      cpuLoadPercentages: [{ unixTimeMs: 1704067200000, user: 20, system: 10 }],
-      memoryUsageMBs: [
-        { unixTimeMs: 1704067200000, used: 5000, free: 10000 },
-        { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
-      ],
-      steps: [],
-    };
-
-    const result: string = render(metricsData, testMetricsID);
+    const result: string = render(
+      {
+        cpuLoadPercentages: [
+          { unixTimeMs: 1704067200000, user: 20, system: 10 },
+        ],
+        memoryUsageMBs: [
+          { unixTimeMs: 1704067200000, used: 5000, free: 10000 },
+          { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
+        ],
+        steps: [],
+      },
+      testMetricsID,
+    );
 
     expect(result).toBeTruthy();
     expect(result.length).toBeGreaterThan(0);
