@@ -117861,8 +117861,8 @@ async function getMetricsData(jobs) {
     return {
       ...metricsData,
       steps: (jobs.find((j) => j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME)?.steps ?? []).map((s) => {
-        const startMs = s.started_at === undefined || s.started_at === null ? undefined : new Date(s.started_at).getTime();
-        const endMs = s.completed_at === undefined || s.completed_at === null ? undefined : new Date(s.completed_at).getTime();
+        const startMs = s.started_at == null ? undefined : new Date(s.started_at).getTime();
+        const endMs = s.completed_at == null ? undefined : new Date(s.completed_at).getTime();
         const filter = ({ unixTimeMs }) => (startMs === undefined || startMs <= unixTimeMs) && (endMs === undefined || unixTimeMs <= endMs);
         return {
           stepName: s.name,
@@ -117878,8 +117878,9 @@ async function getMetricsData(jobs) {
   }
 }
 function toRenderData(metricsData, mapper) {
+  const { cpuLoadPercentages, memoryUsageMBs } = metricsData;
   const steps = [
-    { data: metricsData },
+    { data: { cpuLoadPercentages, memoryUsageMBs } },
     ...metricsData.steps
   ];
   return steps.map(({
@@ -117951,19 +117952,19 @@ function render(metricsData, metricsID) {
 async function index() {
   const maxRetryCount = 10;
   let metricsData;
+  let jobs = [];
+  try {
+    const octokit = new Octokit2;
+    jobs = await octokit.paginate(octokit.rest.actions.listJobsForWorkflowRun, {
+      owner: context4.repo.owner,
+      repo: context4.repo.repo,
+      run_id: context4.runId
+    });
+  } catch (error49) {
+    console.warn(error49);
+    warning(error49);
+  }
   for (let i = 0;i < maxRetryCount; i++) {
-    let jobs = [];
-    try {
-      const octokit = new Octokit2;
-      jobs = await octokit.paginate(octokit.rest.actions.listJobsForWorkflowRun, {
-        owner: context4.repo.owner,
-        repo: context4.repo.repo,
-        run_id: context4.runId
-      });
-    } catch (error49) {
-      console.warn(error49);
-      warning(error49);
-    }
     try {
       metricsData = await getMetricsData(jobs);
       break;
@@ -118017,5 +118018,5 @@ async function index() {
 }
 await index();
 
-//# debugId=EE6D9E411583938A64756E2164756E21
+//# debugId=E7E6BDB768C3B56164756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
