@@ -117969,6 +117969,7 @@ async function index() {
       break;
     } catch (error49) {
       if (maxRetryCount - 2 < i || !(error49 instanceof TypeError) || error49.message !== "fetch failed") {
+        console.error(error49);
         setFailed(error49);
       }
     }
@@ -117987,6 +117988,7 @@ async function index() {
         break;
       } catch (error49) {
         if (maxRetryCount - 2 < i || !(error49 instanceof Error) || !error49.message.includes("Failed request: (409) Conflict: an artifact with this name already exists on the workflow run")) {
+          console.error(error49);
           setFailed(error49);
         }
       }
@@ -118015,5 +118017,5 @@ async function index() {
 }
 await index();
 
-//# debugId=3572B1C69BC7D52364756E2164756E21
+//# debugId=EE6D9E411583938A64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
