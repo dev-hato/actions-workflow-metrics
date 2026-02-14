@@ -42,24 +42,24 @@ ${p.legends
             metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
           }): boolean => metricsInfoList.length > 0,
         )
-        .map((d: z.TypeOf<typeof renderDataWithStepNameSchema>): string => {
-          const stackedDatum: number[][] = d.metricsInfoList
+        .map((s: z.TypeOf<typeof renderDataWithStepNameSchema>): string => {
+          const stackedDatum: number[][] = s.metricsInfoList
             .toReversed()
             .reduce(
-              (prev: number[][], data: number[], i: number): number[][] => {
+              (prev: number[][], values: number[], i: number): number[][] => {
                 prev.push(
-                  data.map((d: number, j: number): number => d + prev[i][j]),
+                  values.map((v: number, j: number): number => v + prev[i][j]),
                 );
                 return prev;
               },
-              [d.metricsInfoList[0].map((): number => 0)],
+              [s.metricsInfoList[0].map((): number => 0)],
             )
             .slice(1)
             .toReversed();
           return `${
-            d.stepName === undefined
+            s.stepName === undefined
               ? "#### All"
-              : `#### Step \`${d.stepName}\`
+              : `#### Step \`${s.stepName}\`
 
 <details>
 <summary>Chart</summary>`
@@ -78,14 +78,14 @@ ${p.legends
 xychart
 
 x-axis "Time" ${JSON.stringify(
-            d.times.map((d: Date): string =>
-              d.toLocaleTimeString("en-GB", { hour12: false }),
+            s.times.map((t: Date): string =>
+              t.toLocaleTimeString("en-GB", { hour12: false }),
             ),
           )}
-y-axis "${d.yAxis.title}"${d.yAxis.range ? ` ${d.yAxis.range}` : ""}
-${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
+y-axis "${s.yAxis.title}"${s.yAxis.range ? ` ${s.yAxis.range}` : ""}
+${stackedDatum.map((r: number[]): string => `bar ${JSON.stringify(r)}`).join("\n")}
 \`\`\`${
-            d.stepName === undefined
+            s.stepName === undefined
               ? ""
               : `
 

@@ -68,7 +68,7 @@ async function index(): Promise<void> {
       }
     } catch (error) {
       console.warn(error);
-      warning(error instanceof Error ? error.message : error);
+      warning(error instanceof Error ? error.message : String(error));
     }
 
     const fileBaseName: string = "workflow_metrics";
