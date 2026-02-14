@@ -16,6 +16,7 @@ export const metricsInfoSchema = z.object({
   name: z.string(),
 });
 export const metricsInfoListSchema = z.array(z.array(z.number()));
+export const legendsSchema = z.array(metricsInfoSchema);
 const renderDataSchema = z.object({
   metricsInfoList: metricsInfoListSchema,
   times: z.array(z.coerce.date()),
@@ -28,7 +29,6 @@ export const renderDataWithStepNameSchema = renderDataSchema.extend({
   stepName: z.string().optional(),
 });
 const renderDataWithStepNameListSchema = z.array(renderDataWithStepNameSchema);
-export const legendsSchema = z.array(metricsInfoSchema);
 export const renderParamsSchema = z.object({
   title: z.string(),
   legends: legendsSchema,
