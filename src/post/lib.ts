@@ -3,6 +3,14 @@ import { Renderer } from "./renderer";
 import { metricsDataSchema, serverPort } from "../lib";
 import type { components } from "@octokit/openapi-types";
 
+const stepSchema = z.object({
+  stepName: z.string().optional(),
+  data: metricsDataSchema,
+});
+const stepsSchema = z.array(stepSchema);
+export const metricsDataWithStepsSchema = metricsDataSchema.extend({
+  steps: stepsSchema,
+});
 export const metricsInfoListSchema = z.array(z.array(z.number()));
 const renderDataSchema = z.object({
   metricsInfoList: metricsInfoListSchema,
@@ -27,14 +35,6 @@ export const renderParamsSchema = z.object({
   data: renderDataWithStepNameListSchema,
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
-const stepSchema = z.object({
-  stepName: z.string().optional(),
-  data: metricsDataSchema,
-});
-const stepsSchema = z.array(stepSchema);
-export const metricsDataWithStepsSchema = metricsDataSchema.extend({
-  steps: stepsSchema,
-});
 
 export async function getMetricsData(
   jobs: components["schemas"]["job"][],
