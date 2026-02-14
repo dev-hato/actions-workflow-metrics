@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Renderer } from "./renderer";
+import type { z } from "zod";
+import type { legendsSchema } from "./lib";
 
 describe("Renderer", () => {
   const testMetricsID: string = "1234567890";
@@ -11,6 +13,9 @@ describe("Renderer", () => {
     new Date("2024-01-01T00:00:00Z"),
     new Date("2024-01-01T00:00:05Z"),
     new Date("2024-01-01T00:00:10Z"),
+  ];
+  const singleCpuLegends: z.TypeOf<typeof legendsSchema> = [
+    { color: "Red", name: "User CPU" },
   ];
 
   it("should return only header for empty metricsInfo", () => {
@@ -47,7 +52,7 @@ describe("Renderer", () => {
       [
         {
           title: "CPU Usage",
-          legends: [{ color: "Red", name: "User CPU" }],
+          legends: singleCpuLegends,
           data: [
             {
               stepName: undefined,
@@ -429,8 +434,8 @@ describe("Renderer", () => {
     const result: string = renderer.render(
       [
         {
-          title: "CPU Usage",
-          legends: [{ color: "Red", name: "User CPU" }],
+          title: "Step Collapsible",
+          legends: singleCpuLegends,
           data: [
             {
               stepName: undefined,

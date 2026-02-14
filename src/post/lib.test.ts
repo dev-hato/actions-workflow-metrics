@@ -136,6 +136,17 @@ describe("render", () => {
 });
 
 describe("filterStepMetrics", () => {
+  const expectOnlyFirstDataPoint = (
+    result: z.TypeOf<typeof metricsDataSchema>,
+  ) => {
+    expect(result.cpuLoadPercentages).toEqual([
+      sampleMetricsData.cpuLoadPercentages[0],
+    ]);
+    expect(result.memoryUsageMBs).toEqual([
+      sampleMetricsData.memoryUsageMBs[0],
+    ]);
+  };
+
   it("should filter metrics within the given time range", () => {
     const result: z.TypeOf<typeof metricsDataSchema> = filterStepMetrics(
       sampleMetricsData,
@@ -143,12 +154,7 @@ describe("filterStepMetrics", () => {
       "2024-01-01T00:00:02.000Z",
     );
 
-    expect(result.cpuLoadPercentages).toEqual([
-      { unixTimeMs: 1704067200000, user: 25.5, system: 10.3 },
-    ]);
-    expect(result.memoryUsageMBs).toEqual([
-      { unixTimeMs: 1704067200000, used: 4096, free: 8192 },
-    ]);
+    expectOnlyFirstDataPoint(result);
   });
 
   it("should return all metrics when both bounds are null", () => {
@@ -199,12 +205,7 @@ describe("filterStepMetrics", () => {
       "2024-01-01T00:00:02.000Z",
     );
 
-    expect(result.cpuLoadPercentages).toEqual([
-      { unixTimeMs: 1704067200000, user: 25.5, system: 10.3 },
-    ]);
-    expect(result.memoryUsageMBs).toEqual([
-      { unixTimeMs: 1704067200000, used: 4096, free: 8192 },
-    ]);
+    expectOnlyFirstDataPoint(result);
   });
 
   it("should return empty arrays when no metrics match", () => {

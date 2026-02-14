@@ -19,9 +19,10 @@ export const metricsInfoSchema = z.object({
   color: z.string(),
   name: z.string(),
 });
+export const legendsSchema = z.array(metricsInfoSchema);
 export const renderParamsSchema = z.object({
   title: z.string(),
-  legends: z.array(metricsInfoSchema),
+  legends: legendsSchema,
   data: renderDataWithStepNameListSchema,
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
