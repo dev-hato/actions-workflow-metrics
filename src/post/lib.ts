@@ -27,7 +27,7 @@ export const renderParamsSchema = z.object({
   data: renderDataWithStepNameListSchema,
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
-export const stepSchema = z.object({
+const stepSchema = z.object({
   stepName: z.string().optional(),
   data: metricsDataSchema,
 });
