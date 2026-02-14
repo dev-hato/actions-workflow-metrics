@@ -101,9 +101,13 @@ function toRenderData(
     data: z.TypeOf<typeof metricsDataSchema>,
   ) => z.TypeOf<typeof renderDataSchema>,
 ): z.TypeOf<typeof renderDataWithStepNameListSchema> {
-  const { cpuLoadPercentages, memoryUsageMBs } = metricsData;
   const steps: z.TypeOf<typeof stepsSchema> = [
-    { data: { cpuLoadPercentages, memoryUsageMBs } },
+    {
+      data: {
+        cpuLoadPercentages: metricsData.cpuLoadPercentages,
+        memoryUsageMBs: metricsData.memoryUsageMBs,
+      },
+    },
     ...metricsData.steps,
   ];
   return steps.map(
