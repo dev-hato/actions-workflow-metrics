@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import { DefaultArtifactClient } from "@actions/artifact";
-import { info, setFailed, warning, summary } from "@actions/core";
+import { info, setFailed, summary, warning } from "@actions/core";
 import { context } from "@actions/github";
 import { Octokit } from "@octokit/action";
 import { getMetricsData, render } from "./lib";
