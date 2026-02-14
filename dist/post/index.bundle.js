@@ -117832,9 +117832,10 @@ var metricsInfoSchema = exports_external.object({
   color: exports_external.string(),
   name: exports_external.string()
 });
+var legendsSchema = exports_external.array(metricsInfoSchema);
 var renderParamsSchema = exports_external.object({
   title: exports_external.string(),
-  legends: exports_external.array(metricsInfoSchema),
+  legends: legendsSchema,
   data: renderDataWithStepNameListSchema
 });
 var renderParamsListSchema = exports_external.array(renderParamsSchema);
@@ -118017,5 +118018,5 @@ async function index() {
 }
 await index();
 
-//# debugId=295499C86B5F18F864756E2164756E21
+//# debugId=8914047E60A8C28A64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
