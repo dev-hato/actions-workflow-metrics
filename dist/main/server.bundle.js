@@ -36406,6 +36406,7 @@ class Metrics {
         free: available / bytesPerMB
       });
     } catch (error2) {
+      console.error(error2);
       setFailed(error2);
     } finally {
       const nextUNIXTimeMs = unixTimeMs + this.intervalMs;
@@ -49987,6 +49988,7 @@ async function server() {
       response.statusCode = 500;
       response.setHeader("Content-Type", "application/json");
       response.end(JSON.stringify({ error: "Internal server error" }));
+      console.error(error49);
       setFailed(error49);
     }
   });
@@ -49995,5 +49997,5 @@ async function server() {
 }
 await server();
 
-//# debugId=0EC6C1503334BA5064756E2164756E21
+//# debugId=B7717EEE8E2E115664756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
