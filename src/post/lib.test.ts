@@ -150,6 +150,25 @@ describe("getMetricsData", () => {
       ...overrides,
     }) as components["schemas"]["job"];
 
+  const buildStep = {
+    name: "Build",
+    status: "completed" as const,
+    conclusion: "success",
+    number: 1,
+    started_at: "2024-01-01T00:00:00.000Z",
+    completed_at: "2024-01-01T00:00:05.000Z",
+  };
+  const expectOnlyFirstDataPoint = (
+    result: z.TypeOf<typeof metricsDataWithStepsSchema>,
+  ) => {
+    expect(result.steps[0].data.cpuLoadPercentages).toEqual([
+      sampleMetricsData.cpuLoadPercentages[0],
+    ]);
+    expect(result.steps[0].data.memoryUsageMBs).toEqual([
+      sampleMetricsData.memoryUsageMBs[0],
+    ]);
+  };
+
   beforeEach(() => {
     mock.restore();
     process.env.RUNNER_NAME = runnerName;
@@ -207,27 +226,13 @@ describe("getMetricsData", () => {
     const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
       await getMetricsData([
         createJob({
-          steps: [
-            {
-              name: "Build",
-              status: "completed",
-              conclusion: "success",
-              number: 1,
-              started_at: "2024-01-01T00:00:00.000Z",
-              completed_at: "2024-01-01T00:00:02.000Z",
-            },
-          ],
+          steps: [{ ...buildStep, completed_at: "2024-01-01T00:00:02.000Z" }],
         }),
       ]);
 
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0].stepName).toBe("Build");
-    expect(result.steps[0].data.cpuLoadPercentages).toEqual([
-      sampleMetricsData.cpuLoadPercentages[0],
-    ]);
-    expect(result.steps[0].data.memoryUsageMBs).toEqual([
-      sampleMetricsData.memoryUsageMBs[0],
-    ]);
+    expectOnlyFirstDataPoint(result);
   });
 
   it("should return empty steps when no job matches RUNNER_NAME", async () => {
@@ -269,14 +274,7 @@ describe("getMetricsData", () => {
       await getMetricsData([
         createJob({
           steps: [
-            {
-              name: "Build",
-              status: "completed",
-              conclusion: "success",
-              number: 1,
-              started_at: "2024-01-01T00:00:00.000Z",
-              completed_at: "2024-01-01T00:00:05.000Z",
-            },
+            buildStep,
             {
               name: "No Data",
               status: "completed",
@@ -378,12 +376,7 @@ describe("getMetricsData", () => {
       ]);
 
     expect(result.steps).toHaveLength(1);
-    expect(result.steps[0].data.cpuLoadPercentages).toEqual([
-      sampleMetricsData.cpuLoadPercentages[0],
-    ]);
-    expect(result.steps[0].data.memoryUsageMBs).toEqual([
-      sampleMetricsData.memoryUsageMBs[0],
-    ]);
+    expectOnlyFirstDataPoint(result);
   });
 
   it("should handle multiple jobs and select the correct one", async () => {
