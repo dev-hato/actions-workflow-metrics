@@ -1,10 +1,10 @@
 import type { z } from "zod";
 import type {
+  legendSchema,
   renderDataWithStepNameSchema,
   renderParamsListSchema,
   renderParamsSchema,
   metricsInfoListSchema,
-  metricsInfoSchema,
 } from "./lib";
 
 export class Renderer {
@@ -30,7 +30,7 @@ ${renderParamsList
 
 ${p.legends
   .map(
-    (l: z.TypeOf<typeof metricsInfoSchema>): string =>
+    (l: z.TypeOf<typeof legendSchema>): string =>
       `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`,
   )
   .join("\n")}`,
