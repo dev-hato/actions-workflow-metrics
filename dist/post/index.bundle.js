@@ -117796,14 +117796,15 @@ ${stackedDatum.map((r) => `bar ${JSON.stringify(r)}`).join(`
 }
 
 // src/lib.ts
-var cpuLoadPercentageSchema = exports_external.object({
-  unixTimeMs: exports_external.number(),
+var unixTimeMsSchema = exports_external.object({
+  unixTimeMs: exports_external.number()
+});
+var cpuLoadPercentageSchema = unixTimeMsSchema.extend({
   user: exports_external.number().nonnegative().max(100),
   system: exports_external.number().nonnegative().max(100)
 });
 var cpuLoadPercentagesSchema = exports_external.array(cpuLoadPercentageSchema);
-var memoryUsageMBSchema = exports_external.object({
-  unixTimeMs: exports_external.number(),
+var memoryUsageMBSchema = unixTimeMsSchema.extend({
   used: exports_external.number().nonnegative(),
   free: exports_external.number().nonnegative()
 });
@@ -117815,7 +117816,20 @@ var metricsDataSchema = exports_external.object({
 var serverPort = 7777;
 
 // src/post/lib.ts
+var stepSchema = exports_external.object({
+  stepName: exports_external.string().optional(),
+  data: metricsDataSchema
+});
+var stepsSchema = exports_external.array(stepSchema);
+var metricsDataWithStepsSchema = metricsDataSchema.extend({
+  steps: stepsSchema
+});
+var legendSchema = exports_external.object({
+  color: exports_external.string(),
+  name: exports_external.string()
+});
 var metricsInfoListSchema = exports_external.array(exports_external.array(exports_external.number()));
+var legendsSchema = exports_external.array(legendSchema);
 var renderDataSchema = exports_external.object({
   metricsInfoList: metricsInfoListSchema,
   times: exports_external.array(exports_external.coerce.date()),
@@ -117828,25 +117842,12 @@ var renderDataWithStepNameSchema = renderDataSchema.extend({
   stepName: exports_external.string().optional()
 });
 var renderDataWithStepNameListSchema = exports_external.array(renderDataWithStepNameSchema);
-var metricsInfoSchema = exports_external.object({
-  color: exports_external.string(),
-  name: exports_external.string()
-});
-var legendsSchema = exports_external.array(metricsInfoSchema);
 var renderParamsSchema = exports_external.object({
   title: exports_external.string(),
   legends: legendsSchema,
   data: renderDataWithStepNameListSchema
 });
 var renderParamsListSchema = exports_external.array(renderParamsSchema);
-var stepSchema = exports_external.object({
-  stepName: exports_external.string().optional(),
-  data: metricsDataSchema
-});
-var stepsSchema = exports_external.array(stepSchema);
-var metricsDataWithStepsSchema = metricsDataSchema.extend({
-  steps: stepsSchema
-});
 async function getMetricsData(jobs) {
   const controller = new AbortController;
   const timer = setTimeout(() => controller.abort(), 10 * 1000);
@@ -117863,7 +117864,9 @@ async function getMetricsData(jobs) {
       steps: (jobs.find((j) => j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME)?.steps ?? []).map((s) => {
         const startMs = s.started_at == null ? undefined : new Date(s.started_at).getTime();
         const endMs = s.completed_at == null ? undefined : new Date(s.completed_at).getTime();
-        const filter = ({ unixTimeMs }) => (startMs === undefined || startMs <= unixTimeMs) && (endMs === undefined || unixTimeMs <= endMs);
+        const filter = ({
+          unixTimeMs
+        }) => (startMs === undefined || startMs <= unixTimeMs) && (endMs === undefined || unixTimeMs <= endMs);
         return {
           stepName: s.name,
           data: {
@@ -117878,9 +117881,13 @@ async function getMetricsData(jobs) {
   }
 }
 function toRenderData(metricsData, mapper) {
-  const { cpuLoadPercentages, memoryUsageMBs } = metricsData;
   const steps = [
-    { data: { cpuLoadPercentages, memoryUsageMBs } },
+    {
+      data: {
+        cpuLoadPercentages: metricsData.cpuLoadPercentages,
+        memoryUsageMBs: metricsData.memoryUsageMBs
+      }
+    },
     ...metricsData.steps
   ];
   return steps.map(({
@@ -117910,10 +117917,14 @@ function render(metricsData, metricsID) {
         cpuLoadPercentages
       }) => ({
         metricsInfoList: [
-          cpuLoadPercentages.map(({ system }) => system),
+          cpuLoadPercentages.map(({
+            system
+          }) => system),
           cpuLoadPercentages.map(({ user }) => user)
         ],
-        times: cpuLoadPercentages.map(({ unixTimeMs }) => new Date(unixTimeMs)),
+        times: cpuLoadPercentages.map(({
+          unixTimeMs
+        }) => new Date(unixTimeMs)),
         yAxis: {
           title: "%",
           range: "0 --> 100"
@@ -117950,8 +117961,6 @@ function render(metricsData, metricsID) {
 
 // src/post/index.ts
 async function index() {
-  const maxRetryCount = 10;
-  let metricsData;
   let jobs = [];
   try {
     const octokit = new Octokit2;
@@ -117964,6 +117973,8 @@ async function index() {
     console.warn(error49);
     warning(error49);
   }
+  const maxRetryCount = 10;
+  let metricsData;
   for (let i = 0;i < maxRetryCount; i++) {
     try {
       metricsData = await getMetricsData(jobs);
@@ -118018,5 +118029,5 @@ async function index() {
 }
 await index();
 
-//# debugId=E7E6BDB768C3B56164756E2164756E21
+//# debugId=D4EE271B9DF0514664756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
