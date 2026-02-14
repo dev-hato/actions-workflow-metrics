@@ -51,6 +51,7 @@ export class Metrics {
         free: available / bytesPerMB,
       });
     } catch (error) {
+      console.error(error);
       setFailed(error);
     } finally {
       const nextUNIXTimeMs: number = unixTimeMs + this.intervalMs;
