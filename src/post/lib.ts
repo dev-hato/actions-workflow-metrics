@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Renderer } from "./renderer";
 import { metricsDataSchema, serverPort } from "../lib";
+import type { components } from "@octokit/openapi-types";
 
 export const metricsInfoListSchema = z.array(z.array(z.number()));
 const renderDataSchema = z.object({
@@ -26,7 +27,7 @@ export const renderParamsSchema = z.object({
   data: renderDataWithStepNameListSchema,
 });
 export const renderParamsListSchema = z.array(renderParamsSchema);
-const stepSchema = z.object({
+export const stepSchema = z.object({
   stepName: z.string().optional(),
   data: metricsDataSchema,
 });
@@ -35,31 +36,9 @@ export const metricsDataWithStepsSchema = metricsDataSchema.extend({
   steps: stepsSchema,
 });
 
-export function filterStepMetrics(
-  metricsData: z.TypeOf<typeof metricsDataSchema>,
-  startedAt?: string | null,
-  completedAt?: string | null,
-): z.TypeOf<typeof metricsDataSchema> {
-  const startMs: number | undefined =
-    startedAt === undefined || startedAt === null
-      ? undefined
-      : new Date(startedAt).getTime();
-  const endMs: number | undefined =
-    completedAt === undefined || completedAt === null
-      ? undefined
-      : new Date(completedAt).getTime();
-  const filter = ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
-    (startMs === undefined || startMs <= unixTimeMs) &&
-    (endMs === undefined || unixTimeMs <= endMs);
-  return {
-    cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(filter),
-    memoryUsageMBs: metricsData.memoryUsageMBs.filter(filter),
-  };
-}
-
-export async function getMetricsData(): Promise<
-  z.TypeOf<typeof metricsDataWithStepsSchema>
-> {
+export async function getMetricsData(
+  jobs: components["schemas"]["job"][],
+): Promise<z.TypeOf<typeof metricsDataWithStepsSchema>> {
   const controller: AbortController = new AbortController();
   const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
   try {
@@ -76,7 +55,43 @@ export async function getMetricsData(): Promise<
       );
     }
 
-    return { ...metricsDataSchema.parse(await res.json()), steps: [] };
+    const metricsData: z.TypeOf<typeof metricsDataSchema> =
+      metricsDataSchema.parse(await res.json());
+    return {
+      ...metricsData,
+      steps: (
+        jobs.find(
+          (j: components["schemas"]["job"]): boolean =>
+            j.status === "in_progress" &&
+            j.runner_name === process.env.RUNNER_NAME,
+        )?.steps ?? []
+      )
+        .map((s): z.TypeOf<typeof stepSchema> => {
+          const startMs: number | undefined =
+            s.started_at === undefined || s.started_at === null
+              ? undefined
+              : new Date(s.started_at).getTime();
+          const endMs: number | undefined =
+            s.completed_at === undefined || s.completed_at === null
+              ? undefined
+              : new Date(s.completed_at).getTime();
+          const filter = ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
+            (startMs === undefined || startMs <= unixTimeMs) &&
+            (endMs === undefined || unixTimeMs <= endMs);
+          return {
+            stepName: s.name,
+            data: {
+              cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(filter),
+              memoryUsageMBs: metricsData.memoryUsageMBs.filter(filter),
+            },
+          };
+        })
+        .filter(
+          ({ data }: z.TypeOf<typeof stepSchema>): boolean =>
+            data.cpuLoadPercentages.length > 0 &&
+            data.memoryUsageMBs.length > 0,
+        ),
+    };
   } finally {
     clearTimeout(timer);
   }

@@ -3,20 +3,36 @@ import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, warning, summary } from "@actions/core";
 import { context } from "@actions/github";
 import { Octokit } from "@octokit/action";
-import { filterStepMetrics, getMetricsData, render } from "./lib";
+import { getMetricsData, render } from "./lib";
 import { serverPort } from "../lib";
 import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
 import type { metricsDataWithStepsSchema } from "./lib";
-import type { metricsDataSchema } from "../lib";
 
 async function index(): Promise<void> {
   const maxRetryCount: number = 10;
   let metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>;
 
   for (let i = 0; i < maxRetryCount; i++) {
+    let jobs: components["schemas"]["job"][] = [];
+
     try {
-      metricsData = await getMetricsData();
+      const octokit: Octokit = new Octokit();
+      jobs = await octokit.paginate(
+        octokit.rest.actions.listJobsForWorkflowRun,
+        {
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          run_id: context.runId,
+        },
+      );
+    } catch (error) {
+      console.warn(error);
+      warning(error);
+    }
+
+    try {
+      metricsData = await getMetricsData(jobs);
       break;
     } catch (error) {
       if (
@@ -32,45 +48,6 @@ async function index(): Promise<void> {
   }
 
   try {
-    try {
-      const octokit: Octokit = new Octokit();
-      const jobs: components["schemas"]["job"][] = await octokit.paginate(
-        octokit.rest.actions.listJobsForWorkflowRun,
-        {
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          run_id: context.runId,
-        },
-      );
-
-      for (const step of jobs.find(
-        (j) =>
-          j.status === "in_progress" &&
-          j.runner_name === process.env.RUNNER_NAME,
-      )?.steps ?? []) {
-        const data: z.TypeOf<typeof metricsDataSchema> = filterStepMetrics(
-          metricsData,
-          step.started_at,
-          step.completed_at,
-        );
-
-        if (
-          data.cpuLoadPercentages.length === 0 ||
-          data.memoryUsageMBs.length === 0
-        ) {
-          continue;
-        }
-
-        metricsData.steps.push({
-          stepName: step.name,
-          data,
-        });
-      }
-    } catch (error) {
-      console.warn(error);
-      warning(error instanceof Error ? error.message : String(error));
-    }
-
     const fileBaseName: string = "workflow_metrics";
     const fileName: string = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));

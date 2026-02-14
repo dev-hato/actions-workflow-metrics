@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, mock } from "bun:test";
-import { filterStepMetrics, getMetricsData, render } from "./lib";
+import { getMetricsData, render } from "./lib";
+import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
 import type { metricsDataWithStepsSchema } from "./lib";
 import type { metricsDataSchema } from "../lib";
@@ -135,100 +136,32 @@ describe("render", () => {
   });
 });
 
-describe("filterStepMetrics", () => {
-  const expectOnlyFirstDataPoint = (
-    result: z.TypeOf<typeof metricsDataSchema>,
-  ) => {
-    expect(result.cpuLoadPercentages).toEqual([
-      sampleMetricsData.cpuLoadPercentages[0],
-    ]);
-    expect(result.memoryUsageMBs).toEqual([
-      sampleMetricsData.memoryUsageMBs[0],
-    ]);
-  };
-
-  it("should filter metrics within the given time range", () => {
-    const result: z.TypeOf<typeof metricsDataSchema> = filterStepMetrics(
-      sampleMetricsData,
-      "2024-01-01T00:00:00.000Z",
-      "2024-01-01T00:00:02.000Z",
-    );
-
-    expectOnlyFirstDataPoint(result);
-  });
-
-  it("should return all metrics when both bounds are null", () => {
-    const result: z.TypeOf<typeof metricsDataSchema> = filterStepMetrics(
-      sampleMetricsData,
-      null,
-      null,
-    );
-
-    expect(result.cpuLoadPercentages).toEqual(
-      sampleMetricsData.cpuLoadPercentages,
-    );
-    expect(result.memoryUsageMBs).toEqual(sampleMetricsData.memoryUsageMBs);
-  });
-
-  it("should return all metrics when both bounds are undefined", () => {
-    const result: z.TypeOf<typeof metricsDataSchema> = filterStepMetrics(
-      sampleMetricsData,
-      undefined,
-      undefined,
-    );
-
-    expect(result.cpuLoadPercentages).toEqual(
-      sampleMetricsData.cpuLoadPercentages,
-    );
-    expect(result.memoryUsageMBs).toEqual(sampleMetricsData.memoryUsageMBs);
-  });
-
-  it("should filter with only startedAt", () => {
-    const result: z.TypeOf<typeof metricsDataSchema> = filterStepMetrics(
-      sampleMetricsData,
-      "2024-01-01T00:00:03.000Z",
-      null,
-    );
-
-    expect(result.cpuLoadPercentages).toEqual([
-      { unixTimeMs: 1704067205000, user: 30.2, system: 12.1 },
-    ]);
-    expect(result.memoryUsageMBs).toEqual([
-      { unixTimeMs: 1704067205000, used: 4200, free: 8000 },
-    ]);
-  });
-
-  it("should filter with only completedAt", () => {
-    const result: z.TypeOf<typeof metricsDataSchema> = filterStepMetrics(
-      sampleMetricsData,
-      null,
-      "2024-01-01T00:00:02.000Z",
-    );
-
-    expectOnlyFirstDataPoint(result);
-  });
-
-  it("should return empty arrays when no metrics match", () => {
-    const result: z.TypeOf<typeof metricsDataSchema> = filterStepMetrics(
-      sampleMetricsData,
-      "2025-01-01T00:00:00.000Z",
-      "2025-01-01T00:00:05.000Z",
-    );
-
-    expect(result.cpuLoadPercentages).toEqual([]);
-    expect(result.memoryUsageMBs).toEqual([]);
-  });
-});
-
 describe("getMetricsData", () => {
-  beforeEach(() => mock.restore());
+  const runnerName: string = "test-runner";
+  const createJob = (
+    overrides: Partial<components["schemas"]["job"]>,
+  ): components["schemas"]["job"] =>
+    ({
+      id: 1,
+      run_id: 1,
+      status: "in_progress",
+      runner_name: runnerName,
+      steps: [],
+      ...overrides,
+    }) as components["schemas"]["job"];
+
+  beforeEach(() => {
+    mock.restore();
+    process.env.RUNNER_NAME = runnerName;
+  });
 
   it("should fetch metrics data from server", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
-    const result = await getMetricsData();
-
-    expect(result).toEqual({ ...sampleMetricsData, steps: [] });
+    expect(await getMetricsData([])).toEqual({
+      ...sampleMetricsData,
+      steps: [],
+    });
   });
 
   it("should throw error for invalid metrics data", async () => {
@@ -244,7 +177,7 @@ describe("getMetricsData", () => {
         }) as Response,
     ) as unknown as typeof fetch;
 
-    expect(getMetricsData()).rejects.toThrow();
+    expect(getMetricsData([])).rejects.toThrow();
   });
 
   it("should throw error when fetch fails", async () => {
@@ -252,7 +185,7 @@ describe("getMetricsData", () => {
       Promise.reject(new Error("Network error")),
     ) as unknown as typeof fetch;
 
-    expect(getMetricsData()).rejects.toThrow("Network error");
+    expect(getMetricsData([])).rejects.toThrow("Network error");
   });
 
   it("should throw error when response is not ok", async () => {
@@ -265,6 +198,232 @@ describe("getMetricsData", () => {
         }) as Response,
     ) as unknown as typeof fetch;
 
-    expect(getMetricsData()).rejects.toThrow("Failed to fetch metrics");
+    expect(getMetricsData([])).rejects.toThrow("Failed to fetch metrics");
+  });
+
+  it("should return steps with filtered metrics for matching job", async () => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([
+        createJob({
+          steps: [
+            {
+              name: "Build",
+              status: "completed",
+              conclusion: "success",
+              number: 1,
+              started_at: "2024-01-01T00:00:00.000Z",
+              completed_at: "2024-01-01T00:00:02.000Z",
+            },
+          ],
+        }),
+      ]);
+
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0].stepName).toBe("Build");
+    expect(result.steps[0].data.cpuLoadPercentages).toEqual([
+      sampleMetricsData.cpuLoadPercentages[0],
+    ]);
+    expect(result.steps[0].data.memoryUsageMBs).toEqual([
+      sampleMetricsData.memoryUsageMBs[0],
+    ]);
+  });
+
+  it("should return empty steps when no job matches RUNNER_NAME", async () => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([createJob({ runner_name: "other-runner" })]);
+
+    expect(result.steps).toEqual([]);
+  });
+
+  it("should return empty steps when no job is in_progress", async () => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([
+        createJob({
+          status: "completed",
+          steps: [
+            {
+              name: "Build",
+              status: "completed",
+              conclusion: "success",
+              number: 1,
+              started_at: "2024-01-01T00:00:00.000Z",
+              completed_at: "2024-01-01T00:00:05.000Z",
+            },
+          ],
+        }),
+      ]);
+
+    expect(result.steps).toEqual([]);
+  });
+
+  it("should filter out steps with empty metrics", async () => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([
+        createJob({
+          steps: [
+            {
+              name: "Build",
+              status: "completed",
+              conclusion: "success",
+              number: 1,
+              started_at: "2024-01-01T00:00:00.000Z",
+              completed_at: "2024-01-01T00:00:05.000Z",
+            },
+            {
+              name: "No Data",
+              status: "completed",
+              conclusion: "success",
+              number: 2,
+              started_at: "2025-01-01T00:00:00.000Z",
+              completed_at: "2025-01-01T00:00:05.000Z",
+            },
+          ],
+        }),
+      ]);
+
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0].stepName).toBe("Build");
+  });
+
+  it("should return empty steps when matching job has no steps", async () => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([createJob({})]);
+
+    expect(result.steps).toEqual([]);
+  });
+
+  it("should include all metrics when step has null time bounds", async () => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([
+        createJob({
+          steps: [
+            {
+              name: "Unbounded",
+              status: "in_progress",
+              conclusion: null,
+              number: 1,
+              started_at: null,
+              completed_at: null,
+            },
+          ],
+        }),
+      ]);
+
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0].data.cpuLoadPercentages).toEqual(
+      sampleMetricsData.cpuLoadPercentages,
+    );
+    expect(result.steps[0].data.memoryUsageMBs).toEqual(
+      sampleMetricsData.memoryUsageMBs,
+    );
+  });
+
+  it("should filter with only started_at", async () => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([
+        createJob({
+          steps: [
+            {
+              name: "Started Only",
+              status: "in_progress",
+              conclusion: null,
+              number: 1,
+              started_at: "2024-01-01T00:00:03.000Z",
+              completed_at: null,
+            },
+          ],
+        }),
+      ]);
+
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0].data.cpuLoadPercentages).toEqual([
+      sampleMetricsData.cpuLoadPercentages[1],
+    ]);
+    expect(result.steps[0].data.memoryUsageMBs).toEqual([
+      sampleMetricsData.memoryUsageMBs[1],
+    ]);
+  });
+
+  it("should filter with only completed_at", async () => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([
+        createJob({
+          steps: [
+            {
+              name: "Completed Only",
+              status: "completed",
+              conclusion: "success",
+              number: 1,
+              started_at: null,
+              completed_at: "2024-01-01T00:00:02.000Z",
+            },
+          ],
+        }),
+      ]);
+
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0].data.cpuLoadPercentages).toEqual([
+      sampleMetricsData.cpuLoadPercentages[0],
+    ]);
+    expect(result.steps[0].data.memoryUsageMBs).toEqual([
+      sampleMetricsData.memoryUsageMBs[0],
+    ]);
+  });
+
+  it("should handle multiple jobs and select the correct one", async () => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([
+        createJob({
+          id: 1,
+          status: "completed",
+          runner_name: runnerName,
+          steps: [
+            {
+              name: "Wrong Job",
+              status: "completed",
+              conclusion: "success",
+              number: 1,
+              started_at: "2024-01-01T00:00:00.000Z",
+              completed_at: "2024-01-01T00:00:05.000Z",
+            },
+          ],
+        }),
+        createJob({
+          id: 2,
+          status: "in_progress",
+          runner_name: runnerName,
+          steps: [
+            {
+              name: "Correct Job Step",
+              status: "completed",
+              conclusion: "success",
+              number: 1,
+              started_at: "2024-01-01T00:00:00.000Z",
+              completed_at: "2024-01-01T00:00:05.000Z",
+            },
+          ],
+        }),
+      ]);
+
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0].stepName).toBe("Correct Job Step");
   });
 });
