@@ -10,9 +10,6 @@ import type { z } from "zod";
 import type { metricsDataWithStepsSchema } from "./lib";
 
 async function index(): Promise<void> {
-  const maxRetryCount: number = 10;
-  let metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>;
-
   let jobs: components["schemas"]["job"][] = [];
 
   try {
@@ -26,6 +23,9 @@ async function index(): Promise<void> {
     console.warn(error);
     warning(error);
   }
+
+  const maxRetryCount: number = 10;
+  let metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>;
 
   for (let i = 0; i < maxRetryCount; i++) {
     try {
