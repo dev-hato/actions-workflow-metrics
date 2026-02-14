@@ -117847,16 +117847,7 @@ var stepsSchema = exports_external.array(stepSchema);
 var metricsDataWithStepsSchema = metricsDataSchema.extend({
   steps: stepsSchema
 });
-function filterStepMetrics(metricsData, startedAt, completedAt) {
-  const startMs = startedAt === undefined || startedAt === null ? undefined : new Date(startedAt).getTime();
-  const endMs = completedAt === undefined || completedAt === null ? undefined : new Date(completedAt).getTime();
-  const filter = ({ unixTimeMs }) => (startMs === undefined || startMs <= unixTimeMs) && (endMs === undefined || unixTimeMs <= endMs);
-  return {
-    cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(filter),
-    memoryUsageMBs: metricsData.memoryUsageMBs.filter(filter)
-  };
-}
-async function getMetricsData() {
+async function getMetricsData(jobs) {
   const controller = new AbortController;
   const timer = setTimeout(() => controller.abort(), 10 * 1000);
   try {
@@ -117866,7 +117857,22 @@ async function getMetricsData() {
     if (!res.ok) {
       throw new Error(`Failed to fetch metrics: ${res.status} ${res.statusText}`);
     }
-    return { ...metricsDataSchema.parse(await res.json()), steps: [] };
+    const metricsData = metricsDataSchema.parse(await res.json());
+    return {
+      ...metricsData,
+      steps: (jobs.find((j) => j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME)?.steps ?? []).map((s) => {
+        const startMs = s.started_at === undefined || s.started_at === null ? undefined : new Date(s.started_at).getTime();
+        const endMs = s.completed_at === undefined || s.completed_at === null ? undefined : new Date(s.completed_at).getTime();
+        const filter = ({ unixTimeMs }) => (startMs === undefined || startMs <= unixTimeMs) && (endMs === undefined || unixTimeMs <= endMs);
+        return {
+          stepName: s.name,
+          data: {
+            cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(filter),
+            memoryUsageMBs: metricsData.memoryUsageMBs.filter(filter)
+          }
+        };
+      }).filter(({ data }) => data.cpuLoadPercentages.length > 0 && data.memoryUsageMBs.length > 0)
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -117946,8 +117952,20 @@ async function index() {
   const maxRetryCount = 10;
   let metricsData;
   for (let i = 0;i < maxRetryCount; i++) {
+    let jobs = [];
     try {
-      metricsData = await getMetricsData();
+      const octokit = new Octokit2;
+      jobs = await octokit.paginate(octokit.rest.actions.listJobsForWorkflowRun, {
+        owner: context4.repo.owner,
+        repo: context4.repo.repo,
+        run_id: context4.runId
+      });
+    } catch (error49) {
+      console.warn(error49);
+      warning(error49);
+    }
+    try {
+      metricsData = await getMetricsData(jobs);
       break;
     } catch (error49) {
       if (maxRetryCount - 2 < i || !(error49 instanceof TypeError) || error49.message !== "fetch failed") {
@@ -117957,27 +117975,6 @@ async function index() {
     await new Promise((resolve2) => setTimeout(resolve2, 1000));
   }
   try {
-    try {
-      const octokit = new Octokit2;
-      const jobs = await octokit.paginate(octokit.rest.actions.listJobsForWorkflowRun, {
-        owner: context4.repo.owner,
-        repo: context4.repo.repo,
-        run_id: context4.runId
-      });
-      for (const step of jobs.find((j) => j.status === "in_progress" && j.runner_name === process.env.RUNNER_NAME)?.steps ?? []) {
-        const data = filterStepMetrics(metricsData, step.started_at, step.completed_at);
-        if (data.cpuLoadPercentages.length === 0 || data.memoryUsageMBs.length === 0) {
-          continue;
-        }
-        metricsData.steps.push({
-          stepName: step.name,
-          data
-        });
-      }
-    } catch (error49) {
-      console.warn(error49);
-      warning(error49 instanceof Error ? error49.message : String(error49));
-    }
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
     await fs5.writeFile(fileName, JSON.stringify(metricsData));
@@ -118018,5 +118015,5 @@ async function index() {
 }
 await index();
 
-//# debugId=D7681C8775C92F2B64756E2164756E21
+//# debugId=3572B1C69BC7D52364756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
