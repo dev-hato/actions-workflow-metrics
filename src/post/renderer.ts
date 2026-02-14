@@ -4,7 +4,6 @@ import type {
   renderDataWithStepNameSchema,
   renderParamsListSchema,
   renderParamsSchema,
-  metricsInfoListSchema,
 } from "./lib";
 
 export class Renderer {
@@ -38,9 +37,8 @@ ${p.legends
         .filter(
           ({
             metricsInfoList,
-          }: {
-            metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
-          }): boolean => metricsInfoList.length > 0,
+          }: z.TypeOf<typeof renderDataWithStepNameSchema>): boolean =>
+            metricsInfoList.length > 0,
         )
         .map((s: z.TypeOf<typeof renderDataWithStepNameSchema>): string => {
           const stackedDatum: number[][] = s.metricsInfoList

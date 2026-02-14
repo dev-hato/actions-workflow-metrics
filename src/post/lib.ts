@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { Renderer } from "./renderer";
-import { metricsDataSchema, serverPort } from "../lib";
+import {
+  cpuLoadPercentageSchema,
+  memoryUsageMBSchema,
+  metricsDataSchema,
+  serverPort,
+  unixTimeMsSchema,
+} from "../lib";
 import type { components } from "@octokit/openapi-types";
 
 const stepSchema = z.object({
@@ -73,7 +79,9 @@ export async function getMetricsData(
             s.completed_at == null
               ? undefined
               : new Date(s.completed_at).getTime();
-          const filter = ({ unixTimeMs }: { unixTimeMs: number }): boolean =>
+          const filter = ({
+            unixTimeMs,
+          }: z.TypeOf<typeof unixTimeMsSchema>): boolean =>
             (startMs === undefined || startMs <= unixTimeMs) &&
             (endMs === undefined || unixTimeMs <= endMs);
           return {
@@ -151,14 +159,19 @@ export function render(
           > => ({
             metricsInfoList: [
               cpuLoadPercentages.map(
-                ({ system }: { system: number }): number => system,
+                ({
+                  system,
+                }: z.TypeOf<typeof cpuLoadPercentageSchema>): number => system,
               ),
               cpuLoadPercentages.map(
-                ({ user }: { user: number }): number => user,
+                ({ user }: z.TypeOf<typeof cpuLoadPercentageSchema>): number =>
+                  user,
               ),
             ],
             times: cpuLoadPercentages.map(
-              ({ unixTimeMs }: { unixTimeMs: number }): Date =>
+              ({
+                unixTimeMs,
+              }: z.TypeOf<typeof cpuLoadPercentageSchema>): Date =>
                 new Date(unixTimeMs),
             ),
             yAxis: {
@@ -188,11 +201,17 @@ export function render(
             typeof renderDataSchema
           > => ({
             metricsInfoList: [
-              memoryUsageMBs.map(({ free }: { free: number }): number => free),
-              memoryUsageMBs.map(({ used }: { used: number }): number => used),
+              memoryUsageMBs.map(
+                ({ free }: z.TypeOf<typeof memoryUsageMBSchema>): number =>
+                  free,
+              ),
+              memoryUsageMBs.map(
+                ({ used }: z.TypeOf<typeof memoryUsageMBSchema>): number =>
+                  used,
+              ),
             ],
             times: memoryUsageMBs.map(
-              ({ unixTimeMs }: { unixTimeMs: number }): Date =>
+              ({ unixTimeMs }: z.TypeOf<typeof memoryUsageMBSchema>): Date =>
                 new Date(unixTimeMs),
             ),
             yAxis: {
