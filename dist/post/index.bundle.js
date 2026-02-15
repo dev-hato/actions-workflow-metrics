@@ -96475,18 +96475,23 @@ var formatTimeLabels = (times) => {
   if (formattedTimes.length <= MAX_VISIBLE_TIME_LABELS) {
     return formattedTimes;
   }
-  const usableSlots = Math.max(MAX_VISIBLE_TIME_LABELS - 2, 1);
-  const spacing = Math.ceil((formattedTimes.length - 2) / usableSlots);
   const encodeHiddenLabel = (index) => {
     const binary = index.toString(2);
     return ZERO_WIDTH_SENTINEL + binary.split("").map((digit) => digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE).join("");
   };
+  const usableSlots = Math.max(Math.min(MAX_VISIBLE_TIME_LABELS - 2, formattedTimes.length - 2), 1);
+  const interiorCount = formattedTimes.length - 2;
+  const interiorStep = interiorCount / (usableSlots + 1);
+  const visibleInteriorIndices = new Set;
+  for (let slot = 1;slot <= usableSlots; slot += 1) {
+    const targetIndex = 1 + Math.round(slot * interiorStep);
+    visibleInteriorIndices.add(Math.min(formattedTimes.length - 2, Math.max(1, targetIndex)));
+  }
   return formattedTimes.map((label, index, array2) => {
     if (index === 0 || index === array2.length - 1) {
       return label;
     }
-    const normalizedIndex = index - 1;
-    return normalizedIndex % spacing === 0 ? label : encodeHiddenLabel(index);
+    return visibleInteriorIndices.has(index) ? label : encodeHiddenLabel(index);
   });
 };
 
@@ -96692,5 +96697,5 @@ async function index() {
 }
 await index();
 
-//# debugId=7DA4A165CB1ACF6164756E2164756E21
+//# debugId=996CB3DD92F6CC2664756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

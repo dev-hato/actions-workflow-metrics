@@ -58,7 +58,9 @@ const formatTimeLabels = (times: Date[]): string[] => {
         return label;
       }
 
-      return visibleInteriorIndices.has(index) ? label : encodeHiddenLabel(index);
+      return visibleInteriorIndices.has(index)
+        ? label
+        : encodeHiddenLabel(index);
     },
   );
 };
