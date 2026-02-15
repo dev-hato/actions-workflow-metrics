@@ -17175,7 +17175,7 @@ var require_undici = __commonJS((exports, module) => {
 var require_package = __commonJS((exports, module) => {
   module.exports = {
     name: "systeminformation",
-    version: "5.30.7",
+    version: "5.31.0",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -20531,10 +20531,11 @@ var require_osinfo = __commonJS((exports) => {
             if (_linux) {
               exec("locate bin/postgres", (error2, stdout) => {
                 if (!error2) {
+                  const safePath = /^[a-zA-Z0-9/_.-]+$/;
                   const postgresqlBin = stdout.toString().split(`
-`).sort();
+`).filter((p) => safePath.test(p.trim())).sort();
                   if (postgresqlBin.length) {
-                    exec(postgresqlBin[postgresqlBin.length - 1] + " -V", (error3, stdout2) => {
+                    execFile(postgresqlBin[postgresqlBin.length - 1], ["-V"], (error3, stdout2) => {
                       if (!error3) {
                         const postgresql = stdout2.toString().split(`
 `)[0].split(" ") || [];
@@ -27022,6 +27023,7 @@ ${BSDName}|"; smartctl -H ${BSDName} | grep overall;`;
           resolve(result2);
         }
         if (_darwin) {
+          let cmdFullSmart = "";
           exec("system_profiler SPSerialATADataType SPNVMeDataType SPUSBDataType", { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
             if (!error2) {
               const lines = stdout.toString().split(`
@@ -27088,6 +27090,7 @@ ${BSDName}|"; smartctl -H ${BSDName} | grep overall;`;
                       });
                       cmd = cmd + `printf "
 ` + BSDName + '|"; diskutil info /dev/' + BSDName + " | grep SMART;";
+                      cmdFullSmart += `${cmdFullSmart ? 'printf ",";' : ""}smartctl -a -j ${BSDName};`;
                     }
                   }
                 });
@@ -27139,6 +27142,7 @@ ${BSDName}|"; smartctl -H ${BSDName} | grep overall;`;
                       });
                       cmd = `${cmd}printf "
 ${BSDName}|"; diskutil info /dev/${BSDName} | grep SMART;`;
+                      cmdFullSmart += `${cmdFullSmart ? 'printf ",";' : ""}smartctl -a -j ${BSDName};`;
                     }
                   }
                 });
@@ -27189,13 +27193,64 @@ ${BSDName}|"; diskutil info /dev/${BSDName} | grep SMART;`;
                       });
                       cmd = cmd + `printf "
 ` + BSDName + '|"; diskutil info /dev/' + BSDName + " | grep SMART;";
+                      cmdFullSmart += `${cmdFullSmart ? 'printf ",";' : ""}smartctl -a -j ${BSDName};`;
                     }
                   }
                 });
               } catch {
                 util.noop();
               }
-              if (cmd) {
+              if (cmdFullSmart) {
+                exec(cmdFullSmart, { maxBuffer: 1024 * 1024 }, (error3, stdout2) => {
+                  try {
+                    const data = JSON.parse(`[${stdout2}]`);
+                    data.forEach((disk) => {
+                      const diskBSDName = disk.smartctl.argv[disk.smartctl.argv.length - 1];
+                      for (let i = 0;i < result2.length; i++) {
+                        if (result2[i].BSDName === diskBSDName) {
+                          result2[i].smartStatus = disk.smart_status.passed ? "Ok" : disk.smart_status.passed === false ? "Predicted Failure" : "unknown";
+                          if (disk.temperature && disk.temperature.current) {
+                            result2[i].temperature = disk.temperature.current;
+                          }
+                          result2[i].smartData = disk;
+                        }
+                      }
+                    });
+                    commitResult(result2);
+                  } catch (e) {
+                    if (cmd) {
+                      cmd = cmd + `printf "
+"`;
+                      exec(cmd, { maxBuffer: 1024 * 1024 }, (error4, stdout3) => {
+                        const lines2 = stdout3.toString().split(`
+`);
+                        lines2.forEach((line) => {
+                          if (line) {
+                            const parts = line.split("|");
+                            if (parts.length === 2) {
+                              const BSDName = parts[0];
+                              parts[1] = parts[1].trim();
+                              const parts2 = parts[1].split(":");
+                              if (parts2.length === 2) {
+                                parts2[1] = parts2[1].trim();
+                                const status = parts2[1].toLowerCase();
+                                for (let i = 0;i < result2.length; i++) {
+                                  if (result2[i].BSDName === BSDName) {
+                                    result2[i].smartStatus = status === "passed" ? "Ok" : status === "failed!" ? "Predicted Failure" : "unknown";
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        });
+                        commitResult(result2);
+                      });
+                    } else {
+                      commitResult(result2);
+                    }
+                  }
+                });
+              } else if (cmd) {
                 cmd = cmd + `printf "
 "`;
                 exec(cmd, { maxBuffer: 1024 * 1024 }, (error3, stdout2) => {
@@ -29583,8 +29638,8 @@ Interface `);
                 }
                 const res = getWifiNetworkListIw(ifaceSanitized);
                 if (res === -1) {
-                  setTimeout((iface2) => {
-                    const res2 = getWifiNetworkListIw(iface2);
+                  setTimeout(() => {
+                    const res2 = getWifiNetworkListIw(ifaceSanitized);
                     if (res2 !== -1) {
                       result2 = res2;
                     }
@@ -49997,5 +50052,5 @@ async function server() {
 }
 await server();
 
-//# debugId=B7717EEE8E2E115664756E2164756E21
+//# debugId=16E482928730F67664756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
