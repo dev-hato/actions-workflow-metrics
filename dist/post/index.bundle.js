@@ -96463,6 +96463,38 @@ function date4(params) {
 // node_modules/zod/v4/classic/external.js
 config(en_default());
 // src/post/renderer.ts
+var MAX_VISIBLE_TIME_LABELS = 8;
+var ZERO_WIDTH_ZERO = "​";
+var ZERO_WIDTH_ONE = "‌";
+var ZERO_WIDTH_SENTINEL = "‍";
+var formatTimeLabels = (times) => {
+  if (times.length === 0) {
+    return [];
+  }
+  const formattedTimes = times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false }));
+  if (formattedTimes.length <= MAX_VISIBLE_TIME_LABELS) {
+    return formattedTimes;
+  }
+  const encodeHiddenLabel = (index) => {
+    const binary = index.toString(2);
+    return ZERO_WIDTH_SENTINEL + binary.split("").map((digit) => digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE).join("");
+  };
+  const usableSlots = Math.max(Math.min(MAX_VISIBLE_TIME_LABELS - 2, formattedTimes.length - 2), 1);
+  const interiorCount = formattedTimes.length - 2;
+  const interiorStep = interiorCount / (usableSlots + 1);
+  const visibleInteriorIndices = new Set;
+  for (let slot = 1;slot <= usableSlots; slot += 1) {
+    const targetIndex = 1 + Math.round(slot * interiorStep);
+    visibleInteriorIndices.add(Math.min(formattedTimes.length - 2, Math.max(1, targetIndex)));
+  }
+  return formattedTimes.map((label, index, array2) => {
+    if (index === 0 || index === array2.length - 1) {
+      return label;
+    }
+    return visibleInteriorIndices.has(index) ? label : encodeHiddenLabel(index);
+  });
+};
+
 class Renderer {
   render(renderParamsList, metricsID) {
     return `## Workflow Metrics
@@ -96500,7 +96532,7 @@ ${p.metricsInfoList.map((i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i
 }%%
 xychart
 
-x-axis "Time" ${JSON.stringify(p.times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false })))}
+x-axis "Time" ${JSON.stringify(formatTimeLabels(p.times))}
 y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
 ${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join(`
 `)}
@@ -96665,5 +96697,5 @@ async function index() {
 }
 await index();
 
-//# debugId=4401EA42302FCF4F64756E2164756E21
+//# debugId=F00790E7564E9E3D64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
