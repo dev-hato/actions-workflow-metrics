@@ -96464,7 +96464,9 @@ function date4(params) {
 config(en_default());
 // src/post/renderer.ts
 var MAX_VISIBLE_TIME_LABELS = 12;
-var EMPTY_TIME_LABEL_PLACEHOLDER = " ";
+var ZERO_WIDTH_ZERO = "​";
+var ZERO_WIDTH_ONE = "‌";
+var ZERO_WIDTH_SENTINEL = "‍";
 var formatTimeLabels = (times) => {
   if (times.length === 0) {
     return [];
@@ -96475,12 +96477,16 @@ var formatTimeLabels = (times) => {
   }
   const usableSlots = Math.max(MAX_VISIBLE_TIME_LABELS - 2, 1);
   const spacing = Math.ceil((formattedTimes.length - 2) / usableSlots);
+  const encodeHiddenLabel = (index) => {
+    const binary = index.toString(2);
+    return ZERO_WIDTH_SENTINEL + binary.split("").map((digit) => digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE).join("");
+  };
   return formattedTimes.map((label, index, array2) => {
     if (index === 0 || index === array2.length - 1) {
       return label;
     }
     const normalizedIndex = index - 1;
-    return normalizedIndex % spacing === 0 ? label : EMPTY_TIME_LABEL_PLACEHOLDER;
+    return normalizedIndex % spacing === 0 ? label : encodeHiddenLabel(index);
   });
 };
 
@@ -96686,5 +96692,5 @@ async function index() {
 }
 await index();
 
-//# debugId=835240962BD4A8B264756E2164756E21
+//# debugId=7DA4A165CB1ACF6164756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
