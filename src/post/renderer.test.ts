@@ -446,8 +446,7 @@ describe("Renderer", () => {
     const startTime: number = Date.parse("2024-01-01T00:00:00Z");
     const times: Date[] = Array.from(
       { length: MAX_VISIBLE_TIME_LABELS * 2 },
-      (_, index: number): Date =>
-        new Date(startTime + index * 1000),
+      (_, index: number): Date => new Date(startTime + index * 1000),
     );
     const firstLabel: string = times[0].toLocaleTimeString("en-GB", {
       hour12: false,
@@ -489,9 +488,9 @@ describe("Renderer", () => {
     expect(labels.length).toBe(times.length);
     expect(labels[0]).toBe(firstLabel);
     expect(labels[labels.length - 1]).toBe(lastLabel);
-    expect(labels.filter((label: string): boolean => label.length > 0).length).toBeLessThanOrEqual(
-      MAX_VISIBLE_TIME_LABELS,
-    );
+    expect(
+      labels.filter((label: string): boolean => label.length > 0).length,
+    ).toBeLessThanOrEqual(MAX_VISIBLE_TIME_LABELS);
     expect(labels.some((label: string): boolean => label === "")).toBe(true);
   });
 });
