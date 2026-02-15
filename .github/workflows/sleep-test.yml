@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Start Workflow Telemetry
         uses: ./
       - name: Sleep for 10 minutes
