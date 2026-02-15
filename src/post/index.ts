@@ -20,6 +20,7 @@ async function index(): Promise<void> {
         !(error instanceof TypeError) ||
         error.message !== "fetch failed"
       ) {
+        console.error(error);
         setFailed(error);
       }
     }
@@ -52,6 +53,7 @@ async function index(): Promise<void> {
             "Failed request: (409) Conflict: an artifact with this name already exists on the workflow run",
           )
         ) {
+          console.error(error);
           setFailed(error);
         }
       }
@@ -62,6 +64,7 @@ async function index(): Promise<void> {
     // Render metrics
     await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error) {
+    console.error(error);
     setFailed(error);
   } finally {
     const controller: AbortController = new AbortController();

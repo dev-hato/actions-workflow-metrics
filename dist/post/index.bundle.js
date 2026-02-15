@@ -96617,6 +96617,7 @@ async function index() {
       break;
     } catch (error49) {
       if (maxRetryCount - 2 < i || !(error49 instanceof TypeError) || error49.message !== "fetch failed") {
+        console.error(error49);
         setFailed(error49);
       }
     }
@@ -96635,6 +96636,7 @@ async function index() {
         break;
       } catch (error49) {
         if (maxRetryCount - 2 < i || !(error49 instanceof Error) || !error49.message.includes("Failed request: (409) Conflict: an artifact with this name already exists on the workflow run")) {
+          console.error(error49);
           setFailed(error49);
         }
       }
@@ -96642,6 +96644,7 @@ async function index() {
     }
     await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error49) {
+    console.error(error49);
     setFailed(error49);
   } finally {
     const controller = new AbortController;
@@ -96662,5 +96665,5 @@ async function index() {
 }
 await index();
 
-//# debugId=BB9042FADB4AC47C64756E2164756E21
+//# debugId=4401EA42302FCF4F64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

@@ -26,6 +26,7 @@ async function server(): Promise<void> {
         response.statusCode = 500;
         response.setHeader("Content-Type", "application/json");
         response.end(JSON.stringify({ error: "Internal server error" }));
+        console.error(error);
         setFailed(error);
       }
     },
