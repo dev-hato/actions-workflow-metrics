@@ -1,0 +1,17 @@
+name: Sleep Test
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  long-sleep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Start Workflow Telemetry
+        uses: ./
+      - name: Sleep for 10 minutes
+        run: sleep 600
+      - name: Wrap up
+        run: echo "Sleep complete"
