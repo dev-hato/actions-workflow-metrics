@@ -96464,6 +96464,7 @@ function date4(params) {
 config(en_default());
 // src/post/renderer.ts
 var MAX_VISIBLE_TIME_LABELS = 12;
+var EMPTY_TIME_LABEL_PLACEHOLDER = " ";
 var formatTimeLabels = (times) => {
   if (times.length === 0) {
     return [];
@@ -96479,7 +96480,7 @@ var formatTimeLabels = (times) => {
       return label;
     }
     const normalizedIndex = index - 1;
-    return normalizedIndex % spacing === 0 ? label : "";
+    return normalizedIndex % spacing === 0 ? label : EMPTY_TIME_LABEL_PLACEHOLDER;
   });
 };
 
@@ -96685,5 +96686,5 @@ async function index() {
 }
 await index();
 
-//# debugId=EF3ABF431251CA6964756E2164756E21
+//# debugId=835240962BD4A8B264756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
