@@ -49948,14 +49948,15 @@ function date4(params) {
 // node_modules/zod/v4/classic/external.js
 config(en_default());
 // src/lib.ts
-var cpuLoadPercentageSchema = exports_external.object({
-  unixTimeMs: exports_external.number(),
+var unixTimeMsSchema = exports_external.object({
+  unixTimeMs: exports_external.number()
+});
+var cpuLoadPercentageSchema = unixTimeMsSchema.extend({
   user: exports_external.number().nonnegative().max(100),
   system: exports_external.number().nonnegative().max(100)
 });
 var cpuLoadPercentagesSchema = exports_external.array(cpuLoadPercentageSchema);
-var memoryUsageMBSchema = exports_external.object({
-  unixTimeMs: exports_external.number(),
+var memoryUsageMBSchema = unixTimeMsSchema.extend({
   used: exports_external.number().nonnegative(),
   free: exports_external.number().nonnegative()
 });
@@ -49997,5 +49998,5 @@ async function server() {
 }
 await server();
 
-//# debugId=B7717EEE8E2E115664756E2164756E21
+//# debugId=D6F93E6BA1823E0864756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
