@@ -24,9 +24,6 @@ const formatTimeLabels = (times: Date[]): string[] => {
     return formattedTimes;
   }
 
-  const usableSlots: number = Math.max(MAX_VISIBLE_TIME_LABELS - 2, 1);
-  const spacing: number = Math.ceil((formattedTimes.length - 2) / usableSlots);
-
   const encodeHiddenLabel = (index: number): string => {
     const binary: string = index.toString(2);
     return (
@@ -40,14 +37,28 @@ const formatTimeLabels = (times: Date[]): string[] => {
     );
   };
 
+  const usableSlots: number = Math.max(
+    Math.min(MAX_VISIBLE_TIME_LABELS - 2, formattedTimes.length - 2),
+    1,
+  );
+  const interiorCount: number = formattedTimes.length - 2;
+  const interiorStep: number = interiorCount / (usableSlots + 1);
+  const visibleInteriorIndices: Set<number> = new Set<number>();
+
+  for (let slot: number = 1; slot <= usableSlots; slot += 1) {
+    const targetIndex: number = 1 + Math.round(slot * interiorStep);
+    visibleInteriorIndices.add(
+      Math.min(formattedTimes.length - 2, Math.max(1, targetIndex)),
+    );
+  }
+
   return formattedTimes.map(
     (label: string, index: number, array: string[]): string => {
       if (index === 0 || index === array.length - 1) {
         return label;
       }
 
-      const normalizedIndex: number = index - 1;
-      return normalizedIndex % spacing === 0 ? label : encodeHiddenLabel(index);
+      return visibleInteriorIndices.has(index) ? label : encodeHiddenLabel(index);
     },
   );
 };
