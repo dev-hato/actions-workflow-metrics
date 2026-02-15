@@ -96463,7 +96463,7 @@ function date4(params) {
 // node_modules/zod/v4/classic/external.js
 config(en_default());
 // src/post/renderer.ts
-var MAX_VISIBLE_TIME_LABELS = 12;
+var MAX_VISIBLE_TIME_LABELS = 8;
 var ZERO_WIDTH_ZERO = "​";
 var ZERO_WIDTH_ONE = "‌";
 var ZERO_WIDTH_SENTINEL = "‍";
@@ -96697,5 +96697,5 @@ async function index() {
 }
 await index();
 
-//# debugId=996CB3DD92F6CC2664756E2164756E21
+//# debugId=F00790E7564E9E3D64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
