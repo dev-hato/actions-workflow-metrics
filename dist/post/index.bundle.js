@@ -117828,10 +117828,9 @@ var legendSchema = exports_external.object({
   color: exports_external.string(),
   name: exports_external.string()
 });
-var metricsInfoListSchema = exports_external.array(exports_external.array(exports_external.number()));
 var legendsSchema = exports_external.array(legendSchema);
 var renderDataSchema = exports_external.object({
-  metricsInfoList: metricsInfoListSchema,
+  metricsInfoList: exports_external.array(exports_external.array(exports_external.number())),
   times: exports_external.array(exports_external.coerce.date()),
   yAxis: exports_external.object({
     title: exports_external.string(),
@@ -118029,5 +118028,5 @@ async function index() {
 }
 await index();
 
-//# debugId=D4EE271B9DF0514664756E2164756E21
+//# debugId=4462D58B0F90837E64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
