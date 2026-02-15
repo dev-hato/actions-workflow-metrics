@@ -488,9 +488,12 @@ describe("Renderer", () => {
     expect(labels.length).toBe(times.length);
     expect(labels[0]).toBe(firstLabel);
     expect(labels[labels.length - 1]).toBe(lastLabel);
+    const visibleLabelCount: number = labels.filter(
+      (label: string): boolean => label.trim().length > 0,
+    ).length;
+    expect(visibleLabelCount).toBeLessThanOrEqual(MAX_VISIBLE_TIME_LABELS);
     expect(
-      labels.filter((label: string): boolean => label.length > 0).length,
-    ).toBeLessThanOrEqual(MAX_VISIBLE_TIME_LABELS);
-    expect(labels.some((label: string): boolean => label === "")).toBe(true);
+      labels.some((label: string): boolean => label.trim().length === 0),
+    ).toBe(true);
   });
 });

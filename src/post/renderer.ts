@@ -7,6 +7,7 @@ import type {
 } from "./lib";
 
 export const MAX_VISIBLE_TIME_LABELS: number = 12;
+const EMPTY_TIME_LABEL_PLACEHOLDER: string = " ";
 
 const formatTimeLabels = (times: Date[]): string[] => {
   if (times.length === 0) {
@@ -31,7 +32,9 @@ const formatTimeLabels = (times: Date[]): string[] => {
       }
 
       const normalizedIndex: number = index - 1;
-      return normalizedIndex % spacing === 0 ? label : "";
+      return normalizedIndex % spacing === 0
+        ? label
+        : EMPTY_TIME_LABEL_PLACEHOLDER;
     },
   );
 };
