@@ -6,7 +6,7 @@ import type {
   metricsInfoSchema,
 } from "./lib";
 
-export const MAX_VISIBLE_TIME_LABELS: number = 12;
+export const MAX_VISIBLE_TIME_LABELS: number = 8;
 const ZERO_WIDTH_ZERO: string = "\u200b";
 const ZERO_WIDTH_ONE: string = "\u200c";
 const ZERO_WIDTH_SENTINEL: string = "\u200d";
