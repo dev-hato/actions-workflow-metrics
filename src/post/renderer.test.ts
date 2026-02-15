@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { Renderer } from "./renderer";
+import { Renderer, MAX_VISIBLE_TIME_LABELS } from "./renderer";
 
 describe("Renderer", () => {
   const testMetricsID: string = "1234567890";
@@ -439,5 +439,59 @@ describe("Renderer", () => {
     expect(result).toContain("bar [42]");
     expect(result).toContain("12:00:00");
     expect(result).toContain("Purple: Single Metric");
+  });
+
+  it("should limit visible time labels when times are long", () => {
+    const renderer: Renderer = new Renderer();
+    const startTime: number = Date.parse("2024-01-01T00:00:00Z");
+    const times: Date[] = Array.from(
+      { length: MAX_VISIBLE_TIME_LABELS * 2 },
+      (_, index: number): Date =>
+        new Date(startTime + index * 1000),
+    );
+    const firstLabel: string = times[0].toLocaleTimeString("en-GB", {
+      hour12: false,
+    });
+    const lastLabel: string = times[times.length - 1].toLocaleTimeString(
+      "en-GB",
+      { hour12: false },
+    );
+
+    const result: string = renderer.render(
+      [
+        {
+          title: "Long Timeline",
+          metricsInfoList: [
+            {
+              color: "Gray",
+              name: "Metric",
+              data: Array.from(
+                { length: times.length },
+                (_, index: number): number => index,
+              ),
+            },
+          ],
+          times,
+          yAxis: {
+            title: "Units",
+          },
+        },
+      ],
+      testMetricsID,
+    );
+
+    const match: RegExpMatchArray | null = result.match(
+      /x-axis "Time" (\[[^\]]+\])/,
+    );
+    expect(match).not.toBeNull();
+    const labels: string[] = JSON.parse(match![1]);
+
+    expect(labels.length).toBe(times.length);
+    expect(labels[0]).toBe(firstLabel);
+    expect(labels[labels.length - 1]).toBe(lastLabel);
+    expect(labels.filter((label: string): boolean => label.length > 0).length).toBeLessThanOrEqual(
+      MAX_VISIBLE_TIME_LABELS,
+    );
+    expect(labels.some((label: string): boolean => label === "")).toBe(true);
   });
 });

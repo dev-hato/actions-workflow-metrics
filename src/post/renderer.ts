@@ -6,6 +6,38 @@ import type {
   metricsInfoSchema,
 } from "./lib";
 
+export const MAX_VISIBLE_TIME_LABELS: number = 12;
+
+const formatTimeLabels = (times: Date[]): string[] => {
+  if (times.length === 0) {
+    return [];
+  }
+
+  const formattedTimes: string[] = times.map((d: Date): string =>
+    d.toLocaleTimeString("en-GB", { hour12: false }),
+  );
+
+  if (formattedTimes.length <= MAX_VISIBLE_TIME_LABELS) {
+    return formattedTimes;
+  }
+
+  const usableSlots: number = Math.max(MAX_VISIBLE_TIME_LABELS - 2, 1);
+  const spacing: number = Math.ceil(
+    (formattedTimes.length - 2) / usableSlots,
+  );
+
+  return formattedTimes.map(
+    (label: string, index: number, array: string[]): string => {
+      if (index === 0 || index === array.length - 1) {
+        return label;
+      }
+
+      const normalizedIndex: number = index - 1;
+      return normalizedIndex % spacing === 0 ? label : "";
+    },
+  );
+};
+
 export class Renderer {
   render(
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
@@ -69,11 +101,7 @@ ${p.metricsInfoList
 }%%
 xychart
 
-x-axis "Time" ${JSON.stringify(
-      p.times.map((d: Date): string =>
-        d.toLocaleTimeString("en-GB", { hour12: false }),
-      ),
-    )}
+x-axis "Time" ${JSON.stringify(formatTimeLabels(p.times))}
 y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
 ${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
 \`\`\``;
