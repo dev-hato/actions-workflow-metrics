@@ -1,13 +1,12 @@
 import { z } from "zod";
 import { Renderer } from "./renderer";
-import {
+import { metricsDataSchema, serverPort } from "../lib";
+import type { components } from "@octokit/openapi-types";
+import type {
   cpuLoadPercentageSchema,
   memoryUsageMBSchema,
-  metricsDataSchema,
-  serverPort,
   unixTimeMsSchema,
 } from "../lib";
-import type { components } from "@octokit/openapi-types";
 
 const stepSchema = z.object({
   stepName: z.string().optional(),
@@ -21,10 +20,9 @@ export const legendSchema = z.object({
   color: z.string(),
   name: z.string(),
 });
-export const metricsInfoListSchema = z.array(z.array(z.number()));
 export const legendsSchema = z.array(legendSchema);
 const renderDataSchema = z.object({
-  metricsInfoList: metricsInfoListSchema,
+  metricsInfoList: z.array(z.array(z.number())),
   times: z.array(z.coerce.date()),
   yAxis: z.object({
     title: z.string(),
