@@ -96465,26 +96465,46 @@ config(en_default());
 // src/post/renderer.ts
 class Renderer {
   render(renderParamsList, metricsID) {
+    return this.renderMetrics(this.renderCharts(renderParamsList), metricsID);
+  }
+  renderMetrics(charts, metricsID) {
     return `## Workflow Metrics
 
 ### Metrics ID
 
 ${metricsID}
 
-${renderParamsList.filter(({
-      metricsInfoList
-    }) => metricsInfoList.length > 0).map((p) => {
-      const colors = p.metricsInfoList.map(({ color }) => color);
-      const stackedDatum = p.metricsInfoList.toReversed().reduce((prev, { data }, i) => {
-        prev.push(data.map((d, j) => d + prev[i][j]));
-        return prev;
-      }, [p.metricsInfoList[0].data.map(() => 0)]).slice(1).toReversed();
-      return `### ${p.title}
+${charts}`;
+  }
+  formatLegends(metricsInfoList) {
+    return metricsInfoList.map((i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`).join(`
+`);
+  }
+  extractColors(metricsInfoList) {
+    return metricsInfoList.map(({ color }) => color).join(", ");
+  }
+  formatTimes(times) {
+    return JSON.stringify(times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false })));
+  }
+  formatYAxisRange(range2) {
+    return range2 ? ` ${range2}` : "";
+  }
+  accumulateStackedData(accumulated, metricsInfo, index) {
+    accumulated.push(metricsInfo.data.map((v, c) => v + accumulated[index][c]));
+    return accumulated;
+  }
+  calculateStackedBars(metricsInfoList) {
+    return metricsInfoList.toReversed().reduce(this.accumulateStackedData, [
+      metricsInfoList[0].data.map(() => 0)
+    ]).slice(1).toReversed().map((v) => `bar ${JSON.stringify(v)}`).join(`
+`);
+  }
+  renderChart(renderParams) {
+    return `### ${renderParams.title}
 
 #### Legends
 
-${p.metricsInfoList.map((i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`).join(`
-`)}
+${this.formatLegends(renderParams.metricsInfoList)}
 
 #### Chart
 
@@ -96493,21 +96513,22 @@ ${p.metricsInfoList.map((i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i
   init: {
     "themeVariables": {
       "xyChart": {
-        "plotColorPalette": "${colors.join(", ")}"
+        "plotColorPalette": "${this.extractColors(renderParams.metricsInfoList)}"
       }
     }
   }
 }%%
 xychart
 
-x-axis "Time" ${JSON.stringify(p.times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false })))}
-y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
-${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join(`
-`)}
+x-axis "Time" ${this.formatTimes(renderParams.times)}
+y-axis "${renderParams.yAxis.title}"${this.formatYAxisRange(renderParams.yAxis.range)}
+${this.calculateStackedBars(renderParams.metricsInfoList)}
 \`\`\``;
-    }).join(`
+  }
+  renderCharts(renderParamsList) {
+    return renderParamsList.filter(({ metricsInfoList }) => metricsInfoList.length > 0).map((p) => this.renderChart(p)).join(`
 
-`)}`;
+`);
   }
 }
 
@@ -96537,10 +96558,11 @@ var metricsInfoSchema = exports_external.object({
   data: exports_external.array(exports_external.number())
 });
 var metricsInfoListSchema = exports_external.array(metricsInfoSchema);
+var timesSchema = exports_external.array(exports_external.coerce.date());
 var renderParamsSchema = exports_external.object({
   title: exports_external.string(),
   metricsInfoList: metricsInfoListSchema,
-  times: exports_external.array(exports_external.coerce.date()),
+  times: timesSchema,
   yAxis: exports_external.object({
     title: exports_external.string(),
     range: exports_external.string().optional()
@@ -96665,5 +96687,5 @@ async function index() {
 }
 await index();
 
-//# debugId=4401EA42302FCF4F64756E2164756E21
+//# debugId=6BB9C6A2E0C2C75B64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
