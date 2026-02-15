@@ -7,7 +7,9 @@ import type {
 } from "./lib";
 
 export const MAX_VISIBLE_TIME_LABELS: number = 12;
-const EMPTY_TIME_LABEL_PLACEHOLDER: string = " ";
+const ZERO_WIDTH_ZERO: string = "\u200b";
+const ZERO_WIDTH_ONE: string = "\u200c";
+const ZERO_WIDTH_SENTINEL: string = "\u200d";
 
 const formatTimeLabels = (times: Date[]): string[] => {
   if (times.length === 0) {
@@ -25,6 +27,19 @@ const formatTimeLabels = (times: Date[]): string[] => {
   const usableSlots: number = Math.max(MAX_VISIBLE_TIME_LABELS - 2, 1);
   const spacing: number = Math.ceil((formattedTimes.length - 2) / usableSlots);
 
+  const encodeHiddenLabel = (index: number): string => {
+    const binary: string = index.toString(2);
+    return (
+      ZERO_WIDTH_SENTINEL +
+      binary
+        .split("")
+        .map((digit: string): string =>
+          digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE,
+        )
+        .join("")
+    );
+  };
+
   return formattedTimes.map(
     (label: string, index: number, array: string[]): string => {
       if (index === 0 || index === array.length - 1) {
@@ -32,9 +47,7 @@ const formatTimeLabels = (times: Date[]): string[] => {
       }
 
       const normalizedIndex: number = index - 1;
-      return normalizedIndex % spacing === 0
-        ? label
-        : EMPTY_TIME_LABEL_PLACEHOLDER;
+      return normalizedIndex % spacing === 0 ? label : encodeHiddenLabel(index);
     },
   );
 };

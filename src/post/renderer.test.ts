@@ -485,15 +485,18 @@ describe("Renderer", () => {
     expect(match).not.toBeNull();
     const labels: string[] = JSON.parse(match![1]);
 
+    const hasVisibleCharacters = (label: string): boolean =>
+      /[0-9:]/.test(label);
+
     expect(labels.length).toBe(times.length);
     expect(labels[0]).toBe(firstLabel);
     expect(labels[labels.length - 1]).toBe(lastLabel);
-    const visibleLabelCount: number = labels.filter(
-      (label: string): boolean => label.trim().length > 0,
-    ).length;
+    const visibleLabelCount: number = labels.filter(hasVisibleCharacters).length;
     expect(visibleLabelCount).toBeLessThanOrEqual(MAX_VISIBLE_TIME_LABELS);
-    expect(
-      labels.some((label: string): boolean => label.trim().length === 0),
-    ).toBe(true);
+    const hiddenLabels: string[] = labels.filter(
+      (label: string): boolean => !hasVisibleCharacters(label),
+    );
+    expect(hiddenLabels.length).toBe(times.length - visibleLabelCount);
+    expect(new Set(hiddenLabels).size).toBe(hiddenLabels.length);
   });
 });
