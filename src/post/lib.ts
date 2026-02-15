@@ -2,6 +2,7 @@ import { z } from "zod";
 import { Renderer } from "./renderer";
 import { serverPort } from "../lib";
 import { metricsDataSchema } from "../type";
+import type { unixTimeMsSchema } from "../type";
 
 export const metricsInfoSchema = z.object({
   color: z.string(),
@@ -9,10 +10,11 @@ export const metricsInfoSchema = z.object({
   data: z.array(z.number()),
 });
 export const metricsInfoListSchema = z.array(metricsInfoSchema);
+export const timesSchema = z.array(z.coerce.date());
 export const renderParamsSchema = z.object({
   title: z.string(),
   metricsInfoList: metricsInfoListSchema,
-  times: z.array(z.coerce.date()),
+  times: timesSchema,
   yAxis: z.object({
     title: z.string(),
     range: z.string().optional(),
@@ -45,6 +47,10 @@ export async function getMetricsData(): Promise<
   }
 }
 
+function extractUnixTimeMs(record: z.TypeOf<typeof unixTimeMsSchema>): number {
+  return record.unixTimeMs;
+}
+
 export function render(
   metricsData: z.TypeOf<typeof metricsDataSchema>,
   metricsID: string,
@@ -70,9 +76,7 @@ export function render(
             ),
           },
         ],
-        times: metricsData.cpuLoadPercentages.map(
-          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
-        ),
+        times: metricsData.cpuLoadPercentages.map(extractUnixTimeMs),
         yAxis: {
           title: "%",
           range: "0 --> 100",
@@ -96,9 +100,7 @@ export function render(
             ),
           },
         ],
-        times: metricsData.memoryUsageMBs.map(
-          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
-        ),
+        times: metricsData.memoryUsageMBs.map(extractUnixTimeMs),
         yAxis: {
           title: "MB",
         },
