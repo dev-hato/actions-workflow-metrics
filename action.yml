@@ -4,6 +4,10 @@ description: "A GitHub Actions for collecting system metrics during workflows an
 branding:
   color: green
 inputs:
+  github_token:
+    description: "GitHub access token"
+    default: ${{ github.token }}
+    required: false
   interval_seconds:
     description: "Interval between metrics collection in seconds"
     default: "5"
