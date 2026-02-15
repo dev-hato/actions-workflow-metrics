@@ -22,9 +22,7 @@ const formatTimeLabels = (times: Date[]): string[] => {
   }
 
   const usableSlots: number = Math.max(MAX_VISIBLE_TIME_LABELS - 2, 1);
-  const spacing: number = Math.ceil(
-    (formattedTimes.length - 2) / usableSlots,
-  );
+  const spacing: number = Math.ceil((formattedTimes.length - 2) / usableSlots);
 
   return formattedTimes.map(
     (label: string, index: number, array: string[]): string => {

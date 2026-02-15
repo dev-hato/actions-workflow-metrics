@@ -96463,6 +96463,26 @@ function date4(params) {
 // node_modules/zod/v4/classic/external.js
 config(en_default());
 // src/post/renderer.ts
+var MAX_VISIBLE_TIME_LABELS = 12;
+var formatTimeLabels = (times) => {
+  if (times.length === 0) {
+    return [];
+  }
+  const formattedTimes = times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false }));
+  if (formattedTimes.length <= MAX_VISIBLE_TIME_LABELS) {
+    return formattedTimes;
+  }
+  const usableSlots = Math.max(MAX_VISIBLE_TIME_LABELS - 2, 1);
+  const spacing = Math.ceil((formattedTimes.length - 2) / usableSlots);
+  return formattedTimes.map((label, index, array2) => {
+    if (index === 0 || index === array2.length - 1) {
+      return label;
+    }
+    const normalizedIndex = index - 1;
+    return normalizedIndex % spacing === 0 ? label : "";
+  });
+};
+
 class Renderer {
   render(renderParamsList, metricsID) {
     return `## Workflow Metrics
@@ -96500,7 +96520,7 @@ ${p.metricsInfoList.map((i) => `* $\${\\color{${i.color}} \\verb|${i.color}: ${i
 }%%
 xychart
 
-x-axis "Time" ${JSON.stringify(p.times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false })))}
+x-axis "Time" ${JSON.stringify(formatTimeLabels(p.times))}
 y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
 ${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join(`
 `)}
@@ -96665,5 +96685,5 @@ async function index() {
 }
 await index();
 
-//# debugId=4401EA42302FCF4F64756E2164756E21
+//# debugId=EF3ABF431251CA6964756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
