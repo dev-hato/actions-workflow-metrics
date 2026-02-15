@@ -491,7 +491,8 @@ describe("Renderer", () => {
     expect(labels.length).toBe(times.length);
     expect(labels[0]).toBe(firstLabel);
     expect(labels[labels.length - 1]).toBe(lastLabel);
-    const visibleLabelCount: number = labels.filter(hasVisibleCharacters).length;
+    const visibleLabelCount: number =
+      labels.filter(hasVisibleCharacters).length;
     expect(visibleLabelCount).toBeLessThanOrEqual(MAX_VISIBLE_TIME_LABELS);
     const hiddenLabels: string[] = labels.filter(
       (label: string): boolean => !hasVisibleCharacters(label),
