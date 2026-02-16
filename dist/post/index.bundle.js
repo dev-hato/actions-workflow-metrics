@@ -96533,14 +96533,15 @@ ${this.calculateStackedBars(renderParams.metricsInfoList)}
 }
 
 // src/lib.ts
-var cpuLoadPercentageSchema = exports_external.object({
-  unixTimeMs: exports_external.number(),
+var unixTimeMsSchema = exports_external.object({
+  unixTimeMs: exports_external.number()
+});
+var cpuLoadPercentageSchema = unixTimeMsSchema.extend({
   user: exports_external.number().nonnegative().max(100),
   system: exports_external.number().nonnegative().max(100)
 });
 var cpuLoadPercentagesSchema = exports_external.array(cpuLoadPercentageSchema);
-var memoryUsageMBSchema = exports_external.object({
-  unixTimeMs: exports_external.number(),
+var memoryUsageMBSchema = unixTimeMsSchema.extend({
   used: exports_external.number().nonnegative(),
   free: exports_external.number().nonnegative()
 });
@@ -96584,6 +96585,9 @@ async function getMetricsData() {
     clearTimeout(timer);
   }
 }
+function extractUnixTimeMs(record2) {
+  return record2.unixTimeMs;
+}
 function render(metricsData, metricsID) {
   const renderer = new Renderer;
   return renderer.render(renderParamsListSchema.parse([
@@ -96601,7 +96605,7 @@ function render(metricsData, metricsID) {
           data: metricsData.cpuLoadPercentages.map(({ user }) => user)
         }
       ],
-      times: metricsData.cpuLoadPercentages.map(({ unixTimeMs }) => unixTimeMs),
+      times: metricsData.cpuLoadPercentages.map(extractUnixTimeMs),
       yAxis: {
         title: "%",
         range: "0 --> 100"
@@ -96621,7 +96625,7 @@ function render(metricsData, metricsID) {
           data: metricsData.memoryUsageMBs.map(({ used }) => used)
         }
       ],
-      times: metricsData.memoryUsageMBs.map(({ unixTimeMs }) => unixTimeMs),
+      times: metricsData.memoryUsageMBs.map(extractUnixTimeMs),
       yAxis: {
         title: "MB"
       }
@@ -96687,5 +96691,5 @@ async function index() {
 }
 await index();
 
-//# debugId=6BB9C6A2E0C2C75B64756E2164756E21
+//# debugId=7E16791929787F0464756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
