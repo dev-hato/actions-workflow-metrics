@@ -22266,7 +22266,7 @@ var require_path = __commonJS((exports, module) => {
   module.exports = isWindows ? { sep: "\\" } : { sep: "/" };
 });
 
-// node_modules/balanced-match/index.js
+// node_modules/readdir-glob/node_modules/minimatch/node_modules/brace-expansion/node_modules/balanced-match/index.js
 var require_balanced_match = __commonJS((exports, module) => {
   module.exports = balanced;
   function balanced(a, b, str) {
@@ -22323,7 +22323,7 @@ var require_balanced_match = __commonJS((exports, module) => {
   }
 });
 
-// node_modules/brace-expansion/index.js
+// node_modules/readdir-glob/node_modules/minimatch/node_modules/brace-expansion/index.js
 var require_brace_expansion = __commonJS((exports, module) => {
   var balanced = require_balanced_match();
   module.exports = expandTop;
@@ -35617,6 +35617,212 @@ var require_isPlainObject = __commonJS((exports, module) => {
   module.exports = isPlainObject;
 });
 
+// node_modules/glob/node_modules/minimatch/node_modules/brace-expansion/node_modules/balanced-match/index.js
+var require_balanced_match2 = __commonJS((exports, module) => {
+  module.exports = balanced;
+  function balanced(a, b, str) {
+    if (a instanceof RegExp)
+      a = maybeMatch(a, str);
+    if (b instanceof RegExp)
+      b = maybeMatch(b, str);
+    var r = range2(a, b, str);
+    return r && {
+      start: r[0],
+      end: r[1],
+      pre: str.slice(0, r[0]),
+      body: str.slice(r[0] + a.length, r[1]),
+      post: str.slice(r[1] + b.length)
+    };
+  }
+  function maybeMatch(reg, str) {
+    var m = str.match(reg);
+    return m ? m[0] : null;
+  }
+  balanced.range = range2;
+  function range2(a, b, str) {
+    var begs, beg, left, right, result;
+    var ai = str.indexOf(a);
+    var bi = str.indexOf(b, ai + 1);
+    var i = ai;
+    if (ai >= 0 && bi > 0) {
+      if (a === b) {
+        return [ai, bi];
+      }
+      begs = [];
+      left = str.length;
+      while (i >= 0 && !result) {
+        if (i == ai) {
+          begs.push(i);
+          ai = str.indexOf(a, i + 1);
+        } else if (begs.length == 1) {
+          result = [begs.pop(), bi];
+        } else {
+          beg = begs.pop();
+          if (beg < left) {
+            left = beg;
+            right = bi;
+          }
+          bi = str.indexOf(b, i + 1);
+        }
+        i = ai < bi && ai >= 0 ? ai : bi;
+      }
+      if (begs.length) {
+        result = [left, right];
+      }
+    }
+    return result;
+  }
+});
+
+// node_modules/glob/node_modules/minimatch/node_modules/brace-expansion/index.js
+var require_brace_expansion2 = __commonJS((exports, module) => {
+  var balanced = require_balanced_match2();
+  module.exports = expandTop;
+  var escSlash = "\x00SLASH" + Math.random() + "\x00";
+  var escOpen = "\x00OPEN" + Math.random() + "\x00";
+  var escClose = "\x00CLOSE" + Math.random() + "\x00";
+  var escComma = "\x00COMMA" + Math.random() + "\x00";
+  var escPeriod = "\x00PERIOD" + Math.random() + "\x00";
+  function numeric(str) {
+    return parseInt(str, 10) == str ? parseInt(str, 10) : str.charCodeAt(0);
+  }
+  function escapeBraces(str) {
+    return str.split("\\\\").join(escSlash).split("\\{").join(escOpen).split("\\}").join(escClose).split("\\,").join(escComma).split("\\.").join(escPeriod);
+  }
+  function unescapeBraces(str) {
+    return str.split(escSlash).join("\\").split(escOpen).join("{").split(escClose).join("}").split(escComma).join(",").split(escPeriod).join(".");
+  }
+  function parseCommaParts(str) {
+    if (!str)
+      return [""];
+    var parts = [];
+    var m = balanced("{", "}", str);
+    if (!m)
+      return str.split(",");
+    var pre = m.pre;
+    var body2 = m.body;
+    var post = m.post;
+    var p = pre.split(",");
+    p[p.length - 1] += "{" + body2 + "}";
+    var postParts = parseCommaParts(post);
+    if (post.length) {
+      p[p.length - 1] += postParts.shift();
+      p.push.apply(p, postParts);
+    }
+    parts.push.apply(parts, p);
+    return parts;
+  }
+  function expandTop(str) {
+    if (!str)
+      return [];
+    if (str.substr(0, 2) === "{}") {
+      str = "\\{\\}" + str.substr(2);
+    }
+    return expand(escapeBraces(str), true).map(unescapeBraces);
+  }
+  function embrace(str) {
+    return "{" + str + "}";
+  }
+  function isPadded(el) {
+    return /^-?0\d/.test(el);
+  }
+  function lte(i, y) {
+    return i <= y;
+  }
+  function gte(i, y) {
+    return i >= y;
+  }
+  function expand(str, isTop) {
+    var expansions = [];
+    var m = balanced("{", "}", str);
+    if (!m)
+      return [str];
+    var pre = m.pre;
+    var post = m.post.length ? expand(m.post, false) : [""];
+    if (/\$$/.test(m.pre)) {
+      for (var k = 0;k < post.length; k++) {
+        var expansion = pre + "{" + m.body + "}" + post[k];
+        expansions.push(expansion);
+      }
+    } else {
+      var isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
+      var isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
+      var isSequence = isNumericSequence || isAlphaSequence;
+      var isOptions = m.body.indexOf(",") >= 0;
+      if (!isSequence && !isOptions) {
+        if (m.post.match(/,(?!,).*\}/)) {
+          str = m.pre + "{" + m.body + escClose + m.post;
+          return expand(str);
+        }
+        return [str];
+      }
+      var n;
+      if (isSequence) {
+        n = m.body.split(/\.\./);
+      } else {
+        n = parseCommaParts(m.body);
+        if (n.length === 1) {
+          n = expand(n[0], false).map(embrace);
+          if (n.length === 1) {
+            return post.map(function(p) {
+              return m.pre + n[0] + p;
+            });
+          }
+        }
+      }
+      var N;
+      if (isSequence) {
+        var x = numeric(n[0]);
+        var y = numeric(n[1]);
+        var width = Math.max(n[0].length, n[1].length);
+        var incr = n.length == 3 ? Math.abs(numeric(n[2])) : 1;
+        var test = lte;
+        var reverse = y < x;
+        if (reverse) {
+          incr *= -1;
+          test = gte;
+        }
+        var pad = n.some(isPadded);
+        N = [];
+        for (var i = x;test(i, y); i += incr) {
+          var c;
+          if (isAlphaSequence) {
+            c = String.fromCharCode(i);
+            if (c === "\\")
+              c = "";
+          } else {
+            c = String(i);
+            if (pad) {
+              var need = width - c.length;
+              if (need > 0) {
+                var z = new Array(need + 1).join("0");
+                if (i < 0)
+                  c = "-" + z + c.slice(1);
+                else
+                  c = z + c;
+              }
+            }
+          }
+          N.push(c);
+        }
+      } else {
+        N = [];
+        for (var j = 0;j < n.length; j++) {
+          N.push.apply(N, expand(n[j], false));
+        }
+      }
+      for (var j = 0;j < N.length; j++) {
+        for (var k = 0;k < post.length; k++) {
+          var expansion = pre + N[j] + post[k];
+          if (!isTop || isSequence || expansion)
+            expansions.push(expansion);
+        }
+      }
+    }
+    return expansions;
+  }
+});
+
 // node_modules/glob/node_modules/minimatch/dist/commonjs/assert-valid-pattern.js
 var require_assert_valid_pattern = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
@@ -36180,7 +36386,7 @@ var require_commonjs3 = __commonJS((exports) => {
   };
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.unescape = exports.escape = exports.AST = exports.Minimatch = exports.match = exports.makeRe = exports.braceExpand = exports.defaults = exports.filter = exports.GLOBSTAR = exports.sep = exports.minimatch = undefined;
-  var brace_expansion_1 = __importDefault(require_brace_expansion());
+  var brace_expansion_1 = __importDefault(require_brace_expansion2());
   var assert_valid_pattern_js_1 = require_assert_valid_pattern();
   var ast_js_1 = require_ast();
   var escape_js_1 = require_escape();
@@ -43312,6 +43518,7 @@ var require_utf8_decoder = __commonJS((exports, module) => {
         const byte = data[i];
         if (this.bytesNeeded === 0) {
           if (byte <= 127) {
+            this.bytesSeen = 0;
             result += String.fromCharCode(byte);
           } else {
             this.bytesSeen = 1;
@@ -43345,6 +43552,7 @@ var require_utf8_decoder = __commonJS((exports, module) => {
           this.lowerBoundary = 128;
           this.upperBoundary = 191;
           result += "�";
+          i--;
           continue;
         }
         this.lowerBoundary = 128;
@@ -57774,8 +57982,35 @@ var defaultOptions2 = {
   },
   captureMetaData: false
 };
+function normalizeProcessEntities(value) {
+  if (typeof value === "boolean") {
+    return {
+      enabled: value,
+      maxEntitySize: 1e4,
+      maxExpansionDepth: 10,
+      maxTotalExpansions: 1000,
+      maxExpandedLength: 1e5,
+      allowedTags: null,
+      tagFilter: null
+    };
+  }
+  if (typeof value === "object" && value !== null) {
+    return {
+      enabled: value.enabled !== false,
+      maxEntitySize: value.maxEntitySize ?? 1e4,
+      maxExpansionDepth: value.maxExpansionDepth ?? 10,
+      maxTotalExpansions: value.maxTotalExpansions ?? 1000,
+      maxExpandedLength: value.maxExpandedLength ?? 1e5,
+      allowedTags: value.allowedTags ?? null,
+      tagFilter: value.tagFilter ?? null
+    };
+  }
+  return normalizeProcessEntities(true);
+}
 var buildOptions = function(options) {
-  return Object.assign({}, defaultOptions2, options);
+  const built = Object.assign({}, defaultOptions2, options);
+  built.processEntities = normalizeProcessEntities(built.processEntities);
+  return built;
 };
 
 // node_modules/fast-xml-parser/src/xmlparser/xmlNode.js
@@ -57816,8 +58051,9 @@ class XmlNode {
 
 // node_modules/fast-xml-parser/src/xmlparser/DocTypeReader.js
 class DocTypeReader {
-  constructor(processEntities) {
-    this.suppressValidationErr = !processEntities;
+  constructor(options) {
+    this.suppressValidationErr = !options;
+    this.options = options;
   }
   readDocType(xmlData, i) {
     const entities = {};
@@ -57832,11 +58068,13 @@ class DocTypeReader {
             i += 7;
             let entityName, val;
             [entityName, val, i] = this.readEntityExp(xmlData, i + 1, this.suppressValidationErr);
-            if (val.indexOf("&") === -1)
+            if (val.indexOf("&") === -1) {
+              const escaped = entityName.replace(/[.\-+*:]/g, "\\.");
               entities[entityName] = {
-                regx: RegExp(`&${entityName};`, "g"),
+                regx: RegExp(`&${escaped};`, "g"),
                 val
               };
+            }
           } else if (hasBody && hasSeq(xmlData, "!ELEMENT", i)) {
             i += 8;
             const { index } = this.readElementExp(xmlData, i + 1);
@@ -57897,6 +58135,9 @@ class DocTypeReader {
     }
     let entityValue = "";
     [i, entityValue] = this.readIdentifierVal(xmlData, i, "entity");
+    if (this.options.enabled !== false && this.options.maxEntitySize && entityValue.length > this.options.maxEntitySize) {
+      throw new Error(`Entity "${entityName}" size (${entityValue.length}) exceeds maximum allowed size (${this.options.maxEntitySize})`);
+    }
     i--;
     return [entityName, entityValue, i];
   }
@@ -58248,6 +58489,8 @@ class OrderedObjParser {
     this.saveTextToParentTag = saveTextToParentTag;
     this.addChild = addChild;
     this.ignoreAttributesFn = getIgnoreAttributesFn(this.options.ignoreAttributes);
+    this.entityExpansionCount = 0;
+    this.currentExpandedLength = 0;
     if (this.options.stopNodes && this.options.stopNodes.length > 0) {
       this.stopNodesExact = new Set;
       this.stopNodesWildcard = new Set;
@@ -58268,8 +58511,9 @@ function addExternalEntities(externalEntities) {
   const entKeys = Object.keys(externalEntities);
   for (let i = 0;i < entKeys.length; i++) {
     const ent = entKeys[i];
+    const escaped = ent.replace(/[.\-+*:]/g, "\\.");
     this.lastEntities[ent] = {
-      regex: new RegExp("&" + ent + ";", "g"),
+      regex: new RegExp("&" + escaped + ";", "g"),
       val: externalEntities[ent]
     };
   }
@@ -58281,7 +58525,7 @@ function parseTextData(val, tagName, jPath, dontTrim, hasAttributes, isLeafNode,
     }
     if (val.length > 0) {
       if (!escapeEntities)
-        val = this.replaceEntitiesValue(val);
+        val = this.replaceEntitiesValue(val, tagName, jPath);
       const newval = this.options.tagValueProcessor(tagName, val, jPath, hasAttributes, isLeafNode);
       if (newval === null || newval === undefined) {
         return val;
@@ -58314,7 +58558,7 @@ function resolveNameSpace(tagname) {
   return tagname;
 }
 var attrsRegx = new RegExp(`([^\\s=]+)\\s*(=\\s*(['"])([\\s\\S]*?)\\3)?`, "gm");
-function buildAttributesMap(attrStr, jPath) {
+function buildAttributesMap(attrStr, jPath, tagName) {
   if (this.options.ignoreAttributes !== true && typeof attrStr === "string") {
     const matches = getAllMatches(attrStr, attrsRegx);
     const len = matches.length;
@@ -58336,7 +58580,7 @@ function buildAttributesMap(attrStr, jPath) {
           if (this.options.trimValues) {
             oldVal = oldVal.trim();
           }
-          oldVal = this.replaceEntitiesValue(oldVal);
+          oldVal = this.replaceEntitiesValue(oldVal, tagName, jPath);
           const newVal = this.options.attributeValueProcessor(attrName, oldVal, jPath);
           if (newVal === null || newVal === undefined) {
             attrs[aName] = oldVal;
@@ -58368,6 +58612,8 @@ var parseXml = function(xmlData) {
   let currentNode = xmlObj;
   let textData = "";
   let jPath = "";
+  this.entityExpansionCount = 0;
+  this.currentExpandedLength = 0;
   const docTypeReader = new DocTypeReader(this.options.processEntities);
   for (let i = 0;i < xmlData.length; i++) {
     const ch = xmlData[i];
@@ -58411,7 +58657,7 @@ var parseXml = function(xmlData) {
           const childNode = new XmlNode(tagData.tagName);
           childNode.add(this.options.textNodeName, "");
           if (tagData.tagName !== tagData.tagExp && tagData.attrExpPresent) {
-            childNode[":@"] = this.buildAttributesMap(tagData.tagExp, jPath);
+            childNode[":@"] = this.buildAttributesMap(tagData.tagExp, jPath, tagData.tagName);
           }
           this.addChild(currentNode, childNode, jPath, i);
         }
@@ -58491,7 +58737,7 @@ var parseXml = function(xmlData) {
           }
           const childNode = new XmlNode(tagName);
           if (tagName !== tagExp && attrExpPresent) {
-            childNode[":@"] = this.buildAttributesMap(tagExp, jPath);
+            childNode[":@"] = this.buildAttributesMap(tagExp, jPath, tagName);
           }
           if (tagContent) {
             tagContent = this.parseTextData(tagContent, tagName, jPath, true, attrExpPresent, true, true);
@@ -58517,7 +58763,7 @@ var parseXml = function(xmlData) {
             }
             const childNode = new XmlNode(tagName);
             if (tagName !== tagExp && attrExpPresent) {
-              childNode[":@"] = this.buildAttributesMap(tagExp, jPath);
+              childNode[":@"] = this.buildAttributesMap(tagExp, jPath, tagName);
             }
             this.addChild(currentNode, childNode, jPath, startIndex);
             jPath = jPath.substr(0, jPath.lastIndexOf("."));
@@ -58525,7 +58771,7 @@ var parseXml = function(xmlData) {
             const childNode = new XmlNode(tagName);
             this.tagsNodeStack.push(currentNode);
             if (tagName !== tagExp && attrExpPresent) {
-              childNode[":@"] = this.buildAttributesMap(tagExp, jPath);
+              childNode[":@"] = this.buildAttributesMap(tagExp, jPath, tagName);
             }
             this.addChild(currentNode, childNode, jPath, startIndex);
             currentNode = childNode;
@@ -58551,24 +58797,57 @@ function addChild(currentNode, childNode, jPath, startIndex) {
     currentNode.addChild(childNode, startIndex);
   }
 }
-var replaceEntitiesValue = function(val) {
-  if (this.options.processEntities) {
-    for (let entityName in this.docTypeEntities) {
-      const entity = this.docTypeEntities[entityName];
+var replaceEntitiesValue = function(val, tagName, jPath) {
+  if (val.indexOf("&") === -1) {
+    return val;
+  }
+  const entityConfig = this.options.processEntities;
+  if (!entityConfig.enabled) {
+    return val;
+  }
+  if (entityConfig.allowedTags) {
+    if (!entityConfig.allowedTags.includes(tagName)) {
+      return val;
+    }
+  }
+  if (entityConfig.tagFilter) {
+    if (!entityConfig.tagFilter(tagName, jPath)) {
+      return val;
+    }
+  }
+  for (let entityName in this.docTypeEntities) {
+    const entity = this.docTypeEntities[entityName];
+    const matches = val.match(entity.regx);
+    if (matches) {
+      this.entityExpansionCount += matches.length;
+      if (entityConfig.maxTotalExpansions && this.entityExpansionCount > entityConfig.maxTotalExpansions) {
+        throw new Error(`Entity expansion limit exceeded: ${this.entityExpansionCount} > ${entityConfig.maxTotalExpansions}`);
+      }
+      const lengthBefore = val.length;
       val = val.replace(entity.regx, entity.val);
-    }
-    for (let entityName in this.lastEntities) {
-      const entity = this.lastEntities[entityName];
-      val = val.replace(entity.regex, entity.val);
-    }
-    if (this.options.htmlEntities) {
-      for (let entityName in this.htmlEntities) {
-        const entity = this.htmlEntities[entityName];
-        val = val.replace(entity.regex, entity.val);
+      if (entityConfig.maxExpandedLength) {
+        this.currentExpandedLength += val.length - lengthBefore;
+        if (this.currentExpandedLength > entityConfig.maxExpandedLength) {
+          throw new Error(`Total expanded content size exceeded: ${this.currentExpandedLength} > ${entityConfig.maxExpandedLength}`);
+        }
       }
     }
-    val = val.replace(this.ampEntity.regex, this.ampEntity.val);
   }
+  if (val.indexOf("&") === -1)
+    return val;
+  for (let entityName in this.lastEntities) {
+    const entity = this.lastEntities[entityName];
+    val = val.replace(entity.regex, entity.val);
+  }
+  if (val.indexOf("&") === -1)
+    return val;
+  if (this.options.htmlEntities) {
+    for (let entityName in this.htmlEntities) {
+      const entity = this.htmlEntities[entityName];
+      val = val.replace(entity.regex, entity.val);
+    }
+  }
+  val = val.replace(this.ampEntity.regex, this.ampEntity.val);
   return val;
 };
 function saveTextToParentTag(textData, currentNode, jPath, isLeafNode) {
@@ -60718,7 +60997,7 @@ class UserDelegationKeyCredential {
   }
 }
 // node_modules/@azure/storage-blob/dist/esm/utils/constants.js
-var SDK_VERSION2 = "12.30.0";
+var SDK_VERSION2 = "12.31.0";
 var SERVICE_VERSION = "2026-02-06";
 var BLOCK_BLOB_MAX_UPLOAD_BLOB_BYTES = 256 * 1024 * 1024;
 var BLOCK_BLOB_MAX_STAGE_BLOCK_BYTES = 4000 * 1024 * 1024;
@@ -96665,5 +96944,5 @@ async function index() {
 }
 await index();
 
-//# debugId=4401EA42302FCF4F64756E2164756E21
+//# debugId=6B05393BD35A98E064756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
