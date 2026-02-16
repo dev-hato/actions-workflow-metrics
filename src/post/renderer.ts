@@ -38,7 +38,7 @@ const formatTimeLabels = (times: Date[]): string[] => {
   };
 
   const usableSlots: number = Math.max(
-    Math.min(MAX_VISIBLE_TIME_LABELS - 2, formattedTimes.length - 2),
+    Math.min(MAX_VISIBLE_TIME_LABELS, formattedTimes.length) - 2,
     1,
   );
   const interiorCount: number = formattedTimes.length - 2;
