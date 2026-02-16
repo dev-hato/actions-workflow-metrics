@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Renderer } from "./renderer";
 import { metricsDataSchema, serverPort } from "../lib";
+import type { unixTimeMsSchema } from "../lib";
 
 export const metricsInfoSchema = z.object({
   color: z.string(),
@@ -45,6 +46,10 @@ export async function getMetricsData(): Promise<
   }
 }
 
+function extractUnixTimeMs(record: z.TypeOf<typeof unixTimeMsSchema>): number {
+  return record.unixTimeMs;
+}
+
 export function render(
   metricsData: z.TypeOf<typeof metricsDataSchema>,
   metricsID: string,
@@ -70,9 +75,7 @@ export function render(
             ),
           },
         ],
-        times: metricsData.cpuLoadPercentages.map(
-          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
-        ),
+        times: metricsData.cpuLoadPercentages.map(extractUnixTimeMs),
         yAxis: {
           title: "%",
           range: "0 --> 100",
@@ -96,9 +99,7 @@ export function render(
             ),
           },
         ],
-        times: metricsData.memoryUsageMBs.map(
-          ({ unixTimeMs }: { unixTimeMs: number }): number => unixTimeMs,
-        ),
+        times: metricsData.memoryUsageMBs.map(extractUnixTimeMs),
         yAxis: {
           title: "MB",
         },
