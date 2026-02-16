@@ -96479,7 +96479,7 @@ var formatTimeLabels = (times) => {
     const binary = index.toString(2);
     return ZERO_WIDTH_SENTINEL + binary.split("").map((digit) => digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE).join("");
   };
-  const usableSlots = Math.max(Math.min(MAX_VISIBLE_TIME_LABELS - 2, formattedTimes.length - 2), 1);
+  const usableSlots = Math.max(Math.min(MAX_VISIBLE_TIME_LABELS, formattedTimes.length) - 2, 1);
   const interiorCount = formattedTimes.length - 2;
   const interiorStep = interiorCount / (usableSlots + 1);
   const visibleInteriorIndices = new Set;
@@ -96697,5 +96697,5 @@ async function index() {
 }
 await index();
 
-//# debugId=F00790E7564E9E3D64756E2164756E21
+//# debugId=BF9BFCA8E1C081FE64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
