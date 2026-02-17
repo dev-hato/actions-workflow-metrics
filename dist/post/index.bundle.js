@@ -118158,11 +118158,6 @@ var stepsSchema = exports_external.array(stepSchema);
 var metricsDataWithStepsSchema = metricsDataSchema.extend({
   steps: stepsSchema
 });
-var workflowStepSchema = exports_external.object({
-  name: exports_external.string(),
-  started_at: exports_external.string().nullish(),
-  completed_at: exports_external.string().nullish()
-});
 function isCurrentRunnerJob(job) {
   return job.status === "in_progress" && job.runner_name === process.env.RUNNER_NAME;
 }
@@ -118356,5 +118351,5 @@ async function index() {
 }
 await index();
 
-//# debugId=0A454D3D3371323F64756E2164756E21
+//# debugId=0EACFE7D1059724864756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
