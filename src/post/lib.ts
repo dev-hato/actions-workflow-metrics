@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { Renderer } from "./renderer";
 import { serverPort } from "../lib";
-import { metricsDataSchema } from "../libType";
+import { metricsDataSchema } from "../type";
 import type { components } from "@octokit/openapi-types";
 import type {
-  cpuLoadPercentageSchema,
-  memoryUsageMBSchema,
-  unixTimeMsSchema,
-} from "../libType";
+    cpuLoadPercentageSchema,
+    memoryUsageMBSchema,
+    unixTimeMsSchema,
+} from "../type";
 
 type GitHubJobStep = {
   name: string;
