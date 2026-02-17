@@ -4,9 +4,9 @@ import { serverPort } from "../lib";
 import { metricsDataSchema } from "../type";
 import type { components } from "@octokit/openapi-types";
 import type {
-    cpuLoadPercentageSchema,
-    memoryUsageMBSchema,
-    unixTimeMsSchema,
+  cpuLoadPercentageSchema,
+  memoryUsageMBSchema,
+  unixTimeMsSchema,
 } from "../type";
 
 type GitHubJobStep = {
