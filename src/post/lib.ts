@@ -1,14 +1,9 @@
-import { z } from "zod";
 import { Renderer } from "./renderer";
 import { serverPort } from "../lib";
+import { renderParamsListSchema } from "./libType";
 import { metricsDataSchema } from "../libType";
 import type { components } from "@octokit/openapi-types";
-import type {
-  cpuLoadPercentageSchema,
-  memoryUsageMBSchema,
-  unixTimeMsSchema,
-} from "../libType";
-import { renderParamsListSchema } from "./libType";
+import type { z } from "zod";
 import type {
   baseChartParamsSchema,
   chartParamsListSchema,
@@ -18,6 +13,11 @@ import type {
   stepSchema,
   stepsSchema,
 } from "./libType";
+import type {
+  cpuLoadPercentageSchema,
+  memoryUsageMBSchema,
+  unixTimeMsSchema,
+} from "../libType";
 
 function isCurrentRunnerJob(job: components["schemas"]["job"]): boolean {
   return (
