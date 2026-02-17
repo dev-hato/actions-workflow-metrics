@@ -8,6 +8,12 @@ import type {
   unixTimeMsSchema,
 } from "../lib";
 
+type GitHubJobStep = {
+  name: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+};
+
 export const legendSchema = z.object({
   color: z.string(),
   name: z.string(),
@@ -41,11 +47,6 @@ const stepsSchema = z.array(stepSchema);
 export const metricsDataWithStepsSchema = metricsDataSchema.extend({
   steps: stepsSchema,
 });
-const workflowStepSchema = z.object({
-  name: z.string(),
-  started_at: z.string().nullish(),
-  completed_at: z.string().nullish(),
-});
 
 function isCurrentRunnerJob(job: components["schemas"]["job"]): boolean {
   return (
@@ -53,10 +54,7 @@ function isCurrentRunnerJob(job: components["schemas"]["job"]): boolean {
   );
 }
 
-function filter(
-  unixTimeMs: number,
-  workflowStep: z.TypeOf<typeof workflowStepSchema>,
-): boolean {
+function filter(unixTimeMs: number, workflowStep: GitHubJobStep): boolean {
   const startMs: number | undefined =
     workflowStep.started_at == null
       ? undefined
@@ -72,7 +70,7 @@ function filter(
 }
 
 function filterMetricsByStep(
-  workflowStep: z.TypeOf<typeof workflowStepSchema>,
+  workflowStep: GitHubJobStep,
   metricsData: z.TypeOf<typeof metricsDataSchema>,
 ): z.TypeOf<typeof stepSchema> {
   return {
@@ -119,9 +117,8 @@ export async function getMetricsData(
       ...metricsData,
       steps: (jobs.find(isCurrentRunnerJob)?.steps ?? [])
         .map(
-          (
-            s: z.TypeOf<typeof workflowStepSchema>,
-          ): z.TypeOf<typeof stepSchema> => filterMetricsByStep(s, metricsData),
+          (s: GitHubJobStep): z.TypeOf<typeof stepSchema> =>
+            filterMetricsByStep(s, metricsData),
         )
         .filter(hasMetricsData),
     };
