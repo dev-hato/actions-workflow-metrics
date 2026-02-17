@@ -4,7 +4,7 @@ import { info, setFailed, summary } from "@actions/core";
 import { getMetricsData, render } from "./lib";
 import { serverPort } from "../lib";
 import type { z } from "zod";
-import type { metricsDataSchema } from "../lib";
+import type { metricsDataSchema } from "../type";
 
 async function index(): Promise<void> {
   const maxRetryCount: number = 10;
