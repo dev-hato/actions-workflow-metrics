@@ -96791,6 +96791,9 @@ ${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join(`
 }
 
 // src/lib.ts
+var serverPort = 7777;
+
+// src/type.ts
 var cpuLoadPercentageSchema = exports_external.object({
   unixTimeMs: exports_external.number(),
   user: exports_external.number().nonnegative().max(100),
@@ -96807,7 +96810,6 @@ var metricsDataSchema = exports_external.object({
   cpuLoadPercentages: cpuLoadPercentagesSchema,
   memoryUsageMBs: memoryUsageMBsSchema
 });
-var serverPort = 7777;
 
 // src/post/lib.ts
 var metricsInfoSchema = exports_external.object({
@@ -96944,5 +96946,5 @@ async function index() {
 }
 await index();
 
-//# debugId=6B05393BD35A98E064756E2164756E21
+//# debugId=A793CE762A116EBA64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
