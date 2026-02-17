@@ -1,9 +1,11 @@
 import type { z } from "zod";
 import type {
+  chartParamsSchema,
+  legendsSchema,
+  legendSchema,
   renderParamsListSchema,
   renderParamsSchema,
-  metricsInfoListSchema,
-  metricsInfoSchema,
+  stackedBarDataSchema,
   timesSchema,
 } from "./lib";
 
@@ -12,7 +14,7 @@ export class Renderer {
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
     metricsID: string,
   ): string {
-    return this.renderMetrics(this.renderCharts(renderParamsList), metricsID);
+    return this.renderMetrics(this.renderSections(renderParamsList), metricsID);
   }
 
   private renderMetrics(charts: string, metricsID: string): string {
@@ -25,22 +27,27 @@ ${metricsID}
 ${charts}`;
   }
 
-  private formatLegends(
-    metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>,
-  ): string {
-    return metricsInfoList
+  private formatLegends(legends: z.TypeOf<typeof legendsSchema>): string {
+    return legends
       .map(
-        (i: z.TypeOf<typeof metricsInfoSchema>): string =>
-          `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`,
+        (l: z.TypeOf<typeof legendSchema>): string =>
+          `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`,
       )
       .join("\n");
   }
 
-  private extractColors(
-    metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>,
-  ): string {
-    return metricsInfoList
-      .map(({ color }: z.TypeOf<typeof metricsInfoSchema>): string => color)
+  private formatChartHeader(stepName?: string): string {
+    return stepName === undefined
+      ? "#### All"
+      : `#### Step \`${stepName}\`
+
+<details>
+<summary>Chart</summary>`;
+  }
+
+  private extractColors(legends: z.TypeOf<typeof legendsSchema>): string {
+    return legends
+      .map(({ color }: z.TypeOf<typeof legendSchema>): string => color)
       .join(", ");
   }
 
@@ -58,24 +65,22 @@ ${charts}`;
 
   private accumulateStackedData(
     accumulated: number[][],
-    metricsInfo: z.TypeOf<typeof metricsInfoSchema>,
+    barData: number[],
     index: number,
   ): number[][] {
     accumulated.push(
-      metricsInfo.data.map(
-        (v: number, c: number): number => v + accumulated[index][c],
-      ),
+      barData.map((v: number, c: number): number => v + accumulated[index][c]),
     );
     return accumulated;
   }
 
   private calculateStackedBars(
-    metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>,
+    stackedBarData: z.TypeOf<typeof stackedBarDataSchema>,
   ): string {
-    return metricsInfoList
+    return stackedBarData
       .toReversed()
       .reduce(this.accumulateStackedData, [
-        metricsInfoList[0].data.map((): number => 0),
+        stackedBarData[0].map((): number => 0),
       ])
       .slice(1)
       .toReversed()
@@ -83,45 +88,71 @@ ${charts}`;
       .join("\n");
   }
 
-  private renderChart(
+  private formatChartFooter(stepName?: string): string {
+    return stepName === undefined
+      ? ""
+      : `
+
+</details>`;
+  }
+
+  private renderSection(
     renderParams: z.TypeOf<typeof renderParamsSchema>,
   ): string {
     return `### ${renderParams.title}
 
 #### Legends
 
-${this.formatLegends(renderParams.metricsInfoList)}
+${this.formatLegends(renderParams.legends)}${this.renderSectionCharts(renderParams)}`;
+  }
 
-#### Chart
+  private renderChart(
+    chartParams: z.TypeOf<typeof chartParamsSchema>,
+    plotColorPalette: string,
+  ): string {
+    return `
+
+${this.formatChartHeader(chartParams.stepName)}
 
 \`\`\`mermaid
 %%{
   init: {
     "themeVariables": {
       "xyChart": {
-        "plotColorPalette": "${this.extractColors(renderParams.metricsInfoList)}"
+        "plotColorPalette": "${plotColorPalette}"
       }
     }
   }
 }%%
 xychart
 
-x-axis "Time" ${this.formatTimes(renderParams.times)}
-y-axis "${renderParams.yAxis.title}"${this.formatYAxisRange(renderParams.yAxis.range)}
-${this.calculateStackedBars(renderParams.metricsInfoList)}
-\`\`\``;
+x-axis "Time" ${this.formatTimes(chartParams.times)}
+y-axis "${chartParams.yAxis.title}"${this.formatYAxisRange(chartParams.yAxis.range)}
+${this.calculateStackedBars(chartParams.stackedBarData)}
+\`\`\`${this.formatChartFooter(chartParams.stepName)}`;
   }
 
-  private renderCharts(
+  private renderSectionCharts(
+    renderParams: z.TypeOf<typeof renderParamsSchema>,
+  ): string {
+    const plotColorPalette: string = this.extractColors(renderParams.legends);
+    return renderParams.data
+      .filter(
+        ({ stackedBarData }: z.TypeOf<typeof chartParamsSchema>): boolean =>
+          stackedBarData.length > 0,
+      )
+      .map((p: z.TypeOf<typeof chartParamsSchema>): string =>
+        this.renderChart(p, plotColorPalette),
+      )
+      .join("");
+  }
+
+  private renderSections(
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
   ): string {
     return renderParamsList
-      .filter(
-        ({ metricsInfoList }: z.TypeOf<typeof renderParamsSchema>): boolean =>
-          metricsInfoList.length > 0,
-      )
       .map((p: z.TypeOf<typeof renderParamsSchema>): string =>
-        this.renderChart(p),
+        this.renderSection(p),
       )
       .join("\n\n");
   }
