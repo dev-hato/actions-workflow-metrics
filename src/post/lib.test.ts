@@ -2,8 +2,8 @@ import { describe, expect, it, beforeEach, mock } from "bun:test";
 import { getMetricsData, render } from "./lib";
 import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
-import type { metricsDataWithStepsSchema } from "./lib";
-import type { metricsDataSchema } from "../lib";
+import type { metricsDataWithStepsSchema } from "./libType";
+import type { metricsDataSchema } from "../libType";
 
 /**
  * Sample metrics data for testing.
