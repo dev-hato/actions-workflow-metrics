@@ -1,23 +1,53 @@
+import { z } from "zod";
 import { Renderer } from "./renderer";
 import { serverPort } from "../lib";
-import { renderParamsListSchema } from "./libType";
 import { metricsDataSchema } from "../libType";
 import type { components } from "@octokit/openapi-types";
-import type { z } from "zod";
-import type {
-  baseChartParamsSchema,
-  chartParamsListSchema,
-  chartParamsSchema,
-  GitHubJobStep,
-  metricsDataWithStepsSchema,
-  stepSchema,
-  stepsSchema,
-} from "./libType";
 import type {
   cpuLoadPercentageSchema,
   memoryUsageMBSchema,
   unixTimeMsSchema,
 } from "../libType";
+
+type GitHubJobStep = {
+  name: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+};
+
+export const legendSchema = z.object({
+  color: z.string(),
+  name: z.string(),
+});
+export const stackedBarDataSchema = z.array(z.array(z.number()));
+export const legendsSchema = z.array(legendSchema);
+export const timesSchema = z.array(z.coerce.date());
+const baseChartParamsSchema = z.object({
+  stackedBarData: stackedBarDataSchema,
+  times: timesSchema,
+  yAxis: z.object({
+    title: z.string(),
+    range: z.string().optional(),
+  }),
+});
+export const chartParamsSchema = baseChartParamsSchema.extend({
+  stepName: z.string().optional(),
+});
+const chartParamsListSchema = z.array(chartParamsSchema);
+export const renderParamsSchema = z.object({
+  title: z.string(),
+  legends: legendsSchema,
+  data: chartParamsListSchema,
+});
+export const renderParamsListSchema = z.array(renderParamsSchema);
+const stepSchema = z.object({
+  stepName: z.string().optional(),
+  data: metricsDataSchema,
+});
+const stepsSchema = z.array(stepSchema);
+export const metricsDataWithStepsSchema = metricsDataSchema.extend({
+  steps: stepsSchema,
+});
 
 function isCurrentRunnerJob(job: components["schemas"]["job"]): boolean {
   return (
