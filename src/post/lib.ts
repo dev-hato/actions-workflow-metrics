@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { Renderer } from "./renderer";
 import { serverPort } from "../lib";
-import { metricsDataSchema, unixTimeMsSchema } from "../type";
+import { metricsDataSchema } from "../type";
+import type { unixTimeMsSchema } from "../type";
 
 export const metricsInfoSchema = z.object({
   color: z.string(),
