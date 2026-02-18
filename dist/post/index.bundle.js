@@ -104485,6 +104485,96 @@ function getApiBaseUrl2() {
   return process.env["GITHUB_API_URL"] || "https://api.github.com";
 }
 
+// src/post/renderer.ts
+class Renderer {
+  render(renderParamsList, metricsID) {
+    return this.renderMetrics(this.renderSections(renderParamsList), metricsID);
+  }
+  renderMetrics(charts, metricsID) {
+    return `## Workflow Metrics
+
+### Metrics ID
+
+${metricsID}
+
+${charts}`;
+  }
+  formatLegends(legends) {
+    return legends.map((l) => `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`).join(`
+`);
+  }
+  formatChartHeader(stepName) {
+    return stepName === undefined ? "#### All" : `#### Step \`${stepName}\`
+
+<details>
+<summary>Chart</summary>`;
+  }
+  extractColors(legends) {
+    return legends.map(({ color }) => color).join(", ");
+  }
+  formatTimes(times) {
+    return JSON.stringify(times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false })));
+  }
+  formatYAxisRange(range2) {
+    return range2 ? ` ${range2}` : "";
+  }
+  accumulateStackedData(accumulated, barData, index) {
+    accumulated.push(barData.map((v, c) => v + accumulated[index][c]));
+    return accumulated;
+  }
+  calculateStackedBars(stackedBarData) {
+    return stackedBarData.toReversed().reduce(this.accumulateStackedData, [
+      stackedBarData[0].map(() => 0)
+    ]).slice(1).toReversed().map((v) => `bar ${JSON.stringify(v)}`).join(`
+`);
+  }
+  formatChartFooter(stepName) {
+    return stepName === undefined ? "" : `
+
+</details>`;
+  }
+  renderSection(renderParams) {
+    return `### ${renderParams.title}
+
+#### Legends
+
+${this.formatLegends(renderParams.legends)}${this.renderSectionCharts(renderParams)}`;
+  }
+  renderChart(chartParams, legends) {
+    return `${this.formatChartHeader(chartParams.stepName)}
+
+\`\`\`mermaid
+%%{
+  init: {
+    "themeVariables": {
+      "xyChart": {
+        "plotColorPalette": "${this.extractColors(legends)}"
+      }
+    }
+  }
+}%%
+xychart
+
+x-axis "Time" ${this.formatTimes(chartParams.times)}
+y-axis "${chartParams.yAxis.title}"${this.formatYAxisRange(chartParams.yAxis.range)}
+${this.calculateStackedBars(chartParams.stackedBarData)}
+\`\`\`${this.formatChartFooter(chartParams.stepName)}`;
+  }
+  renderSectionCharts(renderParams) {
+    return renderParams.data.filter(({ stackedBarData }) => stackedBarData.length > 0).map((p) => this.renderChart(p, renderParams.legends)).join(`
+
+`);
+  }
+  renderSections(renderParamsList) {
+    return renderParamsList.map((p) => this.renderSection(p)).join(`
+
+`);
+  }
+}
+
+// src/lib.ts
+var serverPort = 7777;
+
 // node_modules/zod/v4/classic/external.js
 var exports_external = {};
 __export(exports_external, {
@@ -118017,96 +118107,6 @@ function date4(params) {
 
 // node_modules/zod/v4/classic/external.js
 config(en_default());
-// src/post/renderer.ts
-class Renderer {
-  render(renderParamsList, metricsID) {
-    return this.renderMetrics(this.renderSections(renderParamsList), metricsID);
-  }
-  renderMetrics(charts, metricsID) {
-    return `## Workflow Metrics
-
-### Metrics ID
-
-${metricsID}
-
-${charts}`;
-  }
-  formatLegends(legends) {
-    return legends.map((l) => `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`).join(`
-`);
-  }
-  formatChartHeader(stepName) {
-    return stepName === undefined ? "#### All" : `#### Step \`${stepName}\`
-
-<details>
-<summary>Chart</summary>`;
-  }
-  extractColors(legends) {
-    return legends.map(({ color }) => color).join(", ");
-  }
-  formatTimes(times) {
-    return JSON.stringify(times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false })));
-  }
-  formatYAxisRange(range2) {
-    return range2 ? ` ${range2}` : "";
-  }
-  accumulateStackedData(accumulated, barData, index) {
-    accumulated.push(barData.map((v, c) => v + accumulated[index][c]));
-    return accumulated;
-  }
-  calculateStackedBars(stackedBarData) {
-    return stackedBarData.toReversed().reduce(this.accumulateStackedData, [
-      stackedBarData[0].map(() => 0)
-    ]).slice(1).toReversed().map((v) => `bar ${JSON.stringify(v)}`).join(`
-`);
-  }
-  formatChartFooter(stepName) {
-    return stepName === undefined ? "" : `
-
-</details>`;
-  }
-  renderSection(renderParams) {
-    return `### ${renderParams.title}
-
-#### Legends
-
-${this.formatLegends(renderParams.legends)}${this.renderSectionCharts(renderParams)}`;
-  }
-  renderChart(chartParams, legends) {
-    return `${this.formatChartHeader(chartParams.stepName)}
-
-\`\`\`mermaid
-%%{
-  init: {
-    "themeVariables": {
-      "xyChart": {
-        "plotColorPalette": "${this.extractColors(legends)}"
-      }
-    }
-  }
-}%%
-xychart
-
-x-axis "Time" ${this.formatTimes(chartParams.times)}
-y-axis "${chartParams.yAxis.title}"${this.formatYAxisRange(chartParams.yAxis.range)}
-${this.calculateStackedBars(chartParams.stackedBarData)}
-\`\`\`${this.formatChartFooter(chartParams.stepName)}`;
-  }
-  renderSectionCharts(renderParams) {
-    return renderParams.data.filter(({ stackedBarData }) => stackedBarData.length > 0).map((p) => this.renderChart(p, renderParams.legends)).join(`
-
-`);
-  }
-  renderSections(renderParamsList) {
-    return renderParamsList.map((p) => this.renderSection(p)).join(`
-
-`);
-  }
-}
-
-// src/lib.ts
-var serverPort = 7777;
-
 // src/type.ts
 var unixTimeMsSchema = exports_external.object({
   unixTimeMs: exports_external.number()
@@ -118126,7 +118126,7 @@ var metricsDataSchema = exports_external.object({
   memoryUsageMBs: memoryUsageMBsSchema
 });
 
-// src/post/lib.ts
+// src/post/type.ts
 var legendSchema = exports_external.object({
   color: exports_external.string(),
   name: exports_external.string()
@@ -118160,6 +118160,8 @@ var stepsSchema = exports_external.array(stepSchema);
 var metricsDataWithStepsSchema = metricsDataSchema.extend({
   steps: stepsSchema
 });
+
+// src/post/lib.ts
 function isCurrentRunnerJob(job) {
   return job.status === "in_progress" && job.runner_name === process.env.RUNNER_NAME;
 }
@@ -118353,5 +118355,5 @@ async function index() {
 }
 await index();
 
-//# debugId=E3B3AFF6FF1DCCCF64756E2164756E21
+//# debugId=D15C26204E704FA664756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
