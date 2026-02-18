@@ -36394,16 +36394,6 @@ var ExitCode;
 function setSecret(secret) {
   issueCommand("add-mask", {}, secret);
 }
-function getInput(name, options) {
-  const val = process.env[`INPUT_${name.replace(/ /g, "_").toUpperCase()}`] || "";
-  if (options && options.required && !val) {
-    throw new Error(`Input required and not supplied: ${name}`);
-  }
-  if (options && options.trimWhitespace === false) {
-    return val;
-  }
-  return val.trim();
-}
 function setFailed(message) {
   process.exitCode = ExitCode.Failure;
   error(message);
@@ -36504,5 +36494,5 @@ async function server() {
 }
 await server();
 
-//# debugId=F123D22E3947BAAA64756E2164756E21
+//# debugId=72FE6B8D66530A6E64756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
