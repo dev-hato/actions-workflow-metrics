@@ -28728,7 +28728,7 @@ var require_defaults = __commonJS((exports, module) => {
 
 // node_modules/readable-stream/lib/ours/primordials.js
 var require_primordials = __commonJS((exports, module) => {
-  class AggregateError extends Error {
+  class AggregateError2 extends Error {
     constructor(errors) {
       if (!Array.isArray(errors)) {
         throw new TypeError(`Expected input to be an Array, got ${typeof errors}`);
@@ -28744,7 +28744,7 @@ var require_primordials = __commonJS((exports, module) => {
     }
   }
   module.exports = {
-    AggregateError,
+    AggregateError: AggregateError2,
     ArrayIsArray(self2) {
       return Array.isArray(self2);
     },
@@ -28896,7 +28896,7 @@ var require_inspect = __commonJS((exports, module) => {
 var require_errors2 = __commonJS((exports, module) => {
   var { format, inspect: inspect2 } = require_inspect();
   var { AggregateError: CustomAggregateError } = require_primordials();
-  var AggregateError = globalThis.AggregateError || CustomAggregateError;
+  var AggregateError2 = globalThis.AggregateError || CustomAggregateError;
   var kIsNodeError = Symbol("kIsNodeError");
   var kTypes = [
     "string",
@@ -28984,7 +28984,7 @@ var require_errors2 = __commonJS((exports, module) => {
         outerError.errors.push(innerError);
         return outerError;
       }
-      const err = new AggregateError([outerError, innerError], outerError.message);
+      const err = new AggregateError2([outerError, innerError], outerError.message);
       err.code = outerError.code;
       return err;
     }
@@ -29708,7 +29708,7 @@ var require_util10 = __commonJS((exports, module) => {
   var {
     codes: { ERR_INVALID_ARG_TYPE }
   } = require_errors2();
-  var { kResistStopPropagation, AggregateError, SymbolDispose } = require_primordials();
+  var { kResistStopPropagation, AggregateError: AggregateError2, SymbolDispose } = require_primordials();
   var AbortSignal2 = globalThis.AbortSignal || require_abort_controller().AbortSignal;
   var AbortController2 = globalThis.AbortController || require_abort_controller().AbortController;
   var AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
@@ -29729,7 +29729,7 @@ var require_util10 = __commonJS((exports, module) => {
     }
   };
   module.exports = {
-    AggregateError,
+    AggregateError: AggregateError2,
     kEmptyObject: Object.freeze({}),
     once(callback) {
       let called = false;
@@ -96887,6 +96887,19 @@ function render(metricsData, metricsID) {
 }
 
 // src/post/index.ts
+function reportError(error49, report) {
+  if (!(error49 instanceof Error)) {
+    report(String(error49));
+    return;
+  }
+  if (error49.cause instanceof AggregateError) {
+    for (const err of error49.cause.errors) {
+      report(err);
+    }
+    return;
+  }
+  report(error49);
+}
 async function index() {
   try {
     const maxRetryCount = 10;
@@ -96922,7 +96935,7 @@ async function index() {
     await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error49) {
     console.error(error49);
-    setFailed(error49);
+    reportError(error49, setFailed);
   } finally {
     const controller = new AbortController;
     const timer = setTimeout(() => controller.abort(), 10 * 1000);
@@ -96937,7 +96950,7 @@ async function index() {
       }
     } catch (error49) {
       console.warn(error49);
-      warning(error49);
+      reportError(error49, warning);
     } finally {
       clearTimeout(timer);
     }
@@ -96945,5 +96958,5 @@ async function index() {
 }
 await index();
 
-//# debugId=84C562EF5B41C5A864756E2164756E21
+//# debugId=6DF9354642FD60D764756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
