@@ -51017,6 +51017,16 @@ var ExitCode;
 function setSecret(secret) {
   issueCommand("add-mask", {}, secret);
 }
+function getInput(name, options) {
+  const val = process.env[`INPUT_${name.replace(/ /g, "_").toUpperCase()}`] || "";
+  if (options && options.required && !val) {
+    throw new Error(`Input required and not supplied: ${name}`);
+  }
+  if (options && options.trimWhitespace === false) {
+    return val;
+  }
+  return val.trim();
+}
 function setFailed(message) {
   process.exitCode = ExitCode.Failure;
   error(message);
@@ -96878,21 +96888,20 @@ function render(metricsData, metricsID) {
 
 // src/post/index.ts
 async function index() {
-  const maxRetryCount = 10;
-  let metricsData;
-  for (let i = 0;i < maxRetryCount; i++) {
-    try {
-      metricsData = await getMetricsData();
-      break;
-    } catch (error49) {
-      if (maxRetryCount - 2 < i || !(error49 instanceof TypeError) || error49.message !== "fetch failed") {
-        console.error(error49);
-        setFailed(error49);
-      }
-    }
-    await new Promise((resolve2) => setTimeout(resolve2, 1000));
-  }
   try {
+    const maxRetryCount = 10;
+    let metricsData;
+    for (let i = 0;i < maxRetryCount; i++) {
+      try {
+        metricsData = await getMetricsData();
+        break;
+      } catch (error49) {
+        if (maxRetryCount - 2 < i || !(error49 instanceof TypeError) || error49.message !== "fetch failed") {
+          throw error49;
+        }
+      }
+      await new Promise((resolve2) => setTimeout(resolve2, 1000));
+    }
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
     await fs5.writeFile(fileName, JSON.stringify(metricsData));
@@ -96905,8 +96914,7 @@ async function index() {
         break;
       } catch (error49) {
         if (maxRetryCount - 2 < i || !(error49 instanceof Error) || !error49.message.includes("Failed request: (409) Conflict: an artifact with this name already exists on the workflow run")) {
-          console.error(error49);
-          setFailed(error49);
+          throw error49;
         }
       }
       await new Promise((resolve2) => setTimeout(resolve2, 1000));
@@ -96925,8 +96933,11 @@ async function index() {
       if (res.ok) {
         info("Server finished");
       } else {
-        setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
+        warning(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
+    } catch (error49) {
+      console.warn(error49);
+      warning(error49);
     } finally {
       clearTimeout(timer);
     }
@@ -96934,5 +96945,5 @@ async function index() {
 }
 await index();
 
-//# debugId=6A9AADB4897D4E9B64756E2164756E21
+//# debugId=84C562EF5B41C5A864756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
