@@ -4,7 +4,7 @@ import { info, setFailed, summary, warning } from "@actions/core";
 import { getMetricsData, render } from "./lib";
 import { serverPort } from "../lib";
 import type { z } from "zod";
-import type { metricsDataSchema } from "../lib";
+import type { metricsDataSchema } from "../type";
 
 function reportError(
   error: unknown,

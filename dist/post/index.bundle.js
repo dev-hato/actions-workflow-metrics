@@ -28728,7 +28728,7 @@ var require_defaults = __commonJS((exports, module) => {
 
 // node_modules/readable-stream/lib/ours/primordials.js
 var require_primordials = __commonJS((exports, module) => {
-  class AggregateError2 extends Error {
+  class AggregateError extends Error {
     constructor(errors) {
       if (!Array.isArray(errors)) {
         throw new TypeError(`Expected input to be an Array, got ${typeof errors}`);
@@ -28744,7 +28744,7 @@ var require_primordials = __commonJS((exports, module) => {
     }
   }
   module.exports = {
-    AggregateError: AggregateError2,
+    AggregateError,
     ArrayIsArray(self2) {
       return Array.isArray(self2);
     },
@@ -28896,7 +28896,7 @@ var require_inspect = __commonJS((exports, module) => {
 var require_errors2 = __commonJS((exports, module) => {
   var { format, inspect: inspect2 } = require_inspect();
   var { AggregateError: CustomAggregateError } = require_primordials();
-  var AggregateError2 = globalThis.AggregateError || CustomAggregateError;
+  var AggregateError = globalThis.AggregateError || CustomAggregateError;
   var kIsNodeError = Symbol("kIsNodeError");
   var kTypes = [
     "string",
@@ -28984,7 +28984,7 @@ var require_errors2 = __commonJS((exports, module) => {
         outerError.errors.push(innerError);
         return outerError;
       }
-      const err = new AggregateError2([outerError, innerError], outerError.message);
+      const err = new AggregateError([outerError, innerError], outerError.message);
       err.code = outerError.code;
       return err;
     }
@@ -29708,7 +29708,7 @@ var require_util10 = __commonJS((exports, module) => {
   var {
     codes: { ERR_INVALID_ARG_TYPE }
   } = require_errors2();
-  var { kResistStopPropagation, AggregateError: AggregateError2, SymbolDispose } = require_primordials();
+  var { kResistStopPropagation, AggregateError, SymbolDispose } = require_primordials();
   var AbortSignal2 = globalThis.AbortSignal || require_abort_controller().AbortSignal;
   var AbortController2 = globalThis.AbortController || require_abort_controller().AbortController;
   var AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
@@ -29729,7 +29729,7 @@ var require_util10 = __commonJS((exports, module) => {
     }
   };
   module.exports = {
-    AggregateError: AggregateError2,
+    AggregateError,
     kEmptyObject: Object.freeze({}),
     once(callback) {
       let called = false;
@@ -96791,6 +96791,9 @@ ${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join(`
 }
 
 // src/lib.ts
+var serverPort = 7777;
+
+// src/type.ts
 var cpuLoadPercentageSchema = exports_external.object({
   unixTimeMs: exports_external.number(),
   user: exports_external.number().nonnegative().max(100),
@@ -96807,7 +96810,6 @@ var metricsDataSchema = exports_external.object({
   cpuLoadPercentages: cpuLoadPercentagesSchema,
   memoryUsageMBs: memoryUsageMBsSchema
 });
-var serverPort = 7777;
 
 // src/post/lib.ts
 var metricsInfoSchema = exports_external.object({
@@ -96887,34 +96889,22 @@ function render(metricsData, metricsID) {
 }
 
 // src/post/index.ts
-function reportError(error49, report) {
-  if (!(error49 instanceof Error)) {
-    report(String(error49));
-    return;
-  }
-  if (error49.cause instanceof AggregateError) {
-    for (const err of error49.cause.errors) {
-      report(err);
-    }
-    return;
-  }
-  report(error49);
-}
 async function index() {
-  try {
-    const maxRetryCount = 10;
-    let metricsData;
-    for (let i = 0;i < maxRetryCount; i++) {
-      try {
-        metricsData = await getMetricsData();
-        break;
-      } catch (error49) {
-        if (maxRetryCount - 2 < i || !(error49 instanceof TypeError) || error49.message !== "fetch failed") {
-          throw error49;
-        }
+  const maxRetryCount = 10;
+  let metricsData;
+  for (let i = 0;i < maxRetryCount; i++) {
+    try {
+      metricsData = await getMetricsData();
+      break;
+    } catch (error49) {
+      if (maxRetryCount - 2 < i || !(error49 instanceof TypeError) || error49.message !== "fetch failed") {
+        console.error(error49);
+        setFailed(error49);
       }
-      await new Promise((resolve2) => setTimeout(resolve2, 1000));
     }
+    await new Promise((resolve2) => setTimeout(resolve2, 1000));
+  }
+  try {
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
     await fs5.writeFile(fileName, JSON.stringify(metricsData));
@@ -96927,7 +96917,8 @@ async function index() {
         break;
       } catch (error49) {
         if (maxRetryCount - 2 < i || !(error49 instanceof Error) || !error49.message.includes("Failed request: (409) Conflict: an artifact with this name already exists on the workflow run")) {
-          throw error49;
+          console.error(error49);
+          setFailed(error49);
         }
       }
       await new Promise((resolve2) => setTimeout(resolve2, 1000));
@@ -96935,7 +96926,7 @@ async function index() {
     await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error49) {
     console.error(error49);
-    reportError(error49, setFailed);
+    setFailed(error49);
   } finally {
     const controller = new AbortController;
     const timer = setTimeout(() => controller.abort(), 10 * 1000);
@@ -96946,11 +96937,8 @@ async function index() {
       if (res.ok) {
         info("Server finished");
       } else {
-        warning(`Failed to finish server: ${res.status} ${res.statusText}`);
+        setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
-    } catch (error49) {
-      console.warn(error49);
-      reportError(error49, warning);
     } finally {
       clearTimeout(timer);
     }
@@ -96958,5 +96946,5 @@ async function index() {
 }
 await index();
 
-//# debugId=6DF9354642FD60D764756E2164756E21
+//# debugId=A793CE762A116EBA64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

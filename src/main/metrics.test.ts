@@ -6,7 +6,7 @@ import type {
   cpuLoadPercentageSchema,
   metricsDataSchema,
   memoryUsageMBSchema,
-} from "../lib";
+} from "../type";
 
 // Mock systeminformation
 mock.module("systeminformation", () => ({
