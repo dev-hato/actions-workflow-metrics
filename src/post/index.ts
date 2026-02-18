@@ -6,6 +6,26 @@ import { serverPort } from "../lib";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../lib";
 
+function reportError(
+  error: unknown,
+  report: (message: string | Error) => void,
+) {
+  if (!(error instanceof Error)) {
+    report(String(error));
+    return;
+  }
+
+  if (error.cause instanceof AggregateError) {
+    for (const err of error.cause.errors) {
+      report(err);
+    }
+
+    return;
+  }
+
+  report(error);
+}
+
 async function index(): Promise<void> {
   try {
     const maxRetryCount: number = 10;
@@ -63,7 +83,7 @@ async function index(): Promise<void> {
     await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error) {
     console.error(error);
-    setFailed(error);
+    reportError(error, setFailed);
   } finally {
     const controller: AbortController = new AbortController();
     const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
@@ -84,7 +104,7 @@ async function index(): Promise<void> {
       }
     } catch (error) {
       console.warn(error);
-      warning(error);
+      reportError(error, warning);
     } finally {
       clearTimeout(timer);
     }
