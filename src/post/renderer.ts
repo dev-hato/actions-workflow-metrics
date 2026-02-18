@@ -7,7 +7,7 @@ import type {
   renderParamsSchema,
   stackedBarDataSchema,
   timesSchema,
-} from "./type";
+} from "./lib";
 
 export class Renderer {
   render(

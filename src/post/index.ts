@@ -7,7 +7,7 @@ import { getMetricsData, render } from "./lib";
 import { serverPort } from "../lib";
 import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
-import type { metricsDataWithStepsSchema } from "./type";
+import type { metricsDataWithStepsSchema } from "./lib";
 
 async function index(): Promise<void> {
   let jobs: components["schemas"]["job"][] = [];
