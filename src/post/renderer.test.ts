@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Renderer } from "./renderer";
 import type { z } from "zod";
-import type { legendsSchema } from "./lib";
+import type { legendsSchema } from "./type";
 
 describe("Renderer", () => {
   const testMetricsID: string = "1234567890";
