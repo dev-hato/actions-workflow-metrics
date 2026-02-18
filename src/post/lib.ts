@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Renderer } from "./renderer";
-import { metricsDataSchema, serverPort } from "../lib";
+import { serverPort } from "../lib";
+import { metricsDataSchema } from "../type";
 
 export const metricsInfoSchema = z.object({
   color: z.string(),

@@ -51017,6 +51017,16 @@ var ExitCode;
 function setSecret(secret) {
   issueCommand("add-mask", {}, secret);
 }
+function getInput(name, options) {
+  const val = process.env[`INPUT_${name.replace(/ /g, "_").toUpperCase()}`] || "";
+  if (options && options.required && !val) {
+    throw new Error(`Input required and not supplied: ${name}`);
+  }
+  if (options && options.trimWhitespace === false) {
+    return val;
+  }
+  return val.trim();
+}
 function setFailed(message) {
   process.exitCode = ExitCode.Failure;
   error(message);
@@ -96781,6 +96791,9 @@ ${stackedDatum.map((d) => `bar ${JSON.stringify(d)}`).join(`
 }
 
 // src/lib.ts
+var serverPort = 7777;
+
+// src/type.ts
 var cpuLoadPercentageSchema = exports_external.object({
   unixTimeMs: exports_external.number(),
   user: exports_external.number().nonnegative().max(100),
@@ -96797,7 +96810,6 @@ var metricsDataSchema = exports_external.object({
   cpuLoadPercentages: cpuLoadPercentagesSchema,
   memoryUsageMBs: memoryUsageMBsSchema
 });
-var serverPort = 7777;
 
 // src/post/lib.ts
 var metricsInfoSchema = exports_external.object({
@@ -96948,5 +96960,5 @@ async function index() {
 }
 await index();
 
-//# debugId=778AFA3EA912B61B64756E2164756E21
+//# debugId=4A79DC4A84246C9464756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
