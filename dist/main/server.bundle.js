@@ -17175,7 +17175,7 @@ var require_undici = __commonJS((exports, module) => {
 var require_package = __commonJS((exports, module) => {
   module.exports = {
     name: "systeminformation",
-    version: "5.31.0",
+    version: "5.31.1",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -36504,5 +36504,5 @@ async function server() {
 }
 await server();
 
-//# debugId=F123D22E3947BAAA64756E2164756E21
+//# debugId=36AA5B44C362866F64756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
