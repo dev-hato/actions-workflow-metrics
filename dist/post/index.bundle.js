@@ -38293,7 +38293,7 @@ var require_commonjs5 = __commonJS((exports) => {
     }
     constructor(src, dest, opts) {
       super(src, dest, opts);
-      this.proxyErrors = (er) => dest.emit("error", er);
+      this.proxyErrors = (er) => this.dest.emit("error", er);
       src.on("error", this.proxyErrors);
     }
   }
@@ -38818,7 +38818,8 @@ var require_commonjs5 = __commonJS((exports) => {
         return: stop,
         [Symbol.asyncIterator]() {
           return this;
-        }
+        },
+        [Symbol.asyncDispose]: async () => {}
       };
     }
     [Symbol.iterator]() {
@@ -38847,7 +38848,8 @@ var require_commonjs5 = __commonJS((exports) => {
         return: stop,
         [Symbol.iterator]() {
           return this;
-        }
+        },
+        [Symbol.dispose]: () => {}
       };
     }
     destroy(er) {
@@ -43481,8 +43483,8 @@ var require_pass_through_decoder = __commonJS((exports, module) => {
     get remaining() {
       return 0;
     }
-    decode(tail) {
-      return b4a.toString(tail, this.encoding);
+    decode(data) {
+      return b4a.toString(data, this.encoding);
     }
     flush() {
       return "";
@@ -43495,89 +43497,173 @@ var require_utf8_decoder = __commonJS((exports, module) => {
   var b4a = require_b4a();
   module.exports = class UTF8Decoder {
     constructor() {
-      this.codePoint = 0;
-      this.bytesSeen = 0;
-      this.bytesNeeded = 0;
-      this.lowerBoundary = 128;
-      this.upperBoundary = 191;
+      this._reset();
     }
     get remaining() {
       return this.bytesSeen;
     }
     decode(data) {
-      if (this.bytesNeeded === 0) {
-        let isBoundary = true;
-        for (let i = Math.max(0, data.byteLength - 4), n = data.byteLength;i < n && isBoundary; i++) {
-          isBoundary = data[i] <= 127;
-        }
-        if (isBoundary)
-          return b4a.toString(data, "utf8");
+      if (data.byteLength === 0)
+        return "";
+      if (this.bytesNeeded === 0 && trailingIncomplete(data, 0) === 0) {
+        this.bytesSeen = trailingBytesSeen(data);
+        return b4a.toString(data, "utf8");
       }
       let result = "";
-      for (let i = 0, n = data.byteLength;i < n; i++) {
+      let start = 0;
+      if (this.bytesNeeded > 0) {
+        while (start < data.byteLength) {
+          const byte = data[start];
+          if (byte < this.lowerBoundary || byte > this.upperBoundary) {
+            result += "�";
+            this._reset();
+            break;
+          }
+          this.lowerBoundary = 128;
+          this.upperBoundary = 191;
+          this.codePoint = this.codePoint << 6 | byte & 63;
+          this.bytesSeen++;
+          start++;
+          if (this.bytesSeen === this.bytesNeeded) {
+            result += String.fromCodePoint(this.codePoint);
+            this._reset();
+            break;
+          }
+        }
+        if (this.bytesNeeded > 0)
+          return result;
+      }
+      const trailing = trailingIncomplete(data, start);
+      const end = data.byteLength - trailing;
+      if (end > start)
+        result += b4a.toString(data, "utf8", start, end);
+      for (let i = end;i < data.byteLength; i++) {
         const byte = data[i];
         if (this.bytesNeeded === 0) {
           if (byte <= 127) {
             this.bytesSeen = 0;
             result += String.fromCharCode(byte);
+          } else if (byte >= 194 && byte <= 223) {
+            this.bytesNeeded = 2;
+            this.bytesSeen = 1;
+            this.codePoint = byte & 31;
+          } else if (byte >= 224 && byte <= 239) {
+            if (byte === 224)
+              this.lowerBoundary = 160;
+            else if (byte === 237)
+              this.upperBoundary = 159;
+            this.bytesNeeded = 3;
+            this.bytesSeen = 1;
+            this.codePoint = byte & 15;
+          } else if (byte >= 240 && byte <= 244) {
+            if (byte === 240)
+              this.lowerBoundary = 144;
+            else if (byte === 244)
+              this.upperBoundary = 143;
+            this.bytesNeeded = 4;
+            this.bytesSeen = 1;
+            this.codePoint = byte & 7;
           } else {
             this.bytesSeen = 1;
-            if (byte >= 194 && byte <= 223) {
-              this.bytesNeeded = 2;
-              this.codePoint = byte & 31;
-            } else if (byte >= 224 && byte <= 239) {
-              if (byte === 224)
-                this.lowerBoundary = 160;
-              else if (byte === 237)
-                this.upperBoundary = 159;
-              this.bytesNeeded = 3;
-              this.codePoint = byte & 15;
-            } else if (byte >= 240 && byte <= 244) {
-              if (byte === 240)
-                this.lowerBoundary = 144;
-              if (byte === 244)
-                this.upperBoundary = 143;
-              this.bytesNeeded = 4;
-              this.codePoint = byte & 7;
-            } else {
-              result += "�";
-            }
+            result += "�";
           }
           continue;
         }
         if (byte < this.lowerBoundary || byte > this.upperBoundary) {
-          this.codePoint = 0;
-          this.bytesNeeded = 0;
-          this.bytesSeen = 0;
-          this.lowerBoundary = 128;
-          this.upperBoundary = 191;
           result += "�";
           i--;
+          this._reset();
           continue;
         }
         this.lowerBoundary = 128;
         this.upperBoundary = 191;
         this.codePoint = this.codePoint << 6 | byte & 63;
         this.bytesSeen++;
-        if (this.bytesSeen !== this.bytesNeeded)
-          continue;
-        result += String.fromCodePoint(this.codePoint);
-        this.codePoint = 0;
-        this.bytesNeeded = 0;
-        this.bytesSeen = 0;
+        if (this.bytesSeen === this.bytesNeeded) {
+          result += String.fromCodePoint(this.codePoint);
+          this._reset();
+        }
       }
       return result;
     }
     flush() {
       const result = this.bytesNeeded > 0 ? "�" : "";
+      this._reset();
+      return result;
+    }
+    _reset() {
       this.codePoint = 0;
       this.bytesNeeded = 0;
       this.bytesSeen = 0;
       this.lowerBoundary = 128;
       this.upperBoundary = 191;
-      return result;
     }
   };
+  function trailingIncomplete(data, start) {
+    const len = data.byteLength;
+    if (len <= start)
+      return 0;
+    const limit = Math.max(start, len - 4);
+    let i = len - 1;
+    while (i > limit && (data[i] & 192) === 128)
+      i--;
+    if (i < start)
+      return 0;
+    const byte = data[i];
+    let needed;
+    if (byte <= 127)
+      return 0;
+    if (byte >= 194 && byte <= 223)
+      needed = 2;
+    else if (byte >= 224 && byte <= 239)
+      needed = 3;
+    else if (byte >= 240 && byte <= 244)
+      needed = 4;
+    else
+      return 0;
+    const available = len - i;
+    return available < needed ? available : 0;
+  }
+  function trailingBytesSeen(data) {
+    const len = data.byteLength;
+    if (len === 0)
+      return 0;
+    const last = data[len - 1];
+    if (last <= 127)
+      return 0;
+    if ((last & 192) !== 128)
+      return 1;
+    const limit = Math.max(0, len - 4);
+    let i = len - 2;
+    while (i >= limit && (data[i] & 192) === 128)
+      i--;
+    if (i < 0)
+      return 1;
+    const first = data[i];
+    let needed;
+    if (first >= 194 && first <= 223)
+      needed = 2;
+    else if (first >= 224 && first <= 239)
+      needed = 3;
+    else if (first >= 240 && first <= 244)
+      needed = 4;
+    else
+      return 1;
+    if (len - i !== needed)
+      return 1;
+    if (needed >= 3) {
+      const second = data[i + 1];
+      if (first === 224 && second < 160)
+        return 1;
+      if (first === 237 && second > 159)
+        return 1;
+      if (first === 240 && second < 144)
+        return 1;
+      if (first === 244 && second > 143)
+        return 1;
+    }
+    return 0;
+  }
 });
 
 // node_modules/text-decoder/index.js
@@ -79206,7 +79292,7 @@ function isKeyOperator(operator) {
 function getValues(context3, operator, key, modifier) {
   var value = context3[key], result = [];
   if (isDefined(value) && value !== "") {
-    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "bigint" || typeof value === "boolean") {
       value = value.toString();
       if (modifier && modifier !== "*") {
         value = value.substring(0, parseInt(modifier, 10));
@@ -82677,8 +82763,11 @@ requestLog.VERSION = VERSION7;
 // node_modules/@octokit/plugin-retry/dist-bundle/index.js
 var import_light = __toESM(require_light(), 1);
 var VERSION8 = "0.0.0-development";
+function isRequestError(error2) {
+  return error2.request !== undefined;
+}
 async function errorRequest(state3, octokit, error2, options) {
-  if (!error2.request || !error2.request.request) {
+  if (!isRequestError(error2) || !error2?.request.request) {
     throw error2;
   }
   if (error2.status >= 400 && !state3.doNotRetry.includes(error2.status)) {
@@ -82691,8 +82780,8 @@ async function errorRequest(state3, octokit, error2, options) {
 async function wrapRequest(state3, octokit, request2, options) {
   const limiter = new import_light.default;
   limiter.on("failed", function(error2, info2) {
-    const maxRetries = ~~error2.request.request.retries;
-    const after = ~~error2.request.request.retryAfter;
+    const maxRetries = ~~error2.request.request?.retries;
+    const after = ~~error2.request.request?.retryAfter;
     options.request.retryCount = info2.retryCount + 1;
     if (maxRetries > info2.retryCount) {
       return after * state3.retryAfterBaseValue;
@@ -82701,7 +82790,7 @@ async function wrapRequest(state3, octokit, request2, options) {
   return limiter.schedule(requestWithGraphqlErrorHandling.bind(null, state3, octokit, request2), options);
 }
 async function requestWithGraphqlErrorHandling(state3, octokit, request2, options) {
-  const response = await request2(request2, options);
+  const response = await request2(options);
   if (response.data && response.data.errors && response.data.errors.length > 0 && /Something went wrong while executing your query/.test(response.data.errors[0].message)) {
     const error2 = new RequestError(response.data.errors[0].message, 500, {
       request: options,
@@ -82718,11 +82807,7 @@ function retry(octokit, octokitOptions) {
     doNotRetry: [400, 401, 403, 404, 410, 422, 451],
     retries: 3
   }, octokitOptions.retry);
-  if (state3.enabled) {
-    octokit.hook.error("request", errorRequest.bind(null, state3, octokit));
-    octokit.hook.wrap("request", wrapRequest.bind(null, state3, octokit));
-  }
-  return {
+  const retryPlugin = {
     retry: {
       retryRequest: (error2, retries, retryAfter) => {
         error2.request.request = Object.assign({}, error2.request.request, {
@@ -82733,6 +82818,11 @@ function retry(octokit, octokitOptions) {
       }
     }
   };
+  if (state3.enabled) {
+    octokit.hook.error("request", errorRequest.bind(null, state3, retryPlugin));
+    octokit.hook.wrap("request", wrapRequest.bind(null, state3, retryPlugin));
+  }
+  return retryPlugin;
 }
 retry.VERSION = VERSION8;
 
@@ -96946,5 +97036,5 @@ async function index() {
 }
 await index();
 
-//# debugId=A793CE762A116EBA64756E2164756E21
+//# debugId=C6B02AAB030738B164756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
