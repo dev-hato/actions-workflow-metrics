@@ -96969,7 +96969,7 @@ function render(metricsData, metricsID) {
 }
 
 // src/post/index.ts
-function reportError({
+async function reportError({
   error: error49,
   report,
   log: log2
@@ -96981,11 +96981,12 @@ function reportError({
   const { cause } = error49;
   if (!(cause instanceof AggregateError)) {
     log2(error49);
+    await new Promise((resolve2) => setTimeout(resolve2, 1));
     report(error49);
     return;
   }
   for (const err of cause.errors) {
-    reportError({ error: err, report, log: log2 });
+    await reportError({ error: err, report, log: log2 });
   }
 }
 async function index() {
@@ -97022,7 +97023,7 @@ async function index() {
     }
     await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error49) {
-    reportError({ error: error49, report: setFailed, log: console.error });
+    await reportError({ error: error49, report: setFailed, log: console.error });
   } finally {
     const controller = new AbortController;
     const timer = setTimeout(() => controller.abort(), 10 * 1000);
@@ -97036,7 +97037,7 @@ async function index() {
         warning(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
     } catch (error49) {
-      reportError({ error: error49, report: warning, log: console.warn });
+      await reportError({ error: error49, report: warning, log: console.warn });
     } finally {
       clearTimeout(timer);
     }
@@ -97044,5 +97045,5 @@ async function index() {
 }
 await index();
 
-//# debugId=FA5F5F6F76EB308564756E2164756E21
+//# debugId=91F36B9CCF9DBA7664756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
