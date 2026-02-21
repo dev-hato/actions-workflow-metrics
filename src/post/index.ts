@@ -15,8 +15,8 @@ function reportError(
     return;
   }
 
-  console.log(error.stack);
   report(error);
+  console.log(error.stack);
   const { cause } = error;
 
   if (!(cause instanceof AggregateError)) {
