@@ -15,11 +15,11 @@ function reportError(
     return;
   }
 
-  console.log(error);
+  console.log(error.stack);
+  report(error);
   const { cause } = error;
 
   if (!(cause instanceof AggregateError)) {
-    report(error);
     return;
   }
 
