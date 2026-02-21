@@ -96974,8 +96974,8 @@ function reportError(error49, report) {
     report(String(error49));
     return;
   }
-  console.log(error49.stack);
   report(error49);
+  console.log(error49.stack);
   const { cause } = error49;
   if (!(cause instanceof AggregateError)) {
     return;
@@ -97040,5 +97040,5 @@ async function index() {
 }
 await index();
 
-//# debugId=A4DD73B105EB535D64756E2164756E21
+//# debugId=3CACFC3EF9EDB3B964756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
