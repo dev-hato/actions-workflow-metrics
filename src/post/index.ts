@@ -15,10 +15,10 @@ function reportError(
     return;
   }
 
+  console.log(error);
   const { cause } = error;
 
   if (!(cause instanceof AggregateError)) {
-    console.log(error);
     report(error);
     return;
   }
