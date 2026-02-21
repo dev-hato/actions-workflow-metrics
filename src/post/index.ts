@@ -6,24 +6,31 @@ import { serverPort } from "../lib";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../type";
 
-function reportError(
-  error: unknown,
-  report: (message: string | Error) => void,
-) {
+function reportError({
+  error,
+  report,
+  log,
+}: {
+  error: unknown;
+  report: (message: string | Error) => void;
+  log: (...data: any[]) => void;
+}) {
   if (!(error instanceof Error)) {
     report(String(error));
     return;
   }
 
-  if (error.cause instanceof AggregateError) {
-    for (const err of error.cause.errors) {
-      report(err);
-    }
+  const { cause } = error;
 
+  if (!(cause instanceof AggregateError)) {
+    log(error);
+    report(error);
     return;
   }
 
-  report(error);
+  for (const err of cause.errors) {
+    reportError({ error: err, report, log });
+  }
 }
 
 async function index(): Promise<void> {
@@ -82,8 +89,7 @@ async function index(): Promise<void> {
     // Render metrics
     await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error) {
-    console.error(error);
-    reportError(error, setFailed);
+    reportError({ error, report: setFailed, log: console.error });
   } finally {
     const controller: AbortController = new AbortController();
     const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
@@ -103,8 +109,7 @@ async function index(): Promise<void> {
         warning(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
     } catch (error) {
-      console.warn(error);
-      reportError(error, warning);
+      reportError({ error, report: warning, log: console.warn });
     } finally {
       clearTimeout(timer);
     }

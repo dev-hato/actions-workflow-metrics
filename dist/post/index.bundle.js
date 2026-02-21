@@ -96969,18 +96969,24 @@ function render(metricsData, metricsID) {
 }
 
 // src/post/index.ts
-function reportError(error49, report) {
+function reportError({
+  error: error49,
+  report,
+  log: log2
+}) {
   if (!(error49 instanceof Error)) {
     report(String(error49));
     return;
   }
-  if (error49.cause instanceof AggregateError) {
-    for (const err of error49.cause.errors) {
-      report(err);
-    }
+  const { cause } = error49;
+  if (!(cause instanceof AggregateError)) {
+    log2(error49);
+    report(error49);
     return;
   }
-  report(error49);
+  for (const err of cause.errors) {
+    reportError({ error: err, report, log: log2 });
+  }
 }
 async function index() {
   try {
@@ -97016,8 +97022,7 @@ async function index() {
     }
     await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error49) {
-    console.error(error49);
-    reportError(error49, setFailed);
+    reportError({ error: error49, report: setFailed, log: console.error });
   } finally {
     const controller = new AbortController;
     const timer = setTimeout(() => controller.abort(), 10 * 1000);
@@ -97031,8 +97036,7 @@ async function index() {
         warning(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
     } catch (error49) {
-      console.warn(error49);
-      reportError(error49, warning);
+      reportError({ error: error49, report: warning, log: console.warn });
     } finally {
       clearTimeout(timer);
     }
@@ -97040,5 +97044,5 @@ async function index() {
 }
 await index();
 
-//# debugId=D8174D4F8E8C457964756E2164756E21
+//# debugId=9792C5F92E8EC12964756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
