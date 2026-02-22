@@ -22775,6 +22775,8 @@ globstar while`, file, fr, pattern, pr, swallowee);
               re += c;
               continue;
             }
+            if (c === "*" && stateChar === "*")
+              continue;
             this.debug("call clearStateChar %j", stateChar);
             clearStateChar();
             stateChar = c;
@@ -35617,33 +35619,32 @@ var require_isPlainObject = __commonJS((exports, module) => {
   module.exports = isPlainObject;
 });
 
-// node_modules/glob/node_modules/minimatch/node_modules/brace-expansion/node_modules/balanced-match/index.js
-var require_balanced_match2 = __commonJS((exports, module) => {
-  module.exports = balanced;
-  function balanced(a, b, str) {
-    if (a instanceof RegExp)
-      a = maybeMatch(a, str);
-    if (b instanceof RegExp)
-      b = maybeMatch(b, str);
-    var r = range2(a, b, str);
+// node_modules/balanced-match/dist/commonjs/index.js
+var require_commonjs3 = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.range = exports.balanced = undefined;
+  var balanced = (a, b, str) => {
+    const ma = a instanceof RegExp ? maybeMatch(a, str) : a;
+    const mb = b instanceof RegExp ? maybeMatch(b, str) : b;
+    const r = ma !== null && mb != null && (0, exports.range)(ma, mb, str);
     return r && {
       start: r[0],
       end: r[1],
       pre: str.slice(0, r[0]),
-      body: str.slice(r[0] + a.length, r[1]),
-      post: str.slice(r[1] + b.length)
+      body: str.slice(r[0] + ma.length, r[1]),
+      post: str.slice(r[1] + mb.length)
     };
-  }
-  function maybeMatch(reg, str) {
-    var m = str.match(reg);
+  };
+  exports.balanced = balanced;
+  var maybeMatch = (reg, str) => {
+    const m = str.match(reg);
     return m ? m[0] : null;
-  }
-  balanced.range = range2;
-  function range2(a, b, str) {
-    var begs, beg, left, right, result;
-    var ai = str.indexOf(a);
-    var bi = str.indexOf(b, ai + 1);
-    var i = ai;
+  };
+  var range2 = (a, b, str) => {
+    let begs, beg, left, right = undefined, result;
+    let ai = str.indexOf(a);
+    let bi = str.indexOf(b, ai + 1);
+    let i = ai;
     if (ai >= 0 && bi > 0) {
       if (a === b) {
         return [ai, bi];
@@ -35651,14 +35652,16 @@ var require_balanced_match2 = __commonJS((exports, module) => {
       begs = [];
       left = str.length;
       while (i >= 0 && !result) {
-        if (i == ai) {
+        if (i === ai) {
           begs.push(i);
           ai = str.indexOf(a, i + 1);
-        } else if (begs.length == 1) {
-          result = [begs.pop(), bi];
+        } else if (begs.length === 1) {
+          const r = begs.pop();
+          if (r !== undefined)
+            result = [r, bi];
         } else {
           beg = begs.pop();
-          if (beg < left) {
+          if (beg !== undefined && beg < left) {
             left = beg;
             right = bi;
           }
@@ -35666,45 +35669,59 @@ var require_balanced_match2 = __commonJS((exports, module) => {
         }
         i = ai < bi && ai >= 0 ? ai : bi;
       }
-      if (begs.length) {
+      if (begs.length && right !== undefined) {
         result = [left, right];
       }
     }
     return result;
-  }
+  };
+  exports.range = range2;
 });
 
-// node_modules/glob/node_modules/minimatch/node_modules/brace-expansion/index.js
-var require_brace_expansion2 = __commonJS((exports, module) => {
-  var balanced = require_balanced_match2();
-  module.exports = expandTop;
+// node_modules/brace-expansion/dist/commonjs/index.js
+var require_commonjs4 = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.EXPANSION_MAX = undefined;
+  exports.expand = expand;
+  var balanced_match_1 = require_commonjs3();
   var escSlash = "\x00SLASH" + Math.random() + "\x00";
   var escOpen = "\x00OPEN" + Math.random() + "\x00";
   var escClose = "\x00CLOSE" + Math.random() + "\x00";
   var escComma = "\x00COMMA" + Math.random() + "\x00";
   var escPeriod = "\x00PERIOD" + Math.random() + "\x00";
+  var escSlashPattern = new RegExp(escSlash, "g");
+  var escOpenPattern = new RegExp(escOpen, "g");
+  var escClosePattern = new RegExp(escClose, "g");
+  var escCommaPattern = new RegExp(escComma, "g");
+  var escPeriodPattern = new RegExp(escPeriod, "g");
+  var slashPattern = /\\\\/g;
+  var openPattern = /\\{/g;
+  var closePattern = /\\}/g;
+  var commaPattern = /\\,/g;
+  var periodPattern = /\\./g;
+  exports.EXPANSION_MAX = 1e5;
   function numeric(str) {
-    return parseInt(str, 10) == str ? parseInt(str, 10) : str.charCodeAt(0);
+    return !isNaN(str) ? parseInt(str, 10) : str.charCodeAt(0);
   }
   function escapeBraces(str) {
-    return str.split("\\\\").join(escSlash).split("\\{").join(escOpen).split("\\}").join(escClose).split("\\,").join(escComma).split("\\.").join(escPeriod);
+    return str.replace(slashPattern, escSlash).replace(openPattern, escOpen).replace(closePattern, escClose).replace(commaPattern, escComma).replace(periodPattern, escPeriod);
   }
   function unescapeBraces(str) {
-    return str.split(escSlash).join("\\").split(escOpen).join("{").split(escClose).join("}").split(escComma).join(",").split(escPeriod).join(".");
+    return str.replace(escSlashPattern, "\\").replace(escOpenPattern, "{").replace(escClosePattern, "}").replace(escCommaPattern, ",").replace(escPeriodPattern, ".");
   }
   function parseCommaParts(str) {
-    if (!str)
+    if (!str) {
       return [""];
-    var parts = [];
-    var m = balanced("{", "}", str);
-    if (!m)
+    }
+    const parts = [];
+    const m = (0, balanced_match_1.balanced)("{", "}", str);
+    if (!m) {
       return str.split(",");
-    var pre = m.pre;
-    var body2 = m.body;
-    var post = m.post;
-    var p = pre.split(",");
+    }
+    const { pre, body: body2, post } = m;
+    const p = pre.split(",");
     p[p.length - 1] += "{" + body2 + "}";
-    var postParts = parseCommaParts(post);
+    const postParts = parseCommaParts(post);
     if (post.length) {
       p[p.length - 1] += postParts.shift();
       p.push.apply(p, postParts);
@@ -35712,13 +35729,15 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
     parts.push.apply(parts, p);
     return parts;
   }
-  function expandTop(str) {
-    if (!str)
+  function expand(str, options = {}) {
+    if (!str) {
       return [];
-    if (str.substr(0, 2) === "{}") {
-      str = "\\{\\}" + str.substr(2);
     }
-    return expand(escapeBraces(str), true).map(unescapeBraces);
+    const { max = exports.EXPANSION_MAX } = options;
+    if (str.slice(0, 2) === "{}") {
+      str = "\\{\\}" + str.slice(2);
+    }
+    return expand_(escapeBraces(str), max, true).map(unescapeBraces);
   }
   function embrace(str) {
     return "{" + str + "}";
@@ -35732,74 +35751,74 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
   function gte(i, y) {
     return i >= y;
   }
-  function expand(str, isTop) {
-    var expansions = [];
-    var m = balanced("{", "}", str);
+  function expand_(str, max, isTop) {
+    const expansions = [];
+    const m = (0, balanced_match_1.balanced)("{", "}", str);
     if (!m)
       return [str];
-    var pre = m.pre;
-    var post = m.post.length ? expand(m.post, false) : [""];
+    const pre = m.pre;
+    const post = m.post.length ? expand_(m.post, max, false) : [""];
     if (/\$$/.test(m.pre)) {
-      for (var k = 0;k < post.length; k++) {
-        var expansion = pre + "{" + m.body + "}" + post[k];
+      for (let k = 0;k < post.length && k < max; k++) {
+        const expansion = pre + "{" + m.body + "}" + post[k];
         expansions.push(expansion);
       }
     } else {
-      var isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
-      var isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
-      var isSequence = isNumericSequence || isAlphaSequence;
-      var isOptions = m.body.indexOf(",") >= 0;
+      const isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
+      const isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
+      const isSequence = isNumericSequence || isAlphaSequence;
+      const isOptions = m.body.indexOf(",") >= 0;
       if (!isSequence && !isOptions) {
         if (m.post.match(/,(?!,).*\}/)) {
           str = m.pre + "{" + m.body + escClose + m.post;
-          return expand(str);
+          return expand_(str, max, true);
         }
         return [str];
       }
-      var n;
+      let n;
       if (isSequence) {
         n = m.body.split(/\.\./);
       } else {
         n = parseCommaParts(m.body);
-        if (n.length === 1) {
-          n = expand(n[0], false).map(embrace);
+        if (n.length === 1 && n[0] !== undefined) {
+          n = expand_(n[0], max, false).map(embrace);
           if (n.length === 1) {
-            return post.map(function(p) {
-              return m.pre + n[0] + p;
-            });
+            return post.map((p) => m.pre + n[0] + p);
           }
         }
       }
-      var N;
-      if (isSequence) {
-        var x = numeric(n[0]);
-        var y = numeric(n[1]);
-        var width = Math.max(n[0].length, n[1].length);
-        var incr = n.length == 3 ? Math.abs(numeric(n[2])) : 1;
-        var test = lte;
-        var reverse = y < x;
+      let N;
+      if (isSequence && n[0] !== undefined && n[1] !== undefined) {
+        const x = numeric(n[0]);
+        const y = numeric(n[1]);
+        const width = Math.max(n[0].length, n[1].length);
+        let incr = n.length === 3 && n[2] !== undefined ? Math.abs(numeric(n[2])) : 1;
+        let test = lte;
+        const reverse = y < x;
         if (reverse) {
           incr *= -1;
           test = gte;
         }
-        var pad = n.some(isPadded);
+        const pad = n.some(isPadded);
         N = [];
-        for (var i = x;test(i, y); i += incr) {
-          var c;
+        for (let i = x;test(i, y); i += incr) {
+          let c;
           if (isAlphaSequence) {
             c = String.fromCharCode(i);
-            if (c === "\\")
+            if (c === "\\") {
               c = "";
+            }
           } else {
             c = String(i);
             if (pad) {
-              var need = width - c.length;
+              const need = width - c.length;
               if (need > 0) {
-                var z = new Array(need + 1).join("0");
-                if (i < 0)
+                const z = new Array(need + 1).join("0");
+                if (i < 0) {
                   c = "-" + z + c.slice(1);
-                else
+                } else {
                   c = z + c;
+                }
               }
             }
           }
@@ -35807,15 +35826,16 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
         }
       } else {
         N = [];
-        for (var j = 0;j < n.length; j++) {
-          N.push.apply(N, expand(n[j], false));
+        for (let j = 0;j < n.length; j++) {
+          N.push.apply(N, expand_(n[j], max, false));
         }
       }
-      for (var j = 0;j < N.length; j++) {
-        for (var k = 0;k < post.length; k++) {
-          var expansion = pre + N[j] + post[k];
-          if (!isTop || isSequence || expansion)
+      for (let j = 0;j < N.length; j++) {
+        for (let k = 0;k < post.length && expansions.length < max; k++) {
+          const expansion = pre + N[j] + post[k];
+          if (!isTop || isSequence || expansion) {
             expansions.push(expansion);
+          }
         }
       }
     }
@@ -36323,11 +36343,13 @@ var require_ast = __commonJS((exports) => {
       let escaping = false;
       let re = "";
       let uflag = false;
+      let inStar = false;
       for (let i = 0;i < glob.length; i++) {
         const c = glob.charAt(i);
         if (escaping) {
           escaping = false;
           re += (reSpecials.has(c) ? "\\" : "") + c;
+          inStar = false;
           continue;
         }
         if (c === "\\") {
@@ -36345,16 +36367,19 @@ var require_ast = __commonJS((exports) => {
             uflag = uflag || needUflag;
             i += consumed - 1;
             hasMagic = hasMagic || magic;
+            inStar = false;
             continue;
           }
         }
         if (c === "*") {
-          if (noEmpty && glob === "*")
-            re += starNoEmpty;
-          else
-            re += star;
+          if (inStar)
+            continue;
+          inStar = true;
+          re += noEmpty && /^[*]+$/.test(glob) ? starNoEmpty : star;
           hasMagic = true;
           continue;
+        } else {
+          inStar = false;
         }
         if (c === "?") {
           re += qmark;
@@ -36380,13 +36405,10 @@ var require_escape = __commonJS((exports) => {
 });
 
 // node_modules/glob/node_modules/minimatch/dist/commonjs/index.js
-var require_commonjs3 = __commonJS((exports) => {
-  var __importDefault = exports && exports.__importDefault || function(mod) {
-    return mod && mod.__esModule ? mod : { default: mod };
-  };
+var require_commonjs5 = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.unescape = exports.escape = exports.AST = exports.Minimatch = exports.match = exports.makeRe = exports.braceExpand = exports.defaults = exports.filter = exports.GLOBSTAR = exports.sep = exports.minimatch = undefined;
-  var brace_expansion_1 = __importDefault(require_brace_expansion2());
+  var brace_expansion_1 = require_commonjs4();
   var assert_valid_pattern_js_1 = require_assert_valid_pattern();
   var ast_js_1 = require_ast();
   var escape_js_1 = require_escape();
@@ -36507,7 +36529,7 @@ var require_commonjs3 = __commonJS((exports) => {
     if (options.nobrace || !/\{(?:(?!\{).)*\}/.test(pattern)) {
       return [pattern];
     }
-    return (0, brace_expansion_1.default)(pattern);
+    return (0, brace_expansion_1.expand)(pattern);
   };
   exports.braceExpand = braceExpand;
   exports.minimatch.braceExpand = exports.braceExpand;
@@ -37092,7 +37114,7 @@ globstar while`, file, fr, pattern, pr, swallowee);
 });
 
 // node_modules/lru-cache/dist/commonjs/index.js
-var require_commonjs4 = __commonJS((exports) => {
+var require_commonjs6 = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.LRUCache = undefined;
   var perf = typeof performance === "object" && performance && typeof performance.now === "function" ? performance : Date;
@@ -38207,7 +38229,7 @@ var require_commonjs4 = __commonJS((exports) => {
 });
 
 // node_modules/minipass/dist/commonjs/index.js
-var require_commonjs5 = __commonJS((exports) => {
+var require_commonjs7 = __commonJS((exports) => {
   var __importDefault = exports && exports.__importDefault || function(mod) {
     return mod && mod.__esModule ? mod : { default: mod };
   };
@@ -38881,7 +38903,7 @@ var require_commonjs5 = __commonJS((exports) => {
 });
 
 // node_modules/path-scurry/dist/commonjs/index.js
-var require_commonjs6 = __commonJS((exports) => {
+var require_commonjs8 = __commonJS((exports) => {
   var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
     if (k2 === undefined)
       k2 = k;
@@ -38916,14 +38938,14 @@ var require_commonjs6 = __commonJS((exports) => {
   };
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.PathScurry = exports.Path = exports.PathScurryDarwin = exports.PathScurryPosix = exports.PathScurryWin32 = exports.PathScurryBase = exports.PathPosix = exports.PathWin32 = exports.PathBase = exports.ChildrenCache = exports.ResolveCache = undefined;
-  var lru_cache_1 = require_commonjs4();
+  var lru_cache_1 = require_commonjs6();
   var node_path_1 = __require("node:path");
   var node_url_1 = __require("node:url");
   var fs_1 = __require("fs");
   var actualFS = __importStar(__require("node:fs"));
   var realpathSync = fs_1.realpathSync.native;
   var promises_1 = __require("node:fs/promises");
-  var minipass_1 = require_commonjs5();
+  var minipass_1 = require_commonjs7();
   var defaultFS = {
     lstatSync: fs_1.lstatSync,
     readdir: fs_1.readdir,
@@ -40234,7 +40256,7 @@ var require_commonjs6 = __commonJS((exports) => {
 var require_pattern = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.Pattern = undefined;
-  var minimatch_1 = require_commonjs3();
+  var minimatch_1 = require_commonjs5();
   var isPatternList = (pl) => pl.length >= 1;
   var isGlobList = (gl) => gl.length >= 1;
 
@@ -40358,7 +40380,7 @@ var require_pattern = __commonJS((exports) => {
 var require_ignore = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.Ignore = undefined;
-  var minimatch_1 = require_commonjs3();
+  var minimatch_1 = require_commonjs5();
   var pattern_js_1 = require_pattern();
   var defaultPlatform = typeof process === "object" && process && typeof process.platform === "string" ? process.platform : "linux";
 
@@ -40453,7 +40475,7 @@ var require_ignore = __commonJS((exports) => {
 var require_processor = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.Processor = exports.SubWalks = exports.MatchRecord = exports.HasWalkedCache = undefined;
-  var minimatch_1 = require_commonjs3();
+  var minimatch_1 = require_commonjs5();
 
   class HasWalkedCache {
     store;
@@ -40681,7 +40703,7 @@ var require_processor = __commonJS((exports) => {
 var require_walker = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.GlobStream = exports.GlobWalker = exports.GlobUtil = undefined;
-  var minipass_1 = require_commonjs5();
+  var minipass_1 = require_commonjs7();
   var ignore_js_1 = require_ignore();
   var processor_js_1 = require_processor();
   var makeIgnore = (ignore, opts) => typeof ignore === "string" ? new ignore_js_1.Ignore([ignore], opts) : Array.isArray(ignore) ? new ignore_js_1.Ignore(ignore, opts) : ignore;
@@ -41018,9 +41040,9 @@ var require_walker = __commonJS((exports) => {
 var require_glob = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.Glob = undefined;
-  var minimatch_1 = require_commonjs3();
+  var minimatch_1 = require_commonjs5();
   var node_url_1 = __require("node:url");
-  var path_scurry_1 = require_commonjs6();
+  var path_scurry_1 = require_commonjs8();
   var pattern_js_1 = require_pattern();
   var walker_js_1 = require_walker();
   var defaultPlatform = typeof process === "object" && process && typeof process.platform === "string" ? process.platform : "linux";
@@ -41202,7 +41224,7 @@ var require_glob = __commonJS((exports) => {
 var require_has_magic = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.hasMagic = undefined;
-  var minimatch_1 = require_commonjs3();
+  var minimatch_1 = require_commonjs5();
   var hasMagic = (pattern, options = {}) => {
     if (!Array.isArray(pattern)) {
       pattern = [pattern];
@@ -41217,7 +41239,7 @@ var require_has_magic = __commonJS((exports) => {
 });
 
 // node_modules/glob/dist/commonjs/index.js
-var require_commonjs7 = __commonJS((exports) => {
+var require_commonjs9 = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.glob = exports.sync = exports.iterate = exports.iterateSync = exports.stream = exports.streamSync = exports.Ignore = exports.hasMagic = exports.Glob = exports.unescape = exports.escape = undefined;
   exports.globStreamSync = globStreamSync;
@@ -41225,10 +41247,10 @@ var require_commonjs7 = __commonJS((exports) => {
   exports.globSync = globSync;
   exports.globIterateSync = globIterateSync;
   exports.globIterate = globIterate;
-  var minimatch_1 = require_commonjs3();
+  var minimatch_1 = require_commonjs5();
   var glob_js_1 = require_glob();
   var has_magic_js_1 = require_has_magic();
-  var minimatch_2 = require_commonjs3();
+  var minimatch_2 = require_commonjs5();
   Object.defineProperty(exports, "escape", { enumerable: true, get: function() {
     return minimatch_2.escape;
   } });
@@ -41303,7 +41325,7 @@ var require_file2 = __commonJS((exports, module) => {
   var difference = require_difference();
   var union = require_union();
   var isPlainObject = require_isPlainObject();
-  var glob = require_commonjs7();
+  var glob = require_commonjs9();
   var file = module.exports = {};
   var pathSeparatorRe = /[\/\\]/g;
   var processPatterns = function(patterns, fn) {
@@ -79503,6 +79525,90 @@ function safeParse(header) {
 }
 var $safeParse = safeParse;
 
+// node_modules/json-with-bigint/json-with-bigint.js
+var noiseValue = /^-?\d+n+$/;
+var originalStringify = JSON.stringify;
+var originalParse = JSON.parse;
+var JSONStringify = (value, replacer, space) => {
+  if ("rawJSON" in JSON) {
+    return originalStringify(value, (key, value2) => {
+      if (typeof value2 === "bigint")
+        return JSON.rawJSON(value2.toString());
+      if (typeof replacer === "function")
+        return replacer(key, value2);
+      if (Array.isArray(replacer) && replacer.includes(key))
+        return value2;
+      return value2;
+    }, space);
+  }
+  if (!value)
+    return originalStringify(value, replacer, space);
+  const bigInts = /([\[:])?"(-?\d+)n"($|([\\n]|\s)*(\s|[\\n])*[,\}\]])/g;
+  const noise = /([\[:])?("-?\d+n+)n("$|"([\\n]|\s)*(\s|[\\n])*[,\}\]])/g;
+  const convertedToCustomJSON = originalStringify(value, (key, value2) => {
+    const isNoise = typeof value2 === "string" && Boolean(value2.match(noiseValue));
+    if (isNoise)
+      return value2.toString() + "n";
+    if (typeof value2 === "bigint")
+      return value2.toString() + "n";
+    if (typeof replacer === "function")
+      return replacer(key, value2);
+    if (Array.isArray(replacer) && replacer.includes(key))
+      return value2;
+    return value2;
+  }, space);
+  const processedJSON = convertedToCustomJSON.replace(bigInts, "$1$2$3");
+  const denoisedJSON = processedJSON.replace(noise, "$1$2$3");
+  return denoisedJSON;
+};
+var isContextSourceSupported = () => JSON.parse("1", (_2, __, context3) => !!context3 && context3.source === "1");
+var JSONParseV2 = (text, reviver) => {
+  const intRegex = /^-?\d+$/;
+  return JSON.parse(text, (key, value, context3) => {
+    const isBigNumber = typeof value === "number" && (value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER);
+    const isInt = intRegex.test(context3.source);
+    const isBigInt = isBigNumber && isInt;
+    if (isBigInt)
+      return BigInt(context3.source);
+    if (typeof reviver !== "function")
+      return value;
+    return reviver(key, value, context3);
+  });
+};
+var JSONParse = (text, reviver) => {
+  if (!text)
+    return originalParse(text, reviver);
+  if (isContextSourceSupported())
+    return JSONParseV2(text, reviver);
+  const MAX_INT = Number.MAX_SAFE_INTEGER.toString();
+  const MAX_DIGITS = MAX_INT.length;
+  const stringsOrLargeNumbers = /"(?:\\.|[^"])*"|-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/g;
+  const noiseValueWithQuotes = /^"-?\d+n+"$/;
+  const customFormat = /^-?\d+n$/;
+  const serializedData = text.replace(stringsOrLargeNumbers, (text2, digits, fractional, exponential) => {
+    const isString = text2[0] === '"';
+    const isNoise = isString && Boolean(text2.match(noiseValueWithQuotes));
+    if (isNoise)
+      return text2.substring(0, text2.length - 1) + 'n"';
+    const isFractionalOrExponential = fractional || exponential;
+    const isLessThanMaxSafeInt = digits && (digits.length < MAX_DIGITS || digits.length === MAX_DIGITS && digits <= MAX_INT);
+    if (isString || isFractionalOrExponential || isLessThanMaxSafeInt)
+      return text2;
+    return '"' + text2 + 'n"';
+  });
+  return originalParse(serializedData, (key, value, context3) => {
+    const isCustomFormatBigInt = typeof value === "string" && Boolean(value.match(customFormat));
+    if (isCustomFormatBigInt)
+      return BigInt(value.substring(0, value.length - 1));
+    const isNoiseValue = typeof value === "string" && Boolean(value.match(noiseValue));
+    if (isNoiseValue)
+      return value.substring(0, value.length - 1);
+    if (typeof reviver !== "function")
+      return value;
+    return reviver(key, value, context3);
+  });
+};
+
 // node_modules/@octokit/request-error/dist-src/index.js
 class RequestError extends Error {
   name;
@@ -79531,7 +79637,7 @@ class RequestError extends Error {
 }
 
 // node_modules/@octokit/request/dist-bundle/index.js
-var VERSION2 = "10.0.7";
+var VERSION2 = "10.0.8";
 var defaults_default = {
   headers: {
     "user-agent": `octokit-request.js/${VERSION2} ${getUserAgent()}`
@@ -79556,7 +79662,7 @@ async function fetchWrapper(requestOptions) {
   }
   const log2 = requestOptions.request?.log || console;
   const parseSuccessResponseBody = requestOptions.request?.parseSuccessResponseBody !== false;
-  const body2 = isPlainObject2(requestOptions.body) || Array.isArray(requestOptions.body) ? JSON.stringify(requestOptions.body) : requestOptions.body;
+  const body2 = isPlainObject2(requestOptions.body) || Array.isArray(requestOptions.body) ? JSONStringify(requestOptions.body) : requestOptions.body;
   const requestHeaders = Object.fromEntries(Object.entries(requestOptions.headers).map(([name, value]) => [
     name,
     String(value)
@@ -79649,7 +79755,7 @@ async function getResponseData(response) {
     let text = "";
     try {
       text = await response.text();
-      return JSON.parse(text);
+      return JSONParse(text);
     } catch (err) {
       return text;
     }
@@ -97036,5 +97142,5 @@ async function index() {
 }
 await index();
 
-//# debugId=C6B02AAB030738B164756E2164756E21
+//# debugId=B5FE5C0538DC837064756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
