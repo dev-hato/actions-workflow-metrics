@@ -1,34 +1,55 @@
 import { promises as fs } from "node:fs";
 import { DefaultArtifactClient } from "@actions/artifact";
-import { info, setFailed, summary } from "@actions/core";
+import { info, setFailed, summary, warning } from "@actions/core";
 import { getMetricsData, render } from "./lib";
 import { serverPort } from "../lib";
 import type { z } from "zod";
 import type { metricsDataSchema } from "../type";
 
-async function index(): Promise<void> {
-  const maxRetryCount: number = 10;
-  let metricsData: z.TypeOf<typeof metricsDataSchema>;
-
-  for (let i = 0; i < maxRetryCount; i++) {
-    try {
-      metricsData = await getMetricsData();
-      break;
-    } catch (error) {
-      if (
-        maxRetryCount - 2 < i ||
-        !(error instanceof TypeError) ||
-        error.message !== "fetch failed"
-      ) {
-        console.error(error);
-        setFailed(error);
-      }
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+function reportError(
+  error: unknown,
+  report: (message: string | Error) => void,
+) {
+  if (!(error instanceof Error)) {
+    report(String(error));
+    return;
   }
 
+  report(error);
+  console.log(error.stack);
+  const { cause } = error;
+
+  if (!(cause instanceof AggregateError)) {
+    return;
+  }
+
+  for (const err of cause.errors) {
+    reportError(err, report);
+  }
+}
+
+async function index(): Promise<void> {
   try {
+    const maxRetryCount: number = 10;
+    let metricsData: z.TypeOf<typeof metricsDataSchema>;
+
+    for (let i = 0; i < maxRetryCount; i++) {
+      try {
+        metricsData = await getMetricsData();
+        break;
+      } catch (error) {
+        if (
+          maxRetryCount - 2 < i ||
+          !(error instanceof TypeError) ||
+          error.message !== "fetch failed"
+        ) {
+          throw error;
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
     const fileBaseName: string = "workflow_metrics";
     const fileName: string = `${fileBaseName}.json`;
     await fs.writeFile(fileName, JSON.stringify(metricsData));
@@ -53,8 +74,7 @@ async function index(): Promise<void> {
             "Failed request: (409) Conflict: an artifact with this name already exists on the workflow run",
           )
         ) {
-          console.error(error);
-          setFailed(error);
+          throw error;
         }
       }
 
@@ -64,8 +84,7 @@ async function index(): Promise<void> {
     // Render metrics
     await summary.addRaw(render(metricsData, metricsID)).write();
   } catch (error) {
-    console.error(error);
-    setFailed(error);
+    reportError(error, setFailed);
   } finally {
     const controller: AbortController = new AbortController();
     const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
@@ -82,8 +101,10 @@ async function index(): Promise<void> {
       if (res.ok) {
         info("Server finished");
       } else {
-        setFailed(`Failed to finish server: ${res.status} ${res.statusText}`);
+        warning(`Failed to finish server: ${res.status} ${res.statusText}`);
       }
+    } catch (error) {
+      reportError(error, warning);
     } finally {
       clearTimeout(timer);
     }
