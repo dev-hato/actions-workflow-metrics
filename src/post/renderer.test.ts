@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { Renderer, MAX_VISIBLE_TIME_LABELS } from "./renderer";
+import { Renderer, calculateLabelStep } from "./renderer";
 
 describe("Renderer", () => {
   const testMetricsID: string = "1234567890";
@@ -444,8 +444,9 @@ describe("Renderer", () => {
   it("should limit visible time labels when times are long", () => {
     const renderer: Renderer = new Renderer();
     const startTime: number = Date.parse("2024-01-01T00:00:00Z");
+    const samples: number = 120;
     const times: Date[] = Array.from(
-      { length: MAX_VISIBLE_TIME_LABELS * 2 },
+      { length: samples },
       (_, index: number): Date => new Date(startTime + index * 1000),
     );
     const firstLabel: string = times[0].toLocaleTimeString("en-GB", {
@@ -491,13 +492,25 @@ describe("Renderer", () => {
     expect(labels.length).toBe(times.length);
     expect(labels[0]).toBe(firstLabel);
     expect(labels[labels.length - 1]).toBe(lastLabel);
-    const visibleLabelCount: number =
-      labels.filter(hasVisibleCharacters).length;
-    expect(visibleLabelCount).toBeLessThanOrEqual(MAX_VISIBLE_TIME_LABELS);
+    const visibleIndices: number[] = labels
+      .map((label: string, index: number): number =>
+        hasVisibleCharacters(label) ? index : -1,
+      )
+      .filter((index: number): index is number => index >= 0);
+    expect(visibleIndices[0]).toBe(0);
+    expect(visibleIndices[visibleIndices.length - 1]).toBe(labels.length - 1);
+
+    const labelStep: number = calculateLabelStep(labels.length);
+    for (let i = 1; i < visibleIndices.length - 1; i += 1) {
+      const current: number = visibleIndices[i];
+      const previous: number = visibleIndices[i - 1];
+      expect(current - previous).toBeGreaterThanOrEqual(labelStep);
+    }
+
     const hiddenLabels: string[] = labels.filter(
       (label: string): boolean => !hasVisibleCharacters(label),
     );
-    expect(hiddenLabels.length).toBe(times.length - visibleLabelCount);
+    expect(hiddenLabels.length).toBe(labels.length - visibleIndices.length);
     expect(new Set(hiddenLabels).size).toBe(hiddenLabels.length);
   });
 });

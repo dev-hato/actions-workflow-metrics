@@ -7,10 +7,41 @@ import type {
   timesSchema,
 } from "./lib";
 
-export const MAX_VISIBLE_TIME_LABELS: number = 8;
+// Canvas metrics are measured from the GitHub Actions summary Mermaid output.
+const CHART_WIDTH_PX: number = 1161;
+const TICK_WIDTH_PX: number = 5;
+const LABEL_WIDTH_PX: number = 107;
+const REQUIRED_GAP_PX: number = LABEL_WIDTH_PX - TICK_WIDTH_PX;
 const ZERO_WIDTH_ZERO: string = "\u200b";
 const ZERO_WIDTH_ONE: string = "\u200c";
 const ZERO_WIDTH_SENTINEL: string = "\u200d";
+
+export const calculateLabelStep = (count: number): number => {
+  if (count <= 2) {
+    return 1;
+  }
+
+  const totalGapWidth: number = CHART_WIDTH_PX - TICK_WIDTH_PX * count;
+  if (totalGapWidth <= 0) {
+    return count;
+  }
+
+  const numerator: number = REQUIRED_GAP_PX * (count - 1);
+  return Math.max(1, Math.ceil(numerator / totalGapWidth));
+};
+
+const encodeHiddenLabel = (index: number): string => {
+  const binary: string = index.toString(2);
+  return (
+    ZERO_WIDTH_SENTINEL +
+    binary
+      .split("")
+      .map((digit: string): string =>
+        digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE,
+      )
+      .join("")
+  );
+};
 
 const formatTimeLabels = (times: z.TypeOf<typeof timesSchema>): string[] => {
   if (times.length === 0) {
@@ -21,49 +52,32 @@ const formatTimeLabels = (times: z.TypeOf<typeof timesSchema>): string[] => {
     d.toLocaleTimeString("en-GB", { hour12: false }),
   );
 
-  if (formattedTimes.length <= MAX_VISIBLE_TIME_LABELS) {
-    return formattedTimes;
-  }
+  const labelStep: number = calculateLabelStep(formattedTimes.length);
+  const result: string[] = [];
+  let lastShownIndex: number = 0;
 
-  const encodeHiddenLabel = (index: number): string => {
-    const binary: string = index.toString(2);
-    return (
-      ZERO_WIDTH_SENTINEL +
-      binary
-        .split("")
-        .map((digit: string): string =>
-          digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE,
-        )
-        .join("")
-    );
-  };
+  for (let index: number = 0; index < formattedTimes.length; index += 1) {
+    const label: string = formattedTimes[index];
+    const isFirst: boolean = index === 0;
+    const isLast: boolean = index === formattedTimes.length - 1;
 
-  const usableSlots: number = Math.max(
-    Math.min(MAX_VISIBLE_TIME_LABELS, formattedTimes.length) - 2,
-    1,
-  );
-  const interiorCount: number = formattedTimes.length - 2;
-  const interiorStep: number = interiorCount / (usableSlots + 1);
-  const visibleInteriorIndices: Set<number> = new Set<number>();
-
-  for (let slot: number = 1; slot <= usableSlots; slot += 1) {
-    const targetIndex: number = 1 + Math.round(slot * interiorStep);
-    visibleInteriorIndices.add(
-      Math.min(formattedTimes.length - 2, Math.max(1, targetIndex)),
-    );
-  }
-
-  return formattedTimes.map(
-    (label: string, index: number, array: string[]): string => {
-      if (index === 0 || index === array.length - 1) {
-        return label;
+    if (isFirst || isLast) {
+      result.push(label);
+      if (isFirst) {
+        lastShownIndex = index;
       }
+      continue;
+    }
 
-      return visibleInteriorIndices.has(index)
-        ? label
-        : encodeHiddenLabel(index);
-    },
-  );
+    if (index - lastShownIndex >= labelStep) {
+      result.push(label);
+      lastShownIndex = index;
+    } else {
+      result.push(encodeHiddenLabel(index));
+    }
+  }
+
+  return result;
 };
 
 export class Renderer {
