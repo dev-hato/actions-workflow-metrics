@@ -133,13 +133,14 @@ ${this.calculateStackedBars(chartParams.stackedBarData)}
   private renderSectionCharts(
     renderParams: z.TypeOf<typeof renderParamsSchema>,
   ): string {
+    const plotColorPalette: string = this.extractColors(renderParams.legends);
     return renderParams.data
       .filter(
         ({ stackedBarData }: z.TypeOf<typeof chartParamsSchema>): boolean =>
           stackedBarData.length > 0,
       )
       .map((p: z.TypeOf<typeof chartParamsSchema>): string =>
-        this.renderChart(p, this.extractColors(renderParams.legends)),
+        this.renderChart(p, plotColorPalette),
       )
       .join("\n\n");
   }
