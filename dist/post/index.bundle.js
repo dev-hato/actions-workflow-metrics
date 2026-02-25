@@ -118268,7 +118268,7 @@ ${charts}`;
 
 ${this.formatLegends(renderParams.legends)}${this.renderSectionCharts(renderParams)}`;
   }
-  renderChart(chartParams, legends) {
+  renderChart(chartParams, plotColorPalette) {
     return `${this.formatChartHeader(chartParams.stepName)}
 
 \`\`\`mermaid
@@ -118276,7 +118276,7 @@ ${this.formatLegends(renderParams.legends)}${this.renderSectionCharts(renderPara
   init: {
     "themeVariables": {
       "xyChart": {
-        "plotColorPalette": "${this.extractColors(legends)}"
+        "plotColorPalette": "${plotColorPalette}"
       }
     }
   }
@@ -118289,7 +118289,8 @@ ${this.calculateStackedBars(chartParams.stackedBarData)}
 \`\`\`${this.formatChartFooter(chartParams.stepName)}`;
   }
   renderSectionCharts(renderParams) {
-    return renderParams.data.filter(({ stackedBarData }) => stackedBarData.length > 0).map((p) => this.renderChart(p, renderParams.legends)).join(`
+    const plotColorPalette = this.extractColors(renderParams.legends);
+    return renderParams.data.filter(({ stackedBarData }) => stackedBarData.length > 0).map((p) => this.renderChart(p, plotColorPalette)).join(`
 
 `);
   }
@@ -118557,5 +118558,5 @@ async function index() {
 }
 await index();
 
-//# debugId=3E74D891013FC29064756E2164756E21
+//# debugId=4BCF4E3F5BB7F62A64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
