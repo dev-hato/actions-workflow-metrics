@@ -1,9 +1,7 @@
 name: Sleep Test
-
 on:
   push:
   workflow_dispatch:
-
 jobs:
   long-sleep:
     runs-on: ubuntu-latest
