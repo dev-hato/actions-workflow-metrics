@@ -399,6 +399,33 @@ describe("Renderer", () => {
     expect(result).toContain("\\verb|");
   });
 
+  it("should have blank line between last legend and first chart header", () => {
+    const renderer: Renderer = new Renderer();
+    const result: string = renderer.render(
+      [
+        {
+          title: "Separation Test",
+          legends: singleCpuLegends,
+          data: [
+            {
+              stepName: undefined,
+              stackedBarData: [[10]],
+              times: [new Date("2024-01-01T00:00:00Z")],
+              yAxis: { title: "%" },
+            },
+          ],
+        },
+      ],
+      testMetricsID,
+    );
+
+    // Verify that the legend closing $$ is not immediately followed by #### (chart header)
+    expect(result).not.toMatch(/\$\$####/);
+
+    // Verify there is a blank line between legend and chart header
+    expect(result).toContain("$$\n\n#### All");
+  });
+
   it("should handle single data point", () => {
     const renderer: Renderer = new Renderer();
     const result: string = renderer.render(

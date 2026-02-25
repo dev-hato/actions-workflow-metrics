@@ -110,7 +110,9 @@ ${this.formatLegends(renderParams.legends)}${this.renderSectionCharts(renderPara
     chartParams: z.TypeOf<typeof chartParamsSchema>,
     plotColorPalette: string,
   ): string {
-    return `${this.formatChartHeader(chartParams.stepName)}
+    return `
+
+${this.formatChartHeader(chartParams.stepName)}
 
 \`\`\`mermaid
 %%{
@@ -142,7 +144,7 @@ ${this.calculateStackedBars(chartParams.stackedBarData)}
       .map((p: z.TypeOf<typeof chartParamsSchema>): string =>
         this.renderChart(p, plotColorPalette),
       )
-      .join("\n\n");
+      .join("");
   }
 
   private renderSections(
