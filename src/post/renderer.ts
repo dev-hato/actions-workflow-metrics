@@ -4,6 +4,7 @@ import type {
   renderParamsSchema,
   metricsInfoListSchema,
   metricsInfoSchema,
+  timesSchema,
 } from "./lib";
 
 export const MAX_VISIBLE_TIME_LABELS: number = 8;
@@ -11,7 +12,7 @@ const ZERO_WIDTH_ZERO: string = "\u200b";
 const ZERO_WIDTH_ONE: string = "\u200c";
 const ZERO_WIDTH_SENTINEL: string = "\u200d";
 
-const formatTimeLabels = (times: Date[]): string[] => {
+const formatTimeLabels = (times: z.TypeOf<typeof timesSchema>): string[] => {
   if (times.length === 0) {
     return [];
   }
@@ -70,49 +71,81 @@ export class Renderer {
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
     metricsID: string,
   ): string {
+    return this.renderMetrics(this.renderCharts(renderParamsList), metricsID);
+  }
+
+  private renderMetrics(charts: string, metricsID: string): string {
     return `## Workflow Metrics
 
 ### Metrics ID
 
 ${metricsID}
 
-${renderParamsList
-  .filter(
-    ({
-      metricsInfoList,
-    }: {
-      metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>;
-    }): boolean => metricsInfoList.length > 0,
-  )
-  .map((p: z.TypeOf<typeof renderParamsSchema>): string => {
-    const colors: string[] = p.metricsInfoList.map(
-      ({ color }: { color: string }): string => color,
-    );
-    const stackedDatum: number[][] = p.metricsInfoList
-      .toReversed()
-      .reduce(
-        (
-          prev: number[][],
-          { data }: { data: number[] },
-          i: number,
-        ): number[][] => {
-          prev.push(data.map((d: number, j: number): number => d + prev[i][j]));
-          return prev;
-        },
-        [p.metricsInfoList[0].data.map((): number => 0)],
+${charts}`;
+  }
+
+  private formatLegends(
+    metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>,
+  ): string {
+    return metricsInfoList
+      .map(
+        (i: z.TypeOf<typeof metricsInfoSchema>): string =>
+          `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`,
       )
+      .join("\n");
+  }
+
+  private extractColors(
+    metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>,
+  ): string {
+    return metricsInfoList
+      .map(({ color }: z.TypeOf<typeof metricsInfoSchema>): string => color)
+      .join(", ");
+  }
+
+  private formatTimes(times: z.TypeOf<typeof timesSchema>): string {
+    return JSON.stringify(formatTimeLabels(times));
+  }
+
+  private formatYAxisRange(range?: string): string {
+    return range ? ` ${range}` : "";
+  }
+
+  private accumulateStackedData(
+    accumulated: number[][],
+    metricsInfo: z.TypeOf<typeof metricsInfoSchema>,
+    index: number,
+  ): number[][] {
+    accumulated.push(
+      metricsInfo.data.map(
+        (v: number, c: number): number => v + accumulated[index][c],
+      ),
+    );
+    return accumulated;
+  }
+
+  private calculateStackedBars(
+    metricsInfoList: z.TypeOf<typeof metricsInfoListSchema>,
+  ): string {
+    return metricsInfoList
+      .toReversed()
+      .reduce(this.accumulateStackedData, [
+        metricsInfoList[0].data.map((): number => 0),
+      ])
       .slice(1)
-      .toReversed();
-    return `### ${p.title}
+      .toReversed()
+      .map((v: number[]): string => `bar ${JSON.stringify(v)}`)
+      .join("\n");
+  }
+
+  private renderChart(
+    renderParams: z.TypeOf<typeof renderParamsSchema>,
+  ): string {
+    return `### ${renderParams.title}
 
 #### Legends
 
-${p.metricsInfoList
-  .map(
-    (i: z.TypeOf<typeof metricsInfoSchema>): string =>
-      `* $\${\\color{${i.color}} \\verb|${i.color}: ${i.name}|}$$`,
-  )
-  .join("\n")}
+${this.formatLegends(renderParams.metricsInfoList)}
 
 #### Chart
 
@@ -121,18 +154,30 @@ ${p.metricsInfoList
   init: {
     "themeVariables": {
       "xyChart": {
-        "plotColorPalette": "${colors.join(", ")}"
+        "plotColorPalette": "${this.extractColors(renderParams.metricsInfoList)}"
       }
     }
   }
 }%%
 xychart
 
-x-axis "Time" ${JSON.stringify(formatTimeLabels(p.times))}
-y-axis "${p.yAxis.title}"${p.yAxis.range ? ` ${p.yAxis.range}` : ""}
-${stackedDatum.map((d: number[]): string => `bar ${JSON.stringify(d)}`).join("\n")}
+x-axis "Time" ${this.formatTimes(renderParams.times)}
+y-axis "${renderParams.yAxis.title}"${this.formatYAxisRange(renderParams.yAxis.range)}
+${this.calculateStackedBars(renderParams.metricsInfoList)}
 \`\`\``;
-  })
-  .join("\n\n")}`;
+  }
+
+  private renderCharts(
+    renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
+  ): string {
+    return renderParamsList
+      .filter(
+        ({ metricsInfoList }: z.TypeOf<typeof renderParamsSchema>): boolean =>
+          metricsInfoList.length > 0,
+      )
+      .map((p: z.TypeOf<typeof renderParamsSchema>): string =>
+        this.renderChart(p),
+      )
+      .join("\n\n");
   }
 }
