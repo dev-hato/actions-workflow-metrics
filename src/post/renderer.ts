@@ -53,39 +53,46 @@ const formatTimeLabels = (times: z.TypeOf<typeof timesSchema>): string[] => {
   );
 
   const labelStep: number = calculateLabelStep(formattedTimes.length);
-  const result: string[] = [];
-  let lastShownIndex: number = 0;
+  if (labelStep <= 1 || formattedTimes.length <= 2) {
+    return formattedTimes;
+  }
 
   const lastIndex: number = formattedTimes.length - 1;
+  const totalInteriorPositions: number = Math.max(formattedTimes.length - 2, 0);
+  const estimatedInteriorLabels: number = Math.max(
+    Math.floor(lastIndex / labelStep) - 1,
+    0,
+  );
+  const usableInteriorLabels: number = Math.min(
+    totalInteriorPositions,
+    estimatedInteriorLabels,
+  );
 
-  for (let index: number = 0; index < formattedTimes.length; index += 1) {
-    const label: string = formattedTimes[index];
-    const isFirst: boolean = index === 0;
-    const isLast: boolean = index === lastIndex;
-
-    if (isFirst || isLast) {
-      result.push(label);
-      if (isFirst) {
-        lastShownIndex = index;
+  const visibleInteriorIndices: Set<number> = new Set<number>();
+  if (usableInteriorLabels > 0) {
+    const spacing: number = totalInteriorPositions / (usableInteriorLabels + 1);
+    for (let slot: number = 1; slot <= usableInteriorLabels; slot += 1) {
+      const targetIndex: number = 1 + Math.round(slot * spacing);
+      let clamped: number = Math.min(lastIndex - 1, Math.max(1, targetIndex));
+      while (visibleInteriorIndices.has(clamped) && clamped < lastIndex - 1) {
+        clamped += 1;
       }
-      continue;
-    }
-
-    const remainingToLast: number = lastIndex - index;
-    if (remainingToLast < labelStep) {
-      result.push(encodeHiddenLabel(index));
-      continue;
-    }
-
-    if (index - lastShownIndex >= labelStep) {
-      result.push(label);
-      lastShownIndex = index;
-    } else {
-      result.push(encodeHiddenLabel(index));
+      visibleInteriorIndices.add(clamped);
     }
   }
 
-  return result;
+  return formattedTimes.map(
+    (label: string, index: number, array: string[]): string => {
+      if (
+        index === 0 ||
+        index === array.length - 1 ||
+        visibleInteriorIndices.has(index)
+      ) {
+        return label;
+      }
+      return encodeHiddenLabel(index);
+    },
+  );
 };
 
 export class Renderer {

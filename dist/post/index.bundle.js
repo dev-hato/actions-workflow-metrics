@@ -96966,33 +96966,31 @@ var formatTimeLabels = (times) => {
   }
   const formattedTimes = times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false }));
   const labelStep = calculateLabelStep(formattedTimes.length);
-  const result = [];
-  let lastShownIndex = 0;
+  if (labelStep <= 1 || formattedTimes.length <= 2) {
+    return formattedTimes;
+  }
   const lastIndex = formattedTimes.length - 1;
-  for (let index = 0;index < formattedTimes.length; index += 1) {
-    const label = formattedTimes[index];
-    const isFirst = index === 0;
-    const isLast = index === lastIndex;
-    if (isFirst || isLast) {
-      result.push(label);
-      if (isFirst) {
-        lastShownIndex = index;
+  const totalInteriorPositions = Math.max(formattedTimes.length - 2, 0);
+  const estimatedInteriorLabels = Math.max(Math.floor(lastIndex / labelStep) - 1, 0);
+  const usableInteriorLabels = Math.min(totalInteriorPositions, estimatedInteriorLabels);
+  const visibleInteriorIndices = new Set;
+  if (usableInteriorLabels > 0) {
+    const spacing = totalInteriorPositions / (usableInteriorLabels + 1);
+    for (let slot = 1;slot <= usableInteriorLabels; slot += 1) {
+      const targetIndex = 1 + Math.round(slot * spacing);
+      let clamped = Math.min(lastIndex - 1, Math.max(1, targetIndex));
+      while (visibleInteriorIndices.has(clamped) && clamped < lastIndex - 1) {
+        clamped += 1;
       }
-      continue;
-    }
-    const remainingToLast = lastIndex - index;
-    if (remainingToLast < labelStep) {
-      result.push(encodeHiddenLabel(index));
-      continue;
-    }
-    if (index - lastShownIndex >= labelStep) {
-      result.push(label);
-      lastShownIndex = index;
-    } else {
-      result.push(encodeHiddenLabel(index));
+      visibleInteriorIndices.add(clamped);
     }
   }
-  return result;
+  return formattedTimes.map((label, index, array2) => {
+    if (index === 0 || index === array2.length - 1 || visibleInteriorIndices.has(index)) {
+      return label;
+    }
+    return encodeHiddenLabel(index);
+  });
 };
 
 class Renderer {
@@ -97239,5 +97237,5 @@ async function index() {
 }
 await index();
 
-//# debugId=B579E14ADAE5340864756E2164756E21
+//# debugId=E5171483E9ABFB2D64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
