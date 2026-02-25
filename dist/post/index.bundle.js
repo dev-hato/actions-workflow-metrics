@@ -96968,15 +96968,21 @@ var formatTimeLabels = (times) => {
   const labelStep = calculateLabelStep(formattedTimes.length);
   const result = [];
   let lastShownIndex = 0;
+  const lastIndex = formattedTimes.length - 1;
   for (let index = 0;index < formattedTimes.length; index += 1) {
     const label = formattedTimes[index];
     const isFirst = index === 0;
-    const isLast = index === formattedTimes.length - 1;
+    const isLast = index === lastIndex;
     if (isFirst || isLast) {
       result.push(label);
       if (isFirst) {
         lastShownIndex = index;
       }
+      continue;
+    }
+    const remainingToLast = lastIndex - index;
+    if (remainingToLast < labelStep) {
+      result.push(encodeHiddenLabel(index));
       continue;
     }
     if (index - lastShownIndex >= labelStep) {
@@ -97233,5 +97239,5 @@ async function index() {
 }
 await index();
 
-//# debugId=A4B4517C4CA4359A64756E2164756E21
+//# debugId=B579E14ADAE5340864756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

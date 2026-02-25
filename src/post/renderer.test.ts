@@ -501,7 +501,7 @@ describe("Renderer", () => {
     expect(visibleIndices[visibleIndices.length - 1]).toBe(labels.length - 1);
 
     const labelStep: number = calculateLabelStep(labels.length);
-    for (let i = 1; i < visibleIndices.length - 1; i += 1) {
+    for (let i = 1; i < visibleIndices.length; i += 1) {
       const current: number = visibleIndices[i];
       const previous: number = visibleIndices[i - 1];
       expect(current - previous).toBeGreaterThanOrEqual(labelStep);

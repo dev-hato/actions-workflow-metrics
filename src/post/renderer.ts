@@ -56,16 +56,24 @@ const formatTimeLabels = (times: z.TypeOf<typeof timesSchema>): string[] => {
   const result: string[] = [];
   let lastShownIndex: number = 0;
 
+  const lastIndex: number = formattedTimes.length - 1;
+
   for (let index: number = 0; index < formattedTimes.length; index += 1) {
     const label: string = formattedTimes[index];
     const isFirst: boolean = index === 0;
-    const isLast: boolean = index === formattedTimes.length - 1;
+    const isLast: boolean = index === lastIndex;
 
     if (isFirst || isLast) {
       result.push(label);
       if (isFirst) {
         lastShownIndex = index;
       }
+      continue;
+    }
+
+    const remainingToLast: number = lastIndex - index;
+    if (remainingToLast < labelStep) {
+      result.push(encodeHiddenLabel(index));
       continue;
     }
 
