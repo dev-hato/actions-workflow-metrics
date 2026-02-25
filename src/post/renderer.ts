@@ -108,7 +108,7 @@ ${this.formatLegends(renderParams.legends)}${this.renderSectionCharts(renderPara
 
   private renderChart(
     chartParams: z.TypeOf<typeof chartParamsSchema>,
-    legends: z.TypeOf<typeof legendsSchema>,
+    plotColorPalette: string,
   ): string {
     return `${this.formatChartHeader(chartParams.stepName)}
 
@@ -117,7 +117,7 @@ ${this.formatLegends(renderParams.legends)}${this.renderSectionCharts(renderPara
   init: {
     "themeVariables": {
       "xyChart": {
-        "plotColorPalette": "${this.extractColors(legends)}"
+        "plotColorPalette": "${plotColorPalette}"
       }
     }
   }
@@ -139,7 +139,7 @@ ${this.calculateStackedBars(chartParams.stackedBarData)}
           stackedBarData.length > 0,
       )
       .map((p: z.TypeOf<typeof chartParamsSchema>): string =>
-        this.renderChart(p, renderParams.legends),
+        this.renderChart(p, this.extractColors(renderParams.legends)),
       )
       .join("\n\n");
   }
