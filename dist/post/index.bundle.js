@@ -96938,36 +96938,55 @@ function date4(params) {
 // node_modules/zod/v4/classic/external.js
 config(en_default());
 // src/post/renderer.ts
-var MAX_VISIBLE_TIME_LABELS = 8;
+var CHART_WIDTH_PX = 1161;
+var TICK_WIDTH_PX = 5;
+var LABEL_WIDTH_PX = 107;
+var REQUIRED_GAP_PX = LABEL_WIDTH_PX - TICK_WIDTH_PX;
 var ZERO_WIDTH_ZERO = "​";
 var ZERO_WIDTH_ONE = "‌";
 var ZERO_WIDTH_SENTINEL = "‍";
+var calculateLabelStep = (count) => {
+  if (count <= 2) {
+    return 1;
+  }
+  const totalGapWidth = CHART_WIDTH_PX - TICK_WIDTH_PX * count;
+  if (totalGapWidth <= 0) {
+    return count;
+  }
+  const numerator = REQUIRED_GAP_PX * (count - 1);
+  return Math.max(1, Math.ceil(numerator / totalGapWidth));
+};
+var encodeHiddenLabel = (index) => {
+  const binary = index.toString(2);
+  return ZERO_WIDTH_SENTINEL + binary.split("").map((digit) => digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE).join("");
+};
 var formatTimeLabels = (times) => {
   if (times.length === 0) {
     return [];
   }
   const formattedTimes = times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false }));
-  if (formattedTimes.length <= MAX_VISIBLE_TIME_LABELS) {
-    return formattedTimes;
-  }
-  const encodeHiddenLabel = (index) => {
-    const binary = index.toString(2);
-    return ZERO_WIDTH_SENTINEL + binary.split("").map((digit) => digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE).join("");
-  };
-  const usableSlots = Math.max(Math.min(MAX_VISIBLE_TIME_LABELS, formattedTimes.length) - 2, 1);
-  const interiorCount = formattedTimes.length - 2;
-  const interiorStep = interiorCount / (usableSlots + 1);
-  const visibleInteriorIndices = new Set;
-  for (let slot = 1;slot <= usableSlots; slot += 1) {
-    const targetIndex = 1 + Math.round(slot * interiorStep);
-    visibleInteriorIndices.add(Math.min(formattedTimes.length - 2, Math.max(1, targetIndex)));
-  }
-  return formattedTimes.map((label, index, array2) => {
-    if (index === 0 || index === array2.length - 1) {
-      return label;
+  const labelStep = calculateLabelStep(formattedTimes.length);
+  const result = [];
+  let lastShownIndex = 0;
+  for (let index = 0;index < formattedTimes.length; index += 1) {
+    const label = formattedTimes[index];
+    const isFirst = index === 0;
+    const isLast = index === formattedTimes.length - 1;
+    if (isFirst || isLast) {
+      result.push(label);
+      if (isFirst) {
+        lastShownIndex = index;
+      }
+      continue;
     }
-    return visibleInteriorIndices.has(index) ? label : encodeHiddenLabel(index);
-  });
+    if (index - lastShownIndex >= labelStep) {
+      result.push(label);
+      lastShownIndex = index;
+    } else {
+      result.push(encodeHiddenLabel(index));
+    }
+  }
+  return result;
 };
 
 class Renderer {
@@ -97214,5 +97233,5 @@ async function index() {
 }
 await index();
 
-//# debugId=0B8EF9C3281A4D8B64756E2164756E21
+//# debugId=A4B4517C4CA4359A64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
