@@ -118269,7 +118269,9 @@ ${charts}`;
 ${this.formatLegends(renderParams.legends)}${this.renderSectionCharts(renderParams)}`;
   }
   renderChart(chartParams, plotColorPalette) {
-    return `${this.formatChartHeader(chartParams.stepName)}
+    return `
+
+${this.formatChartHeader(chartParams.stepName)}
 
 \`\`\`mermaid
 %%{
@@ -118290,9 +118292,7 @@ ${this.calculateStackedBars(chartParams.stackedBarData)}
   }
   renderSectionCharts(renderParams) {
     const plotColorPalette = this.extractColors(renderParams.legends);
-    return renderParams.data.filter(({ stackedBarData }) => stackedBarData.length > 0).map((p) => this.renderChart(p, plotColorPalette)).join(`
-
-`);
+    return renderParams.data.filter(({ stackedBarData }) => stackedBarData.length > 0).map((p) => this.renderChart(p, plotColorPalette)).join("");
   }
   renderSections(renderParamsList) {
     return renderParamsList.map((p) => this.renderSection(p)).join(`
@@ -118558,5 +118558,5 @@ async function index() {
 }
 await index();
 
-//# debugId=4BCF4E3F5BB7F62A64756E2164756E21
+//# debugId=0C692ABD2622D28464756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
