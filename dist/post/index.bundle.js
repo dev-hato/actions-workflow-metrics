@@ -51349,14 +51349,14 @@ var require_util13 = __commonJS((exports, module) => {
       }
       const port = url2.port != null ? url2.port : url2.protocol === "https:" ? 443 : 80;
       let origin = url2.origin != null ? url2.origin : `${url2.protocol || ""}//${url2.hostname || ""}:${port}`;
-      let path2 = url2.path != null ? url2.path : `${url2.pathname || ""}${url2.search || ""}`;
+      let path4 = url2.path != null ? url2.path : `${url2.pathname || ""}${url2.search || ""}`;
       if (origin[origin.length - 1] === "/") {
         origin = origin.slice(0, origin.length - 1);
       }
-      if (path2 && path2[0] !== "/") {
-        path2 = `/${path2}`;
+      if (path4 && path4[0] !== "/") {
+        path4 = `/${path4}`;
       }
-      return new URL(`${origin}${path2}`);
+      return new URL(`${origin}${path4}`);
     }
     if (!isHttpOrHttpsPrefixed(url2.origin || url2.protocol)) {
       throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -52110,9 +52110,9 @@ var require_diagnostics2 = __commonJS((exports, module) => {
     });
     diagnosticsChannel.subscribe("undici:client:sendHeaders", (evt) => {
       const {
-        request: { method, path: path2, origin }
+        request: { method, path: path4, origin }
       } = evt;
-      debugLog("sending request to %s %s%s", method, origin, path2);
+      debugLog("sending request to %s %s%s", method, origin, path4);
     });
   }
   var isTrackingRequestEvents = false;
@@ -52127,23 +52127,23 @@ var require_diagnostics2 = __commonJS((exports, module) => {
     isTrackingRequestEvents = true;
     diagnosticsChannel.subscribe("undici:request:headers", (evt) => {
       const {
-        request: { method, path: path2, origin },
+        request: { method, path: path4, origin },
         response: { statusCode }
       } = evt;
-      debugLog("received response to %s %s%s - HTTP %d", method, origin, path2, statusCode);
+      debugLog("received response to %s %s%s - HTTP %d", method, origin, path4, statusCode);
     });
     diagnosticsChannel.subscribe("undici:request:trailers", (evt) => {
       const {
-        request: { method, path: path2, origin }
+        request: { method, path: path4, origin }
       } = evt;
-      debugLog("trailers received from %s %s%s", method, origin, path2);
+      debugLog("trailers received from %s %s%s", method, origin, path4);
     });
     diagnosticsChannel.subscribe("undici:request:error", (evt) => {
       const {
-        request: { method, path: path2, origin },
+        request: { method, path: path4, origin },
         error: error2
       } = evt;
-      debugLog("request to %s %s%s errored - %s", method, origin, path2, error2.message);
+      debugLog("request to %s %s%s errored - %s", method, origin, path4, error2.message);
     });
   }
   var isTrackingWebSocketEvents = false;
@@ -52218,7 +52218,7 @@ var require_request3 = __commonJS((exports, module) => {
 
   class Request {
     constructor(origin, {
-      path: path2,
+      path: path4,
       method,
       body: body2,
       headers,
@@ -52234,11 +52234,11 @@ var require_request3 = __commonJS((exports, module) => {
       throwOnError,
       maxRedirections
     }, handler2) {
-      if (typeof path2 !== "string") {
+      if (typeof path4 !== "string") {
         throw new InvalidArgumentError("path must be a string");
-      } else if (path2[0] !== "/" && !(path2.startsWith("http://") || path2.startsWith("https://")) && method !== "CONNECT") {
+      } else if (path4[0] !== "/" && !(path4.startsWith("http://") || path4.startsWith("https://")) && method !== "CONNECT") {
         throw new InvalidArgumentError("path must be an absolute URL or start with a slash");
-      } else if (invalidPathRegex.test(path2)) {
+      } else if (invalidPathRegex.test(path4)) {
         throw new InvalidArgumentError("invalid request path");
       }
       if (typeof method !== "string") {
@@ -52306,7 +52306,7 @@ var require_request3 = __commonJS((exports, module) => {
       this.completed = false;
       this.aborted = false;
       this.upgrade = upgrade || null;
-      this.path = query ? serializePathWithQuery(path2, query) : path2;
+      this.path = query ? serializePathWithQuery(path4, query) : path4;
       this.origin = origin;
       this.protocol = getProtocolFromUrlString(origin);
       this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" : idempotent;
@@ -56840,7 +56840,7 @@ var require_client_h12 = __commonJS((exports, module) => {
     return method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE" && method !== "CONNECT";
   }
   function writeH1(client3, request2) {
-    const { method, path: path2, host, upgrade, blocking, reset } = request2;
+    const { method, path: path4, host, upgrade, blocking, reset } = request2;
     let { body: body2, headers, contentLength: contentLength2 } = request2;
     const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
     if (util3.isFormDataLike(body2)) {
@@ -56906,7 +56906,7 @@ var require_client_h12 = __commonJS((exports, module) => {
     if (blocking) {
       socket[kBlocking] = true;
     }
-    let header = `${method} ${path2} HTTP/1.1\r
+    let header = `${method} ${path4} HTTP/1.1\r
 `;
     if (typeof host === "string") {
       header += `host: ${host}\r
@@ -57523,7 +57523,7 @@ var require_client_h22 = __commonJS((exports, module) => {
   function writeH2(client3, request2) {
     const requestTimeout = request2.bodyTimeout ?? client3[kBodyTimeout];
     const session = client3[kHTTP2Session];
-    const { method, path: path2, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request2;
+    const { method, path: path4, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request2;
     let { body: body2 } = request2;
     if (upgrade != null && upgrade !== "websocket") {
       util3.errorRequest(client3, request2, new InvalidArgumentError(`Custom upgrade "${upgrade}" not supported over HTTP/2`));
@@ -57591,7 +57591,7 @@ var require_client_h22 = __commonJS((exports, module) => {
         }
         headers[HTTP2_HEADER_METHOD] = "CONNECT";
         headers[HTTP2_HEADER_PROTOCOL] = "websocket";
-        headers[HTTP2_HEADER_PATH] = path2;
+        headers[HTTP2_HEADER_PATH] = path4;
         if (protocol === "ws:" || protocol === "wss:") {
           headers[HTTP2_HEADER_SCHEME] = protocol === "ws:" ? "http" : "https";
         } else {
@@ -57634,7 +57634,7 @@ var require_client_h22 = __commonJS((exports, module) => {
       stream4.setTimeout(requestTimeout);
       return true;
     }
-    headers[HTTP2_HEADER_PATH] = path2;
+    headers[HTTP2_HEADER_PATH] = path4;
     headers[HTTP2_HEADER_SCHEME] = protocol === "http:" ? "http" : "https";
     const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH";
     if (body2 && typeof body2.read === "function") {
@@ -59162,10 +59162,10 @@ var require_proxy_agent2 = __commonJS((exports, module) => {
       };
       const {
         origin,
-        path: path2 = "/",
+        path: path4 = "/",
         headers = {}
       } = opts;
-      opts.path = origin + path2;
+      opts.path = origin + path4;
       if (!("host" in headers) && !("Host" in headers)) {
         const { host } = new URL(origin);
         headers.host = host;
@@ -61030,20 +61030,20 @@ var require_mock_utils2 = __commonJS((exports, module) => {
     }
     return normalizedQp;
   }
-  function safeUrl(path2) {
-    if (typeof path2 !== "string") {
-      return path2;
+  function safeUrl(path4) {
+    if (typeof path4 !== "string") {
+      return path4;
     }
-    const pathSegments = path2.split("?", 3);
+    const pathSegments = path4.split("?", 3);
     if (pathSegments.length !== 2) {
-      return path2;
+      return path4;
     }
     const qp = new URLSearchParams(pathSegments.pop());
     qp.sort();
     return [...pathSegments, qp.toString()].join("?");
   }
-  function matchKey(mockDispatch2, { path: path2, method, body: body2, headers }) {
-    const pathMatch = matchValue(mockDispatch2.path, path2);
+  function matchKey(mockDispatch2, { path: path4, method, body: body2, headers }) {
+    const pathMatch = matchValue(mockDispatch2.path, path4);
     const methodMatch = matchValue(mockDispatch2.method, method);
     const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body2) : true;
     const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -61068,8 +61068,8 @@ var require_mock_utils2 = __commonJS((exports, module) => {
     const basePath = key.query ? serializePathWithQuery(key.path, key.query) : key.path;
     const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
     const resolvedPathWithoutTrailingSlash = removeTrailingSlash(resolvedPath);
-    let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path2, ignoreTrailingSlash }) => {
-      return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path2)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path2), resolvedPath);
+    let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path4, ignoreTrailingSlash }) => {
+      return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path4)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path4), resolvedPath);
     });
     if (matchedMockDispatches.length === 0) {
       throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
@@ -61107,19 +61107,19 @@ var require_mock_utils2 = __commonJS((exports, module) => {
       mockDispatches.splice(index, 1);
     }
   }
-  function removeTrailingSlash(path2) {
-    while (path2.endsWith("/")) {
-      path2 = path2.slice(0, -1);
+  function removeTrailingSlash(path4) {
+    while (path4.endsWith("/")) {
+      path4 = path4.slice(0, -1);
     }
-    if (path2.length === 0) {
-      path2 = "/";
+    if (path4.length === 0) {
+      path4 = "/";
     }
-    return path2;
+    return path4;
   }
   function buildKey(opts) {
-    const { path: path2, method, body: body2, headers, query } = opts;
+    const { path: path4, method, body: body2, headers, query } = opts;
     return {
-      path: path2,
+      path: path4,
       method,
       body: body2,
       headers,
@@ -61757,10 +61757,10 @@ var require_pending_interceptors_formatter2 = __commonJS((exports, module) => {
       });
     }
     format(pendingInterceptors) {
-      const withPrettyHeaders = pendingInterceptors.map(({ method, path: path2, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
+      const withPrettyHeaders = pendingInterceptors.map(({ method, path: path4, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
         Method: method,
         Origin: origin,
-        Path: path2,
+        Path: path4,
         "Status code": statusCode,
         Persistent: persist ? PERSISTENT : NOT_PERSISTENT,
         Invocations: timesInvoked,
@@ -61839,9 +61839,9 @@ var require_mock_agent2 = __commonJS((exports, module) => {
       const acceptNonStandardSearchParameters = this[kMockAgentAcceptsNonStandardSearchParameters];
       const dispatchOpts = { ...opts };
       if (acceptNonStandardSearchParameters && dispatchOpts.path) {
-        const [path2, searchParams] = dispatchOpts.path.split("?");
+        const [path4, searchParams] = dispatchOpts.path.split("?");
         const normalizedSearchParams = normalizeSearchParams(searchParams, acceptNonStandardSearchParameters);
-        dispatchOpts.path = `${path2}?${normalizedSearchParams}`;
+        dispatchOpts.path = `${path4}?${normalizedSearchParams}`;
       }
       return this[kAgent].dispatch(dispatchOpts, handler2);
     }
@@ -62200,12 +62200,12 @@ var require_snapshot_recorder = __commonJS((exports, module) => {
       };
     }
     async loadSnapshots(filePath) {
-      const path2 = filePath || this.#snapshotPath;
-      if (!path2) {
+      const path4 = filePath || this.#snapshotPath;
+      if (!path4) {
         throw new InvalidArgumentError("Snapshot path is required");
       }
       try {
-        const data = await readFile(resolve2(path2), "utf8");
+        const data = await readFile(resolve2(path4), "utf8");
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
           this.#snapshots.clear();
@@ -62219,16 +62219,16 @@ var require_snapshot_recorder = __commonJS((exports, module) => {
         if (error2.code === "ENOENT") {
           this.#snapshots.clear();
         } else {
-          throw new UndiciError(`Failed to load snapshots from ${path2}`, { cause: error2 });
+          throw new UndiciError(`Failed to load snapshots from ${path4}`, { cause: error2 });
         }
       }
     }
     async saveSnapshots(filePath) {
-      const path2 = filePath || this.#snapshotPath;
-      if (!path2) {
+      const path4 = filePath || this.#snapshotPath;
+      if (!path4) {
         throw new InvalidArgumentError("Snapshot path is required");
       }
-      const resolvedPath = resolve2(path2);
+      const resolvedPath = resolve2(path4);
       await mkdir2(dirname(resolvedPath), { recursive: true });
       const data = Array.from(this.#snapshots.entries()).map(([hash, snapshot2]) => ({
         hash,
@@ -62706,15 +62706,15 @@ var require_redirect_handler2 = __commonJS((exports, module) => {
         return;
       }
       const { origin, pathname, search } = util3.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-      const path2 = search ? `${pathname}${search}` : pathname;
-      const redirectUrlString = `${origin}${path2}`;
+      const path4 = search ? `${pathname}${search}` : pathname;
+      const redirectUrlString = `${origin}${path4}`;
       for (const historyUrl of this.history) {
         if (historyUrl.toString() === redirectUrlString) {
           throw new InvalidArgumentError(`Redirect loop detected. Cannot redirect to ${origin}. This typically happens when using a Client or Pool with cross-origin redirects. Use an Agent for cross-origin redirects.`);
         }
       }
       this.opts.headers = cleanRequestHeaders(this.opts.headers, statusCode === 303, this.opts.origin !== origin);
-      this.opts.path = path2;
+      this.opts.path = path4;
       this.opts.origin = origin;
       this.opts.query = null;
     }
@@ -68708,9 +68708,9 @@ var require_util16 = __commonJS((exports, module) => {
       }
     }
   }
-  function validateCookiePath(path2) {
-    for (let i = 0;i < path2.length; ++i) {
-      const code = path2.charCodeAt(i);
+  function validateCookiePath(path4) {
+    for (let i = 0;i < path4.length; ++i) {
+      const code = path4.charCodeAt(i);
       if (code < 32 || code === 127 || code === 59) {
         throw new Error("Invalid cookie path");
       }
@@ -104804,11 +104804,11 @@ function makeDispatcher(fn) {
       if (typeof opts.path !== "string") {
         throw new InvalidArgumentError("invalid opts.path");
       }
-      let path2 = opts.path;
+      let path4 = opts.path;
       if (!opts.path.startsWith("/")) {
-        path2 = `/${path2}`;
+        path4 = `/${path4}`;
       }
-      url2 = new URL(util3.parseOrigin(url2).origin + path2);
+      url2 = new URL(util3.parseOrigin(url2).origin + path4);
     } else {
       if (!opts) {
         opts = typeof url2 === "object" ? url2 : {};
@@ -118795,5 +118795,5 @@ async function index() {
 }
 await index();
 
-//# debugId=4032D87ADE7FBDE764756E2164756E21
+//# debugId=3922E9DE1434D8D464756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
