@@ -50726,7 +50726,7 @@ var require_errors3 = __commonJS((exports, module) => {
   }
   var kAbortError = Symbol.for("undici.error.UND_ERR_ABORT");
 
-  class AbortError3 extends UndiciError {
+  class AbortError4 extends UndiciError {
     constructor(message) {
       super(message);
       this.name = "AbortError";
@@ -50742,7 +50742,7 @@ var require_errors3 = __commonJS((exports, module) => {
   }
   var kRequestAbortedError = Symbol.for("undici.error.UND_ERR_ABORTED");
 
-  class RequestAbortedError extends AbortError3 {
+  class RequestAbortedError extends AbortError4 {
     constructor(message) {
       super(message);
       this.name = "AbortError";
@@ -50989,7 +50989,7 @@ var require_errors3 = __commonJS((exports, module) => {
     }
   }
   module.exports = {
-    AbortError: AbortError3,
+    AbortError: AbortError4,
     HTTPParserError,
     UndiciError,
     HeadersTimeoutError,
@@ -59821,7 +59821,7 @@ var require_h2c_client = __commonJS((exports, module) => {
 var require_readable4 = __commonJS((exports, module) => {
   var assert = __require("node:assert");
   var { Readable: Readable5 } = __require("node:stream");
-  var { RequestAbortedError, NotSupportedError, InvalidArgumentError, AbortError: AbortError3 } = require_errors3();
+  var { RequestAbortedError, NotSupportedError, InvalidArgumentError, AbortError: AbortError4 } = require_errors3();
   var util3 = require_util13();
   var { ReadableStreamFrom } = require_util13();
   var kConsume = Symbol("kConsume");
@@ -59938,24 +59938,24 @@ var require_readable4 = __commonJS((exports, module) => {
       }
       const limit = opts?.limit && Number.isFinite(opts.limit) ? opts.limit : 128 * 1024;
       if (signal?.aborted) {
-        return Promise.reject(signal.reason ?? new AbortError3);
+        return Promise.reject(signal.reason ?? new AbortError4);
       }
       if (this._readableState.closeEmitted) {
         return Promise.resolve(null);
       }
       return new Promise((resolve2, reject) => {
         if (this[kContentLength] && this[kContentLength] > limit || this[kBytesRead] > limit) {
-          this.destroy(new AbortError3);
+          this.destroy(new AbortError4);
         }
         if (signal) {
           const onAbort = () => {
-            this.destroy(signal.reason ?? new AbortError3);
+            this.destroy(signal.reason ?? new AbortError4);
           };
           signal.addEventListener("abort", onAbort);
           this.on("close", function() {
             signal.removeEventListener("abort", onAbort);
             if (signal.aborted) {
-              reject(signal.reason ?? new AbortError3);
+              reject(signal.reason ?? new AbortError4);
             } else {
               resolve2(null);
             }
@@ -64600,7 +64600,7 @@ var require_cache3 = __commonJS((exports, module) => {
   var MemoryCacheStore = require_memory_cache_store();
   var CacheRevalidationHandler = require_cache_revalidation_handler();
   var { assertCacheStore, assertCacheMethods, makeCacheKey, normalizeHeaders, parseCacheControlHeader } = require_cache2();
-  var { AbortError: AbortError3 } = require_errors3();
+  var { AbortError: AbortError4 } = require_errors3();
   function assertCacheOrigins(origins, name) {
     if (origins === undefined)
       return;
@@ -64703,7 +64703,7 @@ var require_cache3 = __commonJS((exports, module) => {
         return stream4.errored;
       },
       abort(reason) {
-        stream4.destroy(reason ?? new AbortError3);
+        stream4.destroy(reason ?? new AbortError4);
       }
     };
     stream4.on("error", function(err) {
@@ -118803,5 +118803,5 @@ async function index() {
 }
 await index();
 
-//# debugId=1F36C1B13BAC436964756E2164756E21
+//# debugId=E1E60600C492EA6C64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
