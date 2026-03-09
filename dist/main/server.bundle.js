@@ -17193,7 +17193,7 @@ var require_undici = __commonJS((exports, module) => {
 var require_package = __commonJS((exports, module) => {
   module.exports = {
     name: "systeminformation",
-    version: "5.31.1",
+    version: "5.31.3",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -18532,6 +18532,86 @@ var require_util9 = __commonJS((exports) => {
   }
   function getAppleModel(key) {
     const appleModelIds = [
+      {
+        key: "Mac17,7",
+        name: "MacBook Pro",
+        size: "16-inch",
+        processor: "M5 Max",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,6",
+        name: "MacBook Pro",
+        size: "14-inch",
+        processor: "M5 Max",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,5",
+        name: "MacBook Pro",
+        size: "16-inch",
+        processor: "M5 Pro",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,4",
+        name: "MacBook Pro",
+        size: "14-inch",
+        processor: "M5 Pro",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,1",
+        name: "MacBook Neo",
+        size: "14-inch",
+        processor: "A18 Pro",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,3",
+        name: "MacBook Pro",
+        size: "16-inch",
+        processor: "M5",
+        year: "2025",
+        additional: ""
+      },
+      {
+        key: "Mac17,2",
+        name: "MacBook Pro",
+        size: "14-inch",
+        processor: "M5",
+        year: "2025",
+        additional: ""
+      },
+      {
+        key: "Mac16,13",
+        name: "MacBook Air",
+        size: "15-inch",
+        processor: "M4",
+        year: "2025",
+        additional: ""
+      },
+      {
+        key: "Mac16,12",
+        name: "MacBook Air",
+        size: "13-inch",
+        processor: "M4",
+        year: "2025",
+        additional: ""
+      },
+      {
+        key: "Mac15,13",
+        name: "MacBook Air",
+        size: "15-inch",
+        processor: "M3",
+        year: "2024",
+        additional: ""
+      },
       {
         key: "Mac15,12",
         name: "MacBook Air",
@@ -36522,5 +36602,5 @@ async function server() {
 }
 await server();
 
-//# debugId=1474BAFD1062913464756E2164756E21
+//# debugId=49AFD4C70099792664756E2164756E21
 //# sourceMappingURL=server.bundle.js.map

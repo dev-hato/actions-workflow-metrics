@@ -54985,20 +54985,27 @@ function proxyPolicy(proxySettings, options) {
 var redirectPolicyName = "redirectPolicy";
 var allowedRedirect = ["GET", "HEAD"];
 function redirectPolicy(options = {}) {
-  const { maxRetries = 20 } = options;
+  const { maxRetries = 20, allowCrossOriginRedirects = false } = options;
   return {
     name: redirectPolicyName,
     async sendRequest(request, next) {
       const response = await next(request);
-      return handleRedirect(next, response, maxRetries);
+      return handleRedirect(next, response, maxRetries, allowCrossOriginRedirects);
     }
   };
 }
-async function handleRedirect(next, response, maxRetries, currentRetries = 0) {
+async function handleRedirect(next, response, maxRetries, allowCrossOriginRedirects, currentRetries = 0) {
   const { request, status, headers } = response;
   const locationHeader = headers.get("location");
   if (locationHeader && (status === 300 || status === 301 && allowedRedirect.includes(request.method) || status === 302 && allowedRedirect.includes(request.method) || status === 303 && request.method === "POST" || status === 307) && currentRetries < maxRetries) {
     const url = new URL(locationHeader, request.url);
+    if (!allowCrossOriginRedirects) {
+      const originalUrl = new URL(request.url);
+      if (url.origin !== originalUrl.origin) {
+        logger.verbose(`Skipping cross-origin redirect from ${originalUrl.origin} to ${url.origin}.`);
+        return response;
+      }
+    }
     request.url = url.toString();
     if (status === 303) {
       request.method = "GET";
@@ -55007,7 +55014,7 @@ async function handleRedirect(next, response, maxRetries, currentRetries = 0) {
     }
     request.headers.delete("Authorization");
     const res = await next(request);
-    return handleRedirect(next, res, maxRetries, currentRetries + 1);
+    return handleRedirect(next, res, maxRetries, allowCrossOriginRedirects, currentRetries + 1);
   }
   return response;
 }
@@ -55059,7 +55066,7 @@ async function setPlatformSpecificData(map) {
 }
 
 // node_modules/@azure/core-rest-pipeline/dist/esm/constants.js
-var SDK_VERSION = "1.22.2";
+var SDK_VERSION = "1.22.3";
 
 // node_modules/@azure/core-rest-pipeline/dist/esm/util/userAgent.js
 function getUserAgentString2(telemetryInfo) {
@@ -58160,6 +58167,7 @@ function normalizeProcessEntities(value) {
       maxExpansionDepth: 10,
       maxTotalExpansions: 1000,
       maxExpandedLength: 1e5,
+      maxEntityCount: 100,
       allowedTags: null,
       tagFilter: null
     };
@@ -58171,6 +58179,7 @@ function normalizeProcessEntities(value) {
       maxExpansionDepth: value.maxExpansionDepth ?? 10,
       maxTotalExpansions: value.maxTotalExpansions ?? 1000,
       maxExpandedLength: value.maxExpandedLength ?? 1e5,
+      maxEntityCount: value.maxEntityCount ?? 100,
       allowedTags: value.allowedTags ?? null,
       tagFilter: value.tagFilter ?? null
     };
@@ -58227,6 +58236,7 @@ class DocTypeReader {
   }
   readDocType(xmlData, i) {
     const entities = Object.create(null);
+    let entityCount = 0;
     if (xmlData[i + 3] === "O" && xmlData[i + 4] === "C" && xmlData[i + 5] === "T" && xmlData[i + 6] === "Y" && xmlData[i + 7] === "P" && xmlData[i + 8] === "E") {
       i = i + 9;
       let angleBracketsCount = 1;
@@ -58239,11 +58249,15 @@ class DocTypeReader {
             let entityName, val;
             [entityName, val, i] = this.readEntityExp(xmlData, i + 1, this.suppressValidationErr);
             if (val.indexOf("&") === -1) {
+              if (this.options.enabled !== false && this.options.maxEntityCount && entityCount >= this.options.maxEntityCount) {
+                throw new Error(`Entity count (${entityCount + 1}) exceeds maximum allowed (${this.options.maxEntityCount})`);
+              }
               const escaped = entityName.replace(/[.\-+*:]/g, "\\.");
               entities[entityName] = {
                 regx: RegExp(`&${escaped};`, "g"),
                 val
               };
+              entityCount++;
             }
           } else if (hasBody && hasSeq(xmlData, "!ELEMENT", i)) {
             i += 8;
@@ -58499,7 +58513,8 @@ var consider = {
   hex: true,
   leadingZeros: true,
   decimalPoint: ".",
-  eNotation: true
+  eNotation: true,
+  infinity: "original"
 };
 function toNumber(str, options = {}) {
   options = Object.assign({}, consider, options);
@@ -58512,6 +58527,8 @@ function toNumber(str, options = {}) {
     return 0;
   else if (options.hex && hexRegex.test(trimmedStr)) {
     return parse_int(trimmedStr, 16);
+  } else if (!isFinite(trimmedStr)) {
+    return handleInfinity(str, Number(trimmedStr), options);
   } else if (trimmedStr.includes("e") || trimmedStr.includes("E")) {
     return resolveEnotation(str, trimmedStr, options);
   } else {
@@ -58600,6 +58617,20 @@ function parse_int(numStr, base) {
     return window.parseInt(numStr, base);
   else
     throw new Error("parseInt, Number.parseInt, window.parseInt are not supported");
+}
+function handleInfinity(str, num, options) {
+  const isPositive = num === Infinity;
+  switch (options.infinity.toLowerCase()) {
+    case "null":
+      return null;
+    case "infinity":
+      return num;
+    case "string":
+      return isPositive ? "Infinity" : "-Infinity";
+    case "original":
+    default:
+      return str;
+  }
 }
 
 // node_modules/fast-xml-parser/src/ignoreAttributes.js
@@ -79771,9 +79802,13 @@ function safeParse(header) {
 var $safeParse = safeParse;
 
 // node_modules/json-with-bigint/json-with-bigint.js
+var intRegex = /^-?\d+$/;
 var noiseValue = /^-?\d+n+$/;
 var originalStringify = JSON.stringify;
 var originalParse = JSON.parse;
+var customFormat = /^-?\d+n$/;
+var bigIntsStringify = /([\[:])?"(-?\d+)n"($|([\\n]|\s)*(\s|[\\n])*[,\}\]])/g;
+var noiseStringify = /([\[:])?("-?\d+n+)n("$|"([\\n]|\s)*(\s|[\\n])*[,\}\]])/g;
 var JSONStringify = (value, replacer, space) => {
   if ("rawJSON" in JSON) {
     return originalStringify(value, (key, value2) => {
@@ -79788,8 +79823,6 @@ var JSONStringify = (value, replacer, space) => {
   }
   if (!value)
     return originalStringify(value, replacer, space);
-  const bigInts = /([\[:])?"(-?\d+)n"($|([\\n]|\s)*(\s|[\\n])*[,\}\]])/g;
-  const noise = /([\[:])?("-?\d+n+)n("$|"([\\n]|\s)*(\s|[\\n])*[,\}\]])/g;
   const convertedToCustomJSON = originalStringify(value, (key, value2) => {
     const isNoise = typeof value2 === "string" && Boolean(value2.match(noiseValue));
     if (isNoise)
@@ -79802,16 +79835,26 @@ var JSONStringify = (value, replacer, space) => {
       return value2;
     return value2;
   }, space);
-  const processedJSON = convertedToCustomJSON.replace(bigInts, "$1$2$3");
-  const denoisedJSON = processedJSON.replace(noise, "$1$2$3");
+  const processedJSON = convertedToCustomJSON.replace(bigIntsStringify, "$1$2$3");
+  const denoisedJSON = processedJSON.replace(noiseStringify, "$1$2$3");
   return denoisedJSON;
 };
 var isContextSourceSupported = () => JSON.parse("1", (_2, __, context3) => !!context3 && context3.source === "1");
+var convertMarkedBigIntsReviver = (key, value, context3, userReviver) => {
+  const isCustomFormatBigInt = typeof value === "string" && value.match(customFormat);
+  if (isCustomFormatBigInt)
+    return BigInt(value.slice(0, -1));
+  const isNoiseValue = typeof value === "string" && value.match(noiseValue);
+  if (isNoiseValue)
+    return value.slice(0, -1);
+  if (typeof userReviver !== "function")
+    return value;
+  return userReviver(key, value, context3);
+};
 var JSONParseV2 = (text, reviver) => {
-  const intRegex = /^-?\d+$/;
   return JSON.parse(text, (key, value, context3) => {
     const isBigNumber = typeof value === "number" && (value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER);
-    const isInt = intRegex.test(context3.source);
+    const isInt = context3 && intRegex.test(context3.source);
     const isBigInt = isBigNumber && isInt;
     if (isBigInt)
       return BigInt(context3.source);
@@ -79820,16 +79863,15 @@ var JSONParseV2 = (text, reviver) => {
     return reviver(key, value, context3);
   });
 };
+var MAX_INT = Number.MAX_SAFE_INTEGER.toString();
+var MAX_DIGITS = MAX_INT.length;
+var stringsOrLargeNumbers = /"(?:\\.|[^"])*"|-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/g;
+var noiseValueWithQuotes = /^"-?\d+n+"$/;
 var JSONParse = (text, reviver) => {
   if (!text)
     return originalParse(text, reviver);
   if (isContextSourceSupported())
     return JSONParseV2(text, reviver);
-  const MAX_INT = Number.MAX_SAFE_INTEGER.toString();
-  const MAX_DIGITS = MAX_INT.length;
-  const stringsOrLargeNumbers = /"(?:\\.|[^"])*"|-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/g;
-  const noiseValueWithQuotes = /^"-?\d+n+"$/;
-  const customFormat = /^-?\d+n$/;
   const serializedData = text.replace(stringsOrLargeNumbers, (text2, digits, fractional, exponential) => {
     const isString = text2[0] === '"';
     const isNoise = isString && Boolean(text2.match(noiseValueWithQuotes));
@@ -79841,17 +79883,7 @@ var JSONParse = (text, reviver) => {
       return text2;
     return '"' + text2 + 'n"';
   });
-  return originalParse(serializedData, (key, value, context3) => {
-    const isCustomFormatBigInt = typeof value === "string" && Boolean(value.match(customFormat));
-    if (isCustomFormatBigInt)
-      return BigInt(value.substring(0, value.length - 1));
-    const isNoiseValue = typeof value === "string" && Boolean(value.match(noiseValue));
-    if (isNoiseValue)
-      return value.substring(0, value.length - 1);
-    if (typeof reviver !== "function")
-      return value;
-    return reviver(key, value, context3);
-  });
+  return originalParse(serializedData, (key, value, context3) => convertMarkedBigIntsReviver(key, value, context3, reviver));
 };
 
 // node_modules/@octokit/request-error/dist-src/index.js
@@ -97427,5 +97459,5 @@ async function index() {
 }
 await index();
 
-//# debugId=1F36C1B13BAC436964756E2164756E21
+//# debugId=7000A58265BE8A3064756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
