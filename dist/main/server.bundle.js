@@ -17256,7 +17256,7 @@ var require_undici = __commonJS((exports, module) => {
 var require_package = __commonJS((exports, module) => {
   module.exports = {
     name: "systeminformation",
-    version: "5.31.4",
+    version: "5.31.5",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -28902,7 +28902,7 @@ Profile on interface`);
               result2.operstate = (stdout.toString().split(":")[1] || "").trim();
               result2.operstate = (result2.operstate || "").toLowerCase();
               result2.operstate = result2.operstate === "active" ? "up" : result2.operstate === "inactive" ? "down" : "unknown";
-              cmd = "netstat -bdI " + ifaceSanitized;
+              cmd = "netstat -bdnI " + ifaceSanitized;
               exec(cmd, (error3, stdout2) => {
                 if (!error3) {
                   lines = stdout2.toString().split(`
@@ -36666,5 +36666,5 @@ async function server() {
 }
 await server();
 
-//# debugId=1478BF9602CEC35564756E2164756E21
+//# debugId=446FA1D4002335B564756E2164756E21
 //# sourceMappingURL=server.bundle.js.map

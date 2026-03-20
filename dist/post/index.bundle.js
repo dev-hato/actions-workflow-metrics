@@ -44192,6 +44192,9 @@ var require_streamx = __commonJS((exports, module) => {
       this.afterWrite = afterWrite.bind(this);
       this.afterUpdateNextTick = updateWriteNT.bind(this);
     }
+    get ending() {
+      return (this.stream._duplexState & WRITE_FINISHING) !== 0;
+    }
     get ended() {
       return (this.stream._duplexState & WRITE_DONE) !== 0;
     }
@@ -44302,6 +44305,9 @@ var require_streamx = __commonJS((exports, module) => {
       this.pipeTo = null;
       this.afterRead = afterRead.bind(this);
       this.afterUpdateNextTick = updateReadNT.bind(this);
+    }
+    get ending() {
+      return (this.stream._duplexState & READ_ENDING) !== 0;
     }
     get ended() {
       return (this.stream._duplexState & READ_DONE) !== 0;
@@ -45096,8 +45102,14 @@ var require_streamx = __commonJS((exports, module) => {
   function isStreamx(stream2) {
     return typeof stream2._duplexState === "number" && isStream(stream2);
   }
+  function isEnding(stream2) {
+    return !!stream2._readableState && stream2._readableState.ending;
+  }
   function isEnded(stream2) {
     return !!stream2._readableState && stream2._readableState.ended;
+  }
+  function isFinishing(stream2) {
+    return !!stream2._writableState && stream2._writableState.ending;
   }
   function isFinished(stream2) {
     return !!stream2._writableState && stream2._writableState.ended;
@@ -45110,7 +45122,7 @@ var require_streamx = __commonJS((exports, module) => {
     return isStreamx(stream2) && stream2.readable;
   }
   function isDisturbed(stream2) {
-    return (stream2._duplexState & OPENING) !== OPENING || (stream2._duplexState & ACTIVE_OR_TICKING) !== 0;
+    return (stream2._duplexState & OPENING) !== OPENING || (stream2._duplexState & DESTROYING) === DESTROYING || (stream2._duplexState & ACTIVE_OR_TICKING) !== 0;
   }
   function isTypedArray(data) {
     return typeof data === "object" && data !== null && typeof data.byteLength === "number";
@@ -45130,7 +45142,9 @@ var require_streamx = __commonJS((exports, module) => {
     pipelinePromise,
     isStream,
     isStreamx,
+    isEnding,
     isEnded,
+    isFinishing,
     isFinished,
     isDisturbed,
     getStreamError,
@@ -58268,11 +58282,11 @@ function normalizeProcessEntities(value) {
   if (typeof value === "object" && value !== null) {
     return {
       enabled: value.enabled !== false,
-      maxEntitySize: value.maxEntitySize ?? 1e4,
-      maxExpansionDepth: value.maxExpansionDepth ?? 10,
-      maxTotalExpansions: value.maxTotalExpansions ?? 1000,
-      maxExpandedLength: value.maxExpandedLength ?? 1e5,
-      maxEntityCount: value.maxEntityCount ?? 100,
+      maxEntitySize: Math.max(1, value.maxEntitySize ?? 1e4),
+      maxExpansionDepth: Math.max(1, value.maxExpansionDepth ?? 10),
+      maxTotalExpansions: Math.max(1, value.maxTotalExpansions ?? 1000),
+      maxExpandedLength: Math.max(1, value.maxExpandedLength ?? 1e5),
+      maxEntityCount: Math.max(1, value.maxEntityCount ?? 100),
       allowedTags: value.allowedTags ?? null,
       tagFilter: value.tagFilter ?? null
     };
@@ -58365,10 +58379,10 @@ class DocTypeReader {
             let entityName, val;
             [entityName, val, i] = this.readEntityExp(xmlData, i + 1, this.suppressValidationErr);
             if (val.indexOf("&") === -1) {
-              if (this.options.enabled !== false && this.options.maxEntityCount && entityCount >= this.options.maxEntityCount) {
+              if (this.options.enabled !== false && this.options.maxEntityCount != null && entityCount >= this.options.maxEntityCount) {
                 throw new Error(`Entity count (${entityCount + 1}) exceeds maximum allowed (${this.options.maxEntityCount})`);
               }
-              const escaped = entityName.replace(/[.\-+*:]/g, "\\.");
+              const escaped = entityName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
               entities[entityName] = {
                 regx: RegExp(`&${escaped};`, "g"),
                 val
@@ -58419,11 +58433,11 @@ class DocTypeReader {
   }
   readEntityExp(xmlData, i) {
     i = skipWhitespace(xmlData, i);
-    let entityName = "";
+    const startIndex = i;
     while (i < xmlData.length && !/\s/.test(xmlData[i]) && xmlData[i] !== '"' && xmlData[i] !== "'") {
-      entityName += xmlData[i];
       i++;
     }
+    let entityName = xmlData.substring(startIndex, i);
     validateEntityName(entityName);
     i = skipWhitespace(xmlData, i);
     if (!this.suppressValidationErr) {
@@ -58435,7 +58449,7 @@ class DocTypeReader {
     }
     let entityValue = "";
     [i, entityValue] = this.readIdentifierVal(xmlData, i, "entity");
-    if (this.options.enabled !== false && this.options.maxEntitySize && entityValue.length > this.options.maxEntitySize) {
+    if (this.options.enabled !== false && this.options.maxEntitySize != null && entityValue.length > this.options.maxEntitySize) {
       throw new Error(`Entity "${entityName}" size (${entityValue.length}) exceeds maximum allowed size (${this.options.maxEntitySize})`);
     }
     i--;
@@ -58443,11 +58457,11 @@ class DocTypeReader {
   }
   readNotationExp(xmlData, i) {
     i = skipWhitespace(xmlData, i);
-    let notationName = "";
+    const startIndex = i;
     while (i < xmlData.length && !/\s/.test(xmlData[i])) {
-      notationName += xmlData[i];
       i++;
     }
+    let notationName = xmlData.substring(startIndex, i);
     !this.suppressValidationErr && validateEntityName(notationName);
     i = skipWhitespace(xmlData, i);
     const identifierType = xmlData.substring(i, i + 6).toUpperCase();
@@ -58479,10 +58493,11 @@ class DocTypeReader {
       throw new Error(`Expected quoted string, found "${startChar}"`);
     }
     i++;
+    const startIndex = i;
     while (i < xmlData.length && xmlData[i] !== startChar) {
-      identifierVal += xmlData[i];
       i++;
     }
+    identifierVal = xmlData.substring(startIndex, i);
     if (xmlData[i] !== startChar) {
       throw new Error(`Unterminated ${type} value`);
     }
@@ -58491,11 +58506,11 @@ class DocTypeReader {
   }
   readElementExp(xmlData, i) {
     i = skipWhitespace(xmlData, i);
-    let elementName = "";
+    const startIndex = i;
     while (i < xmlData.length && !/\s/.test(xmlData[i])) {
-      elementName += xmlData[i];
       i++;
     }
+    let elementName = xmlData.substring(startIndex, i);
     if (!this.suppressValidationErr && !isName(elementName)) {
       throw new Error(`Invalid element name: "${elementName}"`);
     }
@@ -58507,10 +58522,11 @@ class DocTypeReader {
       i += 2;
     else if (xmlData[i] === "(") {
       i++;
+      const startIndex2 = i;
       while (i < xmlData.length && xmlData[i] !== ")") {
-        contentModel += xmlData[i];
         i++;
       }
+      contentModel = xmlData.substring(startIndex2, i);
       if (xmlData[i] !== ")") {
         throw new Error("Unterminated content model");
       }
@@ -58525,18 +58541,18 @@ class DocTypeReader {
   }
   readAttlistExp(xmlData, i) {
     i = skipWhitespace(xmlData, i);
-    let elementName = "";
+    let startIndex = i;
     while (i < xmlData.length && !/\s/.test(xmlData[i])) {
-      elementName += xmlData[i];
       i++;
     }
+    let elementName = xmlData.substring(startIndex, i);
     validateEntityName(elementName);
     i = skipWhitespace(xmlData, i);
-    let attributeName = "";
+    startIndex = i;
     while (i < xmlData.length && !/\s/.test(xmlData[i])) {
-      attributeName += xmlData[i];
       i++;
     }
+    let attributeName = xmlData.substring(startIndex, i);
     if (!validateEntityName(attributeName)) {
       throw new Error(`Invalid attribute name: "${attributeName}"`);
     }
@@ -58552,11 +58568,11 @@ class DocTypeReader {
       i++;
       let allowedNotations = [];
       while (i < xmlData.length && xmlData[i] !== ")") {
-        let notation = "";
+        const startIndex2 = i;
         while (i < xmlData.length && xmlData[i] !== "|" && xmlData[i] !== ")") {
-          notation += xmlData[i];
           i++;
         }
+        let notation = xmlData.substring(startIndex2, i);
         notation = notation.trim();
         if (!validateEntityName(notation)) {
           throw new Error(`Invalid notation name: "${notation}"`);
@@ -58573,10 +58589,11 @@ class DocTypeReader {
       i++;
       attributeType += " (" + allowedNotations.join("|") + ")";
     } else {
+      const startIndex2 = i;
       while (i < xmlData.length && !/\s/.test(xmlData[i])) {
-        attributeType += xmlData[i];
         i++;
       }
+      attributeType += xmlData.substring(startIndex2, i);
       const validTypes = ["CDATA", "ID", "IDREF", "IDREFS", "ENTITY", "ENTITIES", "NMTOKEN", "NMTOKENS"];
       if (!this.suppressValidationErr && !validTypes.includes(attributeType.toUpperCase())) {
         throw new Error(`Invalid attribute type: "${attributeType}"`);
@@ -58702,11 +58719,15 @@ function resolveEnotation(str, trimmedStr, options) {
       return str;
     else if (leadingZeros.length === 1 && (notation[3].startsWith(`.${eChar}`) || notation[3][0] === eChar)) {
       return Number(trimmedStr);
-    } else if (options.leadingZeros && !eAdjacentToLeadingZeros) {
-      trimmedStr = (notation[1] || "") + notation[3];
+    } else if (leadingZeros.length > 0) {
+      if (options.leadingZeros && !eAdjacentToLeadingZeros) {
+        trimmedStr = (notation[1] || "") + notation[3];
+        return Number(trimmedStr);
+      } else
+        return str;
+    } else {
       return Number(trimmedStr);
-    } else
-      return str;
+    }
   } else {
     return str;
   }
@@ -58894,6 +58915,8 @@ class Expression {
 }
 
 // node_modules/path-expression-matcher/src/Matcher.js
+var MUTATING_METHODS = new Set(["push", "pop", "reset", "updateCurrent", "restore"]);
+
 class Matcher {
   constructor(options = {}) {
     this.separator = options.separator || ".";
@@ -59108,6 +59131,32 @@ class Matcher {
   restore(snapshot) {
     this.path = snapshot.path.map((node) => ({ ...node }));
     this.siblingStacks = snapshot.siblingStacks.map((map) => new Map(map));
+  }
+  readOnly() {
+    const self2 = this;
+    return new Proxy(self2, {
+      get(target, prop, receiver) {
+        if (MUTATING_METHODS.has(prop)) {
+          return () => {
+            throw new TypeError(`Cannot call '${prop}' on a read-only Matcher. ` + `Obtain a writable instance to mutate state.`);
+          };
+        }
+        const value = Reflect.get(target, prop, receiver);
+        if (prop === "path" || prop === "siblingStacks") {
+          return Object.freeze(Array.isArray(value) ? value.map((item) => item instanceof Map ? Object.freeze(new Map(item)) : Object.freeze({ ...item })) : value);
+        }
+        if (typeof value === "function") {
+          return value.bind(target);
+        }
+        return value;
+      },
+      set(_target, prop) {
+        throw new TypeError(`Cannot set property '${String(prop)}' on a read-only Matcher.`);
+      },
+      deleteProperty(_target, prop) {
+        throw new TypeError(`Cannot delete property '${String(prop)}' from a read-only Matcher.`);
+      }
+    });
   }
 }
 
@@ -59401,7 +59450,7 @@ var parseXml = function(xmlData) {
         let attrExpPresent = result.attrExpPresent;
         let closeIndex = result.closeIndex;
         ({ tagName, tagExp } = transformTagName(this.options.transformTagName, tagName, tagExp, this.options));
-        if (this.options.strictReservedNames && (tagName === this.options.commentPropName || tagName === this.options.cdataPropName)) {
+        if (this.options.strictReservedNames && (tagName === this.options.commentPropName || tagName === this.options.cdataPropName || tagName === this.options.textNodeName || tagName === this.options.attributesGroupName)) {
           throw new Error(`Invalid tag name: ${tagName}`);
         }
         if (currentNode && textData) {
@@ -59535,7 +59584,7 @@ function replaceEntitiesValue(val, tagName, jPath) {
       return val;
     }
   }
-  for (let entityName in this.docTypeEntities) {
+  for (const entityName of Object.keys(this.docTypeEntities)) {
     const entity = this.docTypeEntities[entityName];
     const matches = val.match(entity.regx);
     if (matches) {
@@ -59553,17 +59602,29 @@ function replaceEntitiesValue(val, tagName, jPath) {
       }
     }
   }
-  if (val.indexOf("&") === -1)
-    return val;
-  for (let entityName in this.lastEntities) {
+  for (const entityName of Object.keys(this.lastEntities)) {
     const entity = this.lastEntities[entityName];
+    const matches = val.match(entity.regex);
+    if (matches) {
+      this.entityExpansionCount += matches.length;
+      if (entityConfig.maxTotalExpansions && this.entityExpansionCount > entityConfig.maxTotalExpansions) {
+        throw new Error(`Entity expansion limit exceeded: ${this.entityExpansionCount} > ${entityConfig.maxTotalExpansions}`);
+      }
+    }
     val = val.replace(entity.regex, entity.val);
   }
   if (val.indexOf("&") === -1)
     return val;
   if (this.options.htmlEntities) {
-    for (let entityName in this.htmlEntities) {
+    for (const entityName of Object.keys(this.htmlEntities)) {
       const entity = this.htmlEntities[entityName];
+      const matches = val.match(entity.regex);
+      if (matches) {
+        this.entityExpansionCount += matches.length;
+        if (entityConfig.maxTotalExpansions && this.entityExpansionCount > entityConfig.maxTotalExpansions) {
+          throw new Error(`Entity expansion limit exceeded: ${this.entityExpansionCount} > ${entityConfig.maxTotalExpansions}`);
+        }
+      }
       val = val.replace(entity.regex, entity.val);
     }
   }
@@ -59927,6 +59988,9 @@ function toXml(jArray, options) {
 function arrToStr(arr, options, indentation, matcher, stopNodeExpressions) {
   let xmlStr = "";
   let isPreviousElementTag = false;
+  if (options.maxNestedTags && matcher.getDepth() > options.maxNestedTags) {
+    throw new Error("Maximum nested tags exceeded");
+  }
   if (!Array.isArray(arr)) {
     if (arr !== undefined && arr !== null) {
       let text = arr.toString();
@@ -60178,6 +60242,7 @@ var defaultOptions3 = {
   processEntities: true,
   stopNodes: [],
   oneListGroup: false,
+  maxNestedTags: 100,
   jPath: true
 };
 function Builder(options) {
@@ -60241,6 +60306,9 @@ Builder.prototype.build = function(jObj) {
 Builder.prototype.j2x = function(jObj, level, matcher) {
   let attrStr = "";
   let val = "";
+  if (this.options.maxNestedTags && matcher.getDepth() >= this.options.maxNestedTags) {
+    throw new Error("Maximum nested tags exceeded");
+  }
   const jPath = this.options.jPath ? matcher.toString() : matcher;
   const isCurrentStopNode = this.checkStopNode(matcher);
   for (let key in jObj) {
@@ -80638,7 +80706,7 @@ var JSONStringify = (value, replacer, space) => {
   if (!value)
     return originalStringify(value, replacer, space);
   const convertedToCustomJSON = originalStringify(value, (key, value2) => {
-    const isNoise = typeof value2 === "string" && Boolean(value2.match(noiseValue));
+    const isNoise = typeof value2 === "string" && noiseValue.test(value2);
     if (isNoise)
       return value2.toString() + "n";
     if (typeof value2 === "bigint")
@@ -80653,12 +80721,26 @@ var JSONStringify = (value, replacer, space) => {
   const denoisedJSON = processedJSON.replace(noiseStringify, "$1$2$3");
   return denoisedJSON;
 };
-var isContextSourceSupported = () => JSON.parse("1", (_2, __, context3) => !!context3 && context3.source === "1");
+var featureCache = new Map;
+var isContextSourceSupported = () => {
+  const parseFingerprint = JSON.parse.toString();
+  if (featureCache.has(parseFingerprint)) {
+    return featureCache.get(parseFingerprint);
+  }
+  try {
+    const result = JSON.parse("1", (_2, __, context3) => !!context3?.source && context3.source === "1");
+    featureCache.set(parseFingerprint, result);
+    return result;
+  } catch {
+    featureCache.set(parseFingerprint, false);
+    return false;
+  }
+};
 var convertMarkedBigIntsReviver = (key, value, context3, userReviver) => {
-  const isCustomFormatBigInt = typeof value === "string" && value.match(customFormat);
+  const isCustomFormatBigInt = typeof value === "string" && customFormat.test(value);
   if (isCustomFormatBigInt)
     return BigInt(value.slice(0, -1));
-  const isNoiseValue = typeof value === "string" && value.match(noiseValue);
+  const isNoiseValue = typeof value === "string" && noiseValue.test(value);
   if (isNoiseValue)
     return value.slice(0, -1);
   if (typeof userReviver !== "function")
@@ -80688,7 +80770,7 @@ var JSONParse = (text, reviver) => {
     return JSONParseV2(text, reviver);
   const serializedData = text.replace(stringsOrLargeNumbers, (text2, digits, fractional, exponential) => {
     const isString = text2[0] === '"';
-    const isNoise = isString && Boolean(text2.match(noiseValueWithQuotes));
+    const isNoise = isString && noiseValueWithQuotes.test(text2);
     if (isNoise)
       return text2.substring(0, text2.length - 1) + 'n"';
     const isFractionalOrExponential = fractional || exponential;
@@ -98275,5 +98357,5 @@ async function index() {
 }
 await index();
 
-//# debugId=C262E6D6D0A0A14B64756E2164756E21
+//# debugId=59A7E8EDFC39A6EF64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
