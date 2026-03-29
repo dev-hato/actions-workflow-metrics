@@ -22505,7 +22505,7 @@ var require_brace_expansion = __commonJS((exports, module) => {
         var x = numeric(n[0]);
         var y = numeric(n[1]);
         var width = Math.max(n[0].length, n[1].length);
-        var incr = n.length == 3 ? Math.abs(numeric(n[2])) : 1;
+        var incr = n.length == 3 ? Math.max(Math.abs(numeric(n[2])), 1) : 1;
         var test = lte;
         var reverse = y < x;
         if (reverse) {
@@ -35930,7 +35930,7 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
         var x = numeric(n[0]);
         var y = numeric(n[1]);
         var width = Math.max(n[0].length, n[1].length);
-        var incr = n.length == 3 ? Math.abs(numeric(n[2])) : 1;
+        var incr = n.length == 3 ? Math.max(Math.abs(numeric(n[2])), 1) : 1;
         var test = lte;
         var reverse = y < x;
         if (reverse) {
@@ -58654,9 +58654,11 @@ function toNumber(str, options = {}) {
   if (!str || typeof str !== "string")
     return str;
   let trimmedStr = str.trim();
-  if (options.skipLike !== undefined && options.skipLike.test(trimmedStr))
+  if (trimmedStr.length === 0)
     return str;
-  else if (str === "0")
+  else if (options.skipLike !== undefined && options.skipLike.test(trimmedStr))
+    return str;
+  else if (trimmedStr === "0")
     return 0;
   else if (options.hex && hexRegex.test(trimmedStr)) {
     return parse_int(trimmedStr, 16);
@@ -59230,6 +59232,7 @@ class OrderedObjParser {
     this.entityExpansionCount = 0;
     this.currentExpandedLength = 0;
     this.matcher = new Matcher;
+    this.readonlyMatcher = this.matcher.readOnly();
     this.isCurrentNodeStopNode = false;
     if (this.options.stopNodes && this.options.stopNodes.length > 0) {
       this.stopNodeExpressions = [];
@@ -59310,7 +59313,7 @@ function buildAttributesMap(attrStr, jPath, tagName) {
         if (this.options.trimValues) {
           parsedVal = parsedVal.trim();
         }
-        parsedVal = this.replaceEntitiesValue(parsedVal, tagName, jPath);
+        parsedVal = this.replaceEntitiesValue(parsedVal, tagName, this.readonlyMatcher);
         rawAttrsForMatcher[attrName] = parsedVal;
       }
     }
@@ -59319,7 +59322,7 @@ function buildAttributesMap(attrStr, jPath, tagName) {
     }
     for (let i = 0;i < len; i++) {
       const attrName = this.resolveNameSpace(matches[i][1]);
-      const jPathStr = this.options.jPath ? jPath.toString() : jPath;
+      const jPathStr = this.options.jPath ? jPath.toString() : this.readonlyMatcher;
       if (this.ignoreAttributesFn(attrName, jPathStr)) {
         continue;
       }
@@ -59334,8 +59337,8 @@ function buildAttributesMap(attrStr, jPath, tagName) {
           if (this.options.trimValues) {
             oldVal = oldVal.trim();
           }
-          oldVal = this.replaceEntitiesValue(oldVal, tagName, jPath);
-          const jPathOrMatcher = this.options.jPath ? jPath.toString() : jPath;
+          oldVal = this.replaceEntitiesValue(oldVal, tagName, this.readonlyMatcher);
+          const jPathOrMatcher = this.options.jPath ? jPath.toString() : this.readonlyMatcher;
           const newVal = this.options.attributeValueProcessor(attrName, oldVal, jPathOrMatcher);
           if (newVal === null || newVal === undefined) {
             attrs[aName] = oldVal;
@@ -59384,7 +59387,7 @@ var parseXml = function(xmlData) {
         }
         tagName = transformTagName(this.options.transformTagName, tagName, "", this.options).tagName;
         if (currentNode) {
-          textData = this.saveTextToParentTag(textData, currentNode, this.matcher);
+          textData = this.saveTextToParentTag(textData, currentNode, this.readonlyMatcher);
         }
         const lastTagName = this.matcher.getCurrentTag();
         if (tagName && this.options.unpairedTags.indexOf(tagName) !== -1) {
@@ -59403,21 +59406,21 @@ var parseXml = function(xmlData) {
         let tagData = readTagExp(xmlData, i, false, "?>");
         if (!tagData)
           throw new Error("Pi Tag is not closed.");
-        textData = this.saveTextToParentTag(textData, currentNode, this.matcher);
+        textData = this.saveTextToParentTag(textData, currentNode, this.readonlyMatcher);
         if (this.options.ignoreDeclaration && tagData.tagName === "?xml" || this.options.ignorePiTags) {} else {
           const childNode = new XmlNode(tagData.tagName);
           childNode.add(this.options.textNodeName, "");
           if (tagData.tagName !== tagData.tagExp && tagData.attrExpPresent) {
             childNode[":@"] = this.buildAttributesMap(tagData.tagExp, this.matcher, tagData.tagName);
           }
-          this.addChild(currentNode, childNode, this.matcher, i);
+          this.addChild(currentNode, childNode, this.readonlyMatcher, i);
         }
         i = tagData.closeIndex + 1;
       } else if (xmlData.substr(i + 1, 3) === "!--") {
         const endIndex = findClosingIndex(xmlData, "-->", i + 4, "Comment is not closed.");
         if (this.options.commentPropName) {
           const comment = xmlData.substring(i + 4, endIndex - 2);
-          textData = this.saveTextToParentTag(textData, currentNode, this.matcher);
+          textData = this.saveTextToParentTag(textData, currentNode, this.readonlyMatcher);
           currentNode.add(this.options.commentPropName, [{ [this.options.textNodeName]: comment }]);
         }
         i = endIndex;
@@ -59428,8 +59431,8 @@ var parseXml = function(xmlData) {
       } else if (xmlData.substr(i + 1, 2) === "![") {
         const closeIndex = findClosingIndex(xmlData, "]]>", i, "CDATA is not closed.") - 2;
         const tagExp = xmlData.substring(i + 9, closeIndex);
-        textData = this.saveTextToParentTag(textData, currentNode, this.matcher);
-        let val = this.parseTextData(tagExp, currentNode.tagname, this.matcher, true, false, true, true);
+        textData = this.saveTextToParentTag(textData, currentNode, this.readonlyMatcher);
+        let val = this.parseTextData(tagExp, currentNode.tagname, this.readonlyMatcher, true, false, true, true);
         if (val == undefined)
           val = "";
         if (this.options.cdataPropName) {
@@ -59455,7 +59458,7 @@ var parseXml = function(xmlData) {
         }
         if (currentNode && textData) {
           if (currentNode.tagname !== "!xml") {
-            textData = this.saveTextToParentTag(textData, currentNode, this.matcher, false);
+            textData = this.saveTextToParentTag(textData, currentNode, this.readonlyMatcher, false);
           }
         }
         const lastTag = currentNode;
@@ -59511,7 +59514,7 @@ var parseXml = function(xmlData) {
           childNode.add(this.options.textNodeName, tagContent);
           this.matcher.pop();
           this.isCurrentNodeStopNode = false;
-          this.addChild(currentNode, childNode, this.matcher, startIndex);
+          this.addChild(currentNode, childNode, this.readonlyMatcher, startIndex);
         } else {
           if (isSelfClosing) {
             ({ tagName, tagExp } = transformTagName(this.options.transformTagName, tagName, tagExp, this.options));
@@ -59519,7 +59522,7 @@ var parseXml = function(xmlData) {
             if (prefixedAttrs) {
               childNode[":@"] = prefixedAttrs;
             }
-            this.addChild(currentNode, childNode, this.matcher, startIndex);
+            this.addChild(currentNode, childNode, this.readonlyMatcher, startIndex);
             this.matcher.pop();
             this.isCurrentNodeStopNode = false;
           } else if (this.options.unpairedTags.indexOf(tagName) !== -1) {
@@ -59527,7 +59530,7 @@ var parseXml = function(xmlData) {
             if (prefixedAttrs) {
               childNode[":@"] = prefixedAttrs;
             }
-            this.addChild(currentNode, childNode, this.matcher, startIndex);
+            this.addChild(currentNode, childNode, this.readonlyMatcher, startIndex);
             this.matcher.pop();
             this.isCurrentNodeStopNode = false;
             i = result.closeIndex;
@@ -59541,7 +59544,7 @@ var parseXml = function(xmlData) {
             if (prefixedAttrs) {
               childNode[":@"] = prefixedAttrs;
             }
-            this.addChild(currentNode, childNode, this.matcher, startIndex);
+            this.addChild(currentNode, childNode, this.readonlyMatcher, startIndex);
             currentNode = childNode;
           }
           textData = "";
@@ -59822,10 +59825,10 @@ function stripAttributePrefix(attrs, prefix) {
   }
   return rawAttrs;
 }
-function prettify(node, options, matcher) {
-  return compress(node, options, matcher);
+function prettify(node, options, matcher, readonlyMatcher) {
+  return compress(node, options, matcher, readonlyMatcher);
 }
-function compress(arr, options, matcher) {
+function compress(arr, options, matcher, readonlyMatcher) {
   let text;
   const compressedObj = {};
   for (let i = 0;i < arr.length; i++) {
@@ -59843,10 +59846,10 @@ function compress(arr, options, matcher) {
     } else if (property === undefined) {
       continue;
     } else if (tagObj[property]) {
-      let val = compress(tagObj[property], options, matcher);
+      let val = compress(tagObj[property], options, matcher, readonlyMatcher);
       const isLeaf = isLeafTag(val, options);
       if (tagObj[":@"]) {
-        assignAttributes(val, tagObj[":@"], matcher, options);
+        assignAttributes(val, tagObj[":@"], readonlyMatcher, options);
       } else if (Object.keys(val).length === 1 && val[options.textNodeName] !== undefined && !options.alwaysCreateTextNode) {
         val = val[options.textNodeName];
       } else if (Object.keys(val).length === 0) {
@@ -59864,7 +59867,7 @@ function compress(arr, options, matcher) {
         }
         compressedObj[property].push(val);
       } else {
-        const jPathOrMatcher = options.jPath ? matcher.toString() : matcher;
+        const jPathOrMatcher = options.jPath ? readonlyMatcher.toString() : readonlyMatcher;
         if (options.isArray(property, jPathOrMatcher, isLeaf)) {
           compressedObj[property] = [val];
         } else {
@@ -59891,14 +59894,14 @@ function propName(obj) {
       return key;
   }
 }
-function assignAttributes(obj, attrMap, matcher, options) {
+function assignAttributes(obj, attrMap, readonlyMatcher, options) {
   if (attrMap) {
     const keys = Object.keys(attrMap);
     const len = keys.length;
     for (let i = 0;i < len; i++) {
       const atrrName = keys[i];
       const rawAttrName = atrrName.startsWith(options.attributeNamePrefix) ? atrrName.substring(options.attributeNamePrefix.length) : atrrName;
-      const jPathOrMatcher = options.jPath ? matcher.toString() + "." + rawAttrName : matcher;
+      const jPathOrMatcher = options.jPath ? readonlyMatcher.toString() + "." + rawAttrName : readonlyMatcher;
       if (options.isArray(atrrName, jPathOrMatcher, true, true)) {
         obj[atrrName] = [attrMap[atrrName]];
       } else {
@@ -59945,7 +59948,7 @@ class XMLParser {
     if (this.options.preserveOrder || orderedResult === undefined)
       return orderedResult;
     else
-      return prettify(orderedResult, this.options, orderedObjParser.matcher);
+      return prettify(orderedResult, this.options, orderedObjParser.matcher, orderedObjParser.readonlyMatcher);
   }
   addEntity(key, value) {
     if (value.indexOf("&") !== -1) {
@@ -98357,5 +98360,5 @@ async function index() {
 }
 await index();
 
-//# debugId=59A7E8EDFC39A6EF64756E2164756E21
+//# debugId=EC6E0B4546C6258364756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
