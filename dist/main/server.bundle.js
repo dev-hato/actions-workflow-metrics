@@ -36624,7 +36624,7 @@ class Metrics {
       });
     } catch (error2) {
       console.error(error2);
-      setFailed(error2);
+      setFailed(error2 instanceof Error ? error2 : String(error2));
     } finally {
       const nextUNIXTimeMs = unixTimeMs + this.intervalMs;
       setTimeout(() => this.append(nextUNIXTimeMs).catch(setFailed), Math.max(0, nextUNIXTimeMs - Date.now()));
@@ -36658,7 +36658,7 @@ async function server() {
       response.setHeader("Content-Type", "application/json");
       response.end(JSON.stringify({ error: "Internal server error" }));
       console.error(error2);
-      setFailed(error2);
+      setFailed(error2 instanceof Error ? error2 : String(error2));
     }
   });
   server2.on("error", setFailed);
@@ -36666,5 +36666,5 @@ async function server() {
 }
 await server();
 
-//# debugId=446FA1D4002335B564756E2164756E21
+//# debugId=F82EDD2F335ED14464756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
