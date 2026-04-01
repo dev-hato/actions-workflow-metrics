@@ -119695,6 +119695,9 @@ async function index() {
       }
       await new Promise((resolve2) => setTimeout(resolve2, 1000));
     }
+    if (metricsData === undefined) {
+      throw new Error("Failed to retrieve metrics data");
+    }
     const fileBaseName = "workflow_metrics";
     const fileName = `${fileBaseName}.json`;
     await fs7.writeFile(fileName, JSON.stringify(metricsData));
@@ -119736,5 +119739,5 @@ async function index() {
 }
 await index();
 
-//# debugId=4623A331A407060464756E2164756E21
+//# debugId=4AA5155B9217917A64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
