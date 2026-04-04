@@ -2,6 +2,8 @@ name: Sleep Test
 on:
   push:
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   long-sleep:
     runs-on: ubuntu-latest
