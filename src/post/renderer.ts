@@ -94,11 +94,10 @@ export class Renderer {
       }
     }
 
-    return formattedTimes.map(
-      (label: string, index: number): string =>
-        visibleLabelIndices.has(index)
-          ? label
-          : Renderer.encodeHiddenLabel(index),
+    return formattedTimes.map((label: string, index: number): string =>
+      visibleLabelIndices.has(index)
+        ? label
+        : Renderer.encodeHiddenLabel(index),
     );
   }
 
