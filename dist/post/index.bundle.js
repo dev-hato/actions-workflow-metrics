@@ -98132,55 +98132,58 @@ var REQUIRED_GAP_PX = LABEL_WIDTH_PX - TICK_WIDTH_PX;
 var ZERO_WIDTH_ZERO = "​";
 var ZERO_WIDTH_ONE = "‌";
 var ZERO_WIDTH_SENTINEL = "‍";
-var calculateLabelStep = (count) => {
-  if (count <= 2) {
-    return 1;
-  }
-  const totalGapWidth = CHART_WIDTH_PX - TICK_WIDTH_PX * count;
-  if (totalGapWidth <= 0) {
-    return count;
-  }
-  const numerator = REQUIRED_GAP_PX * (count - 1);
-  return Math.max(1, Math.ceil(numerator / totalGapWidth));
-};
-var encodeHiddenLabel = (index) => {
-  const binary = index.toString(2);
-  return ZERO_WIDTH_SENTINEL + binary.split("").map((digit) => digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE).join("");
-};
-var formatTimeLabels = (times) => {
-  if (times.length === 0) {
-    return [];
-  }
-  const formattedTimes = times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false }));
-  const labelStep = calculateLabelStep(formattedTimes.length);
-  if (labelStep <= 1 || formattedTimes.length <= 2) {
-    return formattedTimes;
-  }
-  const lastIndex = formattedTimes.length - 1;
-  const totalInteriorPositions = Math.max(formattedTimes.length - 2, 0);
-  const estimatedInteriorLabels = Math.max(Math.floor(lastIndex / labelStep) - 1, 0);
-  const usableInteriorLabels = Math.min(totalInteriorPositions, estimatedInteriorLabels);
-  const visibleInteriorIndices = new Set;
-  if (usableInteriorLabels > 0) {
-    const spacing = totalInteriorPositions / (usableInteriorLabels + 1);
-    for (let slot = 1;slot <= usableInteriorLabels; slot += 1) {
-      const targetIndex = 1 + Math.round(slot * spacing);
-      let clamped = Math.min(lastIndex - 1, Math.max(1, targetIndex));
-      while (visibleInteriorIndices.has(clamped) && clamped < lastIndex - 1) {
-        clamped += 1;
-      }
-      visibleInteriorIndices.add(clamped);
-    }
-  }
-  return formattedTimes.map((label, index, array2) => {
-    if (index === 0 || index === array2.length - 1 || visibleInteriorIndices.has(index)) {
-      return label;
-    }
-    return encodeHiddenLabel(index);
-  });
-};
 
 class Renderer {
+  static calculateLabelStep(count) {
+    if (count <= 2) {
+      return 1;
+    }
+    const totalGapWidth = CHART_WIDTH_PX - TICK_WIDTH_PX * count;
+    if (totalGapWidth <= 0) {
+      return count;
+    }
+    const numerator = REQUIRED_GAP_PX * (count - 1);
+    return Math.max(1, Math.ceil(numerator / totalGapWidth));
+  }
+  static encodeHiddenLabel(index) {
+    const binary = index.toString(2);
+    return ZERO_WIDTH_SENTINEL + binary.split("").map((digit) => digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE).join("");
+  }
+  static formatTimeLabels(times) {
+    if (times.length === 0) {
+      return [];
+    }
+    const formattedTimes = times.map((d) => d.toLocaleTimeString("en-GB", { hour12: false }));
+    if (formattedTimes.length <= 2) {
+      return formattedTimes;
+    }
+    const labelStep = Renderer.calculateLabelStep(formattedTimes.length);
+    if (labelStep <= 1) {
+      return formattedTimes;
+    }
+    const lastIndex = formattedTimes.length - 1;
+    const totalInteriorPositions = Math.max(formattedTimes.length - 2, 0);
+    const estimatedInteriorLabels = Math.max(Math.floor(lastIndex / labelStep) - 1, 0);
+    const usableInteriorLabels = Math.min(totalInteriorPositions, estimatedInteriorLabels);
+    const visibleLabelIndices = new Set([0, lastIndex]);
+    if (usableInteriorLabels > 0) {
+      const spacing = totalInteriorPositions / (usableInteriorLabels + 1);
+      for (let slot = 1;slot <= usableInteriorLabels; slot += 1) {
+        const targetIndex = 1 + Math.round(slot * spacing);
+        let clamped = Math.min(lastIndex - 1, Math.max(1, targetIndex));
+        while (visibleLabelIndices.has(clamped) && clamped < lastIndex - 1) {
+          clamped += 1;
+        }
+        visibleLabelIndices.add(clamped);
+      }
+    }
+    return formattedTimes.map((label, index, array2) => {
+      if (visibleLabelIndices.has(index)) {
+        return label;
+      }
+      return Renderer.encodeHiddenLabel(index);
+    });
+  }
   render(renderParamsList, metricsID) {
     return this.renderMetrics(this.renderCharts(renderParamsList), metricsID);
   }
@@ -98201,7 +98204,7 @@ ${charts}`;
     return metricsInfoList.map(({ color }) => color).join(", ");
   }
   formatTimes(times) {
-    return JSON.stringify(formatTimeLabels(times));
+    return JSON.stringify(Renderer.formatTimeLabels(times));
   }
   formatYAxisRange(range2) {
     return range2 ? ` ${range2}` : "";
@@ -98427,5 +98430,5 @@ async function index() {
 }
 await index();
 
-//# debugId=942B09D42CEA825E64756E2164756E21
+//# debugId=49E235B97A5BDD2364756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
