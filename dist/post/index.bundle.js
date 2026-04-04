@@ -98124,7 +98124,7 @@ function date4(params) {
 
 // node_modules/zod/v4/classic/external.js
 config(en_default());
-// src/post/renderer.ts
+// src/post/timeLabels.ts
 var CHART_WIDTH_PX = 1161;
 var TICK_WIDTH_PX = 5;
 var LABEL_WIDTH_PX = 107;
@@ -98133,7 +98133,7 @@ var ZERO_WIDTH_ZERO = "​";
 var ZERO_WIDTH_ONE = "‌";
 var ZERO_WIDTH_SENTINEL = "‍";
 
-class Renderer {
+class TimeLabelFormatter {
   static calculateLabelStep(count) {
     if (count <= 2) {
       return 1;
@@ -98145,11 +98145,7 @@ class Renderer {
     const numerator = REQUIRED_GAP_PX * (count - 1);
     return Math.max(1, Math.ceil(numerator / totalGapWidth));
   }
-  static encodeHiddenLabel(index) {
-    const binary = index.toString(2);
-    return ZERO_WIDTH_SENTINEL + binary.split("").map((digit) => digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE).join("");
-  }
-  static formatTimeLabels(times) {
+  static format(times) {
     if (times.length === 0) {
       return [];
     }
@@ -98157,7 +98153,7 @@ class Renderer {
     if (formattedTimes.length <= 2) {
       return formattedTimes;
     }
-    const labelStep = Renderer.calculateLabelStep(formattedTimes.length);
+    const labelStep = TimeLabelFormatter.calculateLabelStep(formattedTimes.length);
     if (labelStep <= 1) {
       return formattedTimes;
     }
@@ -98177,8 +98173,16 @@ class Renderer {
         visibleLabelIndices.add(clamped);
       }
     }
-    return formattedTimes.map((label, index) => visibleLabelIndices.has(index) ? label : Renderer.encodeHiddenLabel(index));
+    return formattedTimes.map((label, index) => visibleLabelIndices.has(index) ? label : TimeLabelFormatter.encodeHiddenLabel(index));
   }
+  static encodeHiddenLabel(index) {
+    const binary = index.toString(2);
+    return ZERO_WIDTH_SENTINEL + binary.split("").map((digit) => digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE).join("");
+  }
+}
+
+// src/post/renderer.ts
+class Renderer {
   render(renderParamsList, metricsID) {
     return this.renderMetrics(this.renderCharts(renderParamsList), metricsID);
   }
@@ -98199,7 +98203,7 @@ ${charts}`;
     return metricsInfoList.map(({ color }) => color).join(", ");
   }
   formatTimes(times) {
-    return JSON.stringify(Renderer.formatTimeLabels(times));
+    return JSON.stringify(TimeLabelFormatter.format(times));
   }
   formatYAxisRange(range2) {
     return range2 ? ` ${range2}` : "";
@@ -98425,5 +98429,5 @@ async function index() {
 }
 await index();
 
-//# debugId=CF96A08A428BBF6164756E2164756E21
+//# debugId=AACAA5C7E2C7276E64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

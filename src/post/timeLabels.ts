@@ -72,11 +72,10 @@ export class TimeLabelFormatter {
       }
     }
 
-    return formattedTimes.map(
-      (label: string, index: number): string =>
-        visibleLabelIndices.has(index)
-          ? label
-          : TimeLabelFormatter.encodeHiddenLabel(index),
+    return formattedTimes.map((label: string, index: number): string =>
+      visibleLabelIndices.has(index)
+        ? label
+        : TimeLabelFormatter.encodeHiddenLabel(index),
     );
   }
 
