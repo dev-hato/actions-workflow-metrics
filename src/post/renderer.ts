@@ -76,30 +76,23 @@ export class Renderer {
       estimatedInteriorLabels,
     );
 
-    const visibleInteriorIndices: Set<number> = new Set<number>();
+    const visibleLabelIndices: Set<number> = new Set<number>([0, lastIndex]);
     if (usableInteriorLabels > 0) {
       const spacing: number =
         totalInteriorPositions / (usableInteriorLabels + 1);
       for (let slot: number = 1; slot <= usableInteriorLabels; slot += 1) {
         const targetIndex: number = 1 + Math.round(slot * spacing);
         let clamped: number = Math.min(lastIndex - 1, Math.max(1, targetIndex));
-        while (
-          visibleInteriorIndices.has(clamped) &&
-          clamped < lastIndex - 1
-        ) {
+        while (visibleLabelIndices.has(clamped) && clamped < lastIndex - 1) {
           clamped += 1;
         }
-        visibleInteriorIndices.add(clamped);
+        visibleLabelIndices.add(clamped);
       }
     }
 
     return formattedTimes.map(
       (label: string, index: number, array: string[]): string => {
-        if (
-          index === 0 ||
-          index === array.length - 1 ||
-          visibleInteriorIndices.has(index)
-        ) {
+        if (visibleLabelIndices.has(index)) {
           return label;
         }
         return Renderer.encodeHiddenLabel(index);
