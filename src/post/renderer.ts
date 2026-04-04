@@ -55,10 +55,14 @@ export class Renderer {
       d.toLocaleTimeString("en-GB", { hour12: false }),
     );
 
+    if (formattedTimes.length <= 2) {
+      return formattedTimes;
+    }
+
     const labelStep: number = Renderer.calculateLabelStep(
       formattedTimes.length,
     );
-    if (labelStep <= 1 || formattedTimes.length <= 2) {
+    if (labelStep <= 1) {
       return formattedTimes;
     }
 
