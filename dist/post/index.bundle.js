@@ -98177,12 +98177,7 @@ class Renderer {
         visibleLabelIndices.add(clamped);
       }
     }
-    return formattedTimes.map((label, index, array2) => {
-      if (visibleLabelIndices.has(index)) {
-        return label;
-      }
-      return Renderer.encodeHiddenLabel(index);
-    });
+    return formattedTimes.map((label, index) => visibleLabelIndices.has(index) ? label : Renderer.encodeHiddenLabel(index));
   }
   render(renderParamsList, metricsID) {
     return this.renderMetrics(this.renderCharts(renderParamsList), metricsID);
@@ -98430,5 +98425,5 @@ async function index() {
 }
 await index();
 
-//# debugId=49E235B97A5BDD2364756E2164756E21
+//# debugId=CF96A08A428BBF6164756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
