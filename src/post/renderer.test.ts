@@ -1,9 +1,23 @@
 import { describe, expect, it } from "bun:test";
 import { Renderer } from "./renderer";
 import { TimeLabelFormatter } from "./timeLabels";
+import type { z } from "zod";
+import type { legendsSchema } from "./lib";
 
 describe("Renderer", () => {
   const testMetricsID: string = "1234567890";
+  const twoMetricsInfoList: number[][] = [
+    [10, 20, 30],
+    [5, 10, 15],
+  ];
+  const threeTimes: Date[] = [
+    new Date("2024-01-01T00:00:00Z"),
+    new Date("2024-01-01T00:00:05Z"),
+    new Date("2024-01-01T00:00:10Z"),
+  ];
+  const singleCpuLegends: z.TypeOf<typeof legendsSchema> = [
+    { color: "Red", name: "User CPU" },
+  ];
 
   it("should return only header for empty metricsInfo", () => {
     const renderer: Renderer = new Renderer();
@@ -13,16 +27,24 @@ describe("Renderer", () => {
         [
           {
             title: "Test",
-            metricsInfoList: [],
-            times: [],
-            yAxis: {
-              title: "Units",
-            },
+            legends: [],
+            data: [
+              {
+                stepName: undefined,
+                stackedBarData: [],
+                times: [],
+                yAxis: {
+                  title: "Units",
+                },
+              },
+            ],
           },
         ],
         testMetricsID,
       ),
-    ).toBe(`## Workflow Metrics\n\n### Metrics ID\n\n${testMetricsID}\n\n`);
+    ).toBe(
+      `## Workflow Metrics\n\n### Metrics ID\n\n${testMetricsID}\n\n### Test\n\n#### Legends\n\n`,
+    );
   });
 
   it("should render with single metric", () => {
@@ -31,28 +53,26 @@ describe("Renderer", () => {
       [
         {
           title: "CPU Usage",
-          metricsInfoList: [
+          legends: singleCpuLegends,
+          data: [
             {
-              color: "Red",
-              name: "User CPU",
-              data: [10, 20, 30],
+              stepName: undefined,
+              stackedBarData: [[10, 20, 30]],
+              times: [new Date("2024-01-01T00:00:00Z")],
+              yAxis: {
+                title: "Percentage",
+                range: "0 --> 100",
+              },
             },
           ],
-          times: [new Date("2024-01-01T00:00:00Z")],
-          yAxis: {
-            title: "Percentage",
-            range: "0 --> 100",
-          },
         },
       ],
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
-
-    // Verify title is included
+    // Verify section title and step name
     expect(result).toContain("### CPU Usage");
+    expect(result).toContain("#### All");
 
     // Verify Mermaid block is included
     expect(result).toContain("```mermaid");
@@ -79,37 +99,29 @@ describe("Renderer", () => {
       [
         {
           title: "System Metrics",
-          metricsInfoList: [
+          legends: [
+            { color: "Red", name: "User CPU" },
+            { color: "Orange", name: "System CPU" },
+          ],
+          data: [
             {
-              color: "Red",
-              name: "User CPU",
-              data: [10, 20, 30],
-            },
-            {
-              color: "Orange",
-              name: "System CPU",
-              data: [5, 10, 15],
+              stepName: undefined,
+              stackedBarData: twoMetricsInfoList,
+              times: threeTimes,
+              yAxis: {
+                title: "%",
+                range: "0 --> 100",
+              },
             },
           ],
-          times: [
-            new Date("2024-01-01T00:00:00Z"),
-            new Date("2024-01-01T00:00:05Z"),
-            new Date("2024-01-01T00:00:10Z"),
-          ],
-          yAxis: {
-            title: "%",
-            range: "0 --> 100",
-          },
         },
       ],
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
-
-    // Verify title is included
+    // Verify section title and step name
     expect(result).toContain("### System Metrics");
+    expect(result).toContain("#### All");
 
     // Verify multiple colors are set in color palette
     expect(result).toContain('"plotColorPalette": "Red, Orange"');
@@ -138,27 +150,25 @@ describe("Renderer", () => {
       [
         {
           title: "Memory Usage",
-          metricsInfoList: [
+          legends: [{ color: "Blue", name: "Used Memory" }],
+          data: [
             {
-              color: "Blue",
-              name: "Used Memory",
-              data: [100, 200, 300],
+              stepName: undefined,
+              stackedBarData: [[100, 200, 300]],
+              times: [new Date()],
+              yAxis: {
+                title: "MB",
+              },
             },
           ],
-          times: [new Date()],
-          yAxis: {
-            title: "MB",
-          },
         },
       ],
       testMetricsID,
     );
 
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
-
-    // Verify title is included
+    // Verify section title and step name
     expect(result).toContain("### Memory Usage");
+    expect(result).toContain("#### All");
 
     // Verify y-axis includes only title, not range
     expect(result).toContain('y-axis "MB"');
@@ -174,34 +184,25 @@ describe("Renderer", () => {
       [
         {
           title: "Test",
-          metricsInfoList: [
+          legends: [
+            { color: "Red", name: "Metric 1" },
+            { color: "Blue", name: "Metric 2" },
+            { color: "Green", name: "Metric 3" },
+          ],
+          data: [
             {
-              color: "Red",
-              name: "Metric 1",
-              data: [1],
-            },
-            {
-              color: "Blue",
-              name: "Metric 2",
-              data: [2],
-            },
-            {
-              color: "Green",
-              name: "Metric 3",
-              data: [3],
+              stepName: undefined,
+              stackedBarData: [[1], [2], [3]],
+              times: [new Date()],
+              yAxis: {
+                title: "Units",
+              },
             },
           ],
-          times: [new Date()],
-          yAxis: {
-            title: "Units",
-          },
         },
       ],
       testMetricsID,
     );
-
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
 
     // Verify all colors are included in color palette
     expect(result).toContain('"plotColorPalette": "Red, Blue, Green"');
@@ -226,34 +227,25 @@ describe("Renderer", () => {
       [
         {
           title: "Stacked Test",
-          metricsInfoList: [
+          legends: [
+            { color: "Red", name: "Base Metric" },
+            { color: "Blue", name: "Stacked Metric" },
+          ],
+          data: [
             {
-              color: "Red",
-              name: "Base Metric",
-              data: [10, 20, 30],
-            },
-            {
-              color: "Blue",
-              name: "Stacked Metric",
-              data: [5, 10, 15],
+              stepName: undefined,
+              stackedBarData: twoMetricsInfoList,
+              times: threeTimes,
+              yAxis: {
+                title: "Value",
+              },
             },
           ],
-          times: [
-            new Date("2024-01-01T00:00:00Z"),
-            new Date("2024-01-01T00:00:05Z"),
-            new Date("2024-01-01T00:00:10Z"),
-          ],
-          yAxis: {
-            title: "Value",
-          },
         },
       ],
       testMetricsID,
     );
 
-    // The result should be a valid-rendered template
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
     expect(result).toContain("### Stacked Test");
 
     // Verify stacked data is calculated correctly
@@ -273,37 +265,32 @@ describe("Renderer", () => {
       [
         {
           title: "Multi-layer Stack",
-          metricsInfoList: [
+          legends: [
+            { color: "Red", name: "Layer 1" },
+            { color: "Orange", name: "Layer 2" },
+            { color: "Yellow", name: "Layer 3" },
+          ],
+          data: [
             {
-              color: "Red",
-              name: "Layer 1",
-              data: [10, 20],
-            },
-            {
-              color: "Orange",
-              name: "Layer 2",
-              data: [5, 10],
-            },
-            {
-              color: "Yellow",
-              name: "Layer 3",
-              data: [3, 6],
+              stepName: undefined,
+              stackedBarData: [
+                [10, 20],
+                [5, 10],
+                [3, 6],
+              ],
+              times: [
+                new Date("2024-01-01T00:00:00Z"),
+                new Date("2024-01-01T00:00:05Z"),
+              ],
+              yAxis: {
+                title: "Units",
+              },
             },
           ],
-          times: [
-            new Date("2024-01-01T00:00:00Z"),
-            new Date("2024-01-01T00:00:05Z"),
-          ],
-          yAxis: {
-            title: "Units",
-          },
         },
       ],
       testMetricsID,
     );
-
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
 
     // Verify title is included
     expect(result).toContain("### Multi-layer Stack");
@@ -339,21 +326,21 @@ describe("Renderer", () => {
       [
         {
           title: "Time Format Test",
-          metricsInfoList: [
+          legends: [{ color: "Blue", name: "Test Metric" }],
+          data: [
             {
-              color: "Blue",
-              name: "Test Metric",
-              data: [10, 20, 30],
+              stepName: undefined,
+              stackedBarData: [[10, 20, 30]],
+              times: [
+                new Date("2024-01-01T09:15:30Z"),
+                new Date("2024-01-01T14:30:45Z"),
+                new Date("2024-01-01T23:59:59Z"),
+              ],
+              yAxis: {
+                title: "Value",
+              },
             },
           ],
-          times: [
-            new Date("2024-01-01T09:15:30Z"),
-            new Date("2024-01-01T14:30:45Z"),
-            new Date("2024-01-01T23:59:59Z"),
-          ],
-          yAxis: {
-            title: "Value",
-          },
         },
       ],
       testMetricsID,
@@ -374,18 +361,18 @@ describe("Renderer", () => {
       [
         {
           title: "Structure Test",
-          metricsInfoList: [
+          legends: [{ color: "Green", name: "Test" }],
+          data: [
             {
-              color: "Green",
-              name: "Test",
-              data: [100],
+              stepName: undefined,
+              stackedBarData: [[100]],
+              times: [new Date()],
+              yAxis: {
+                title: "Units",
+                range: "0 --> 200",
+              },
             },
           ],
-          times: [new Date()],
-          yAxis: {
-            title: "Units",
-            range: "0 --> 200",
-          },
         },
       ],
       testMetricsID,
@@ -413,23 +400,50 @@ describe("Renderer", () => {
     expect(result).toContain("\\verb|");
   });
 
+  it("should have blank line between last legend and first chart header", () => {
+    const renderer: Renderer = new Renderer();
+    const result: string = renderer.render(
+      [
+        {
+          title: "Separation Test",
+          legends: singleCpuLegends,
+          data: [
+            {
+              stepName: undefined,
+              stackedBarData: [[10]],
+              times: [new Date("2024-01-01T00:00:00Z")],
+              yAxis: { title: "%" },
+            },
+          ],
+        },
+      ],
+      testMetricsID,
+    );
+
+    // Verify that the legend closing $$ is not immediately followed by #### (chart header)
+    expect(result).not.toMatch(/\$\$####/);
+
+    // Verify there is a blank line between legend and chart header
+    expect(result).toContain("$$\n\n#### All");
+  });
+
   it("should handle single data point", () => {
     const renderer: Renderer = new Renderer();
     const result: string = renderer.render(
       [
         {
           title: "Single Point",
-          metricsInfoList: [
+          legends: [{ color: "Purple", name: "Single Metric" }],
+          data: [
             {
-              color: "Purple",
-              name: "Single Metric",
-              data: [42],
+              stepName: undefined,
+              stackedBarData: [[42]],
+              times: [new Date("2024-01-01T12:00:00Z")],
+              yAxis: {
+                title: "Value",
+              },
             },
           ],
-          times: [new Date("2024-01-01T12:00:00Z")],
-          yAxis: {
-            title: "Value",
-          },
         },
       ],
       testMetricsID,
@@ -437,9 +451,47 @@ describe("Renderer", () => {
 
     expect(result).toBeTruthy();
     expect(result).toContain("### Single Point");
+    expect(result).toContain("#### All");
     expect(result).toContain("bar [42]");
     expect(result).toContain("12:00:00");
     expect(result).toContain("Purple: Single Metric");
+  });
+
+  it("should render step charts inside collapsible details", () => {
+    const renderer: Renderer = new Renderer();
+    const result: string = renderer.render(
+      [
+        {
+          title: "Step Collapsible",
+          legends: singleCpuLegends,
+          data: [
+            {
+              stepName: undefined,
+              stackedBarData: [[10, 20]],
+              times: threeTimes.slice(0, 2),
+              yAxis: { title: "%" },
+            },
+            {
+              stepName: "Build",
+              stackedBarData: [[15]],
+              times: [threeTimes[0]],
+              yAxis: { title: "%" },
+            },
+          ],
+        },
+      ],
+      testMetricsID,
+    );
+
+    // "All" section should NOT be inside <details>
+    expect(result).toContain("#### All");
+    expect(result).not.toContain("#### All\n\n<details>");
+
+    // Step section should be inside <details> with <summary>
+    expect(result).toContain("#### Step `Build`");
+    expect(result).toContain("<details>");
+    expect(result).toContain("<summary>Chart</summary>");
+    expect(result).toContain("</details>");
   });
 
   it("should limit visible time labels when times are long", () => {
@@ -462,20 +514,22 @@ describe("Renderer", () => {
       [
         {
           title: "Long Timeline",
-          metricsInfoList: [
+          legends: [{ color: "Gray", name: "Metric" }],
+          data: [
             {
-              color: "Gray",
-              name: "Metric",
-              data: Array.from(
-                { length: times.length },
-                (_, index: number): number => index,
-              ),
+              stepName: undefined,
+              stackedBarData: [
+                Array.from(
+                  { length: times.length },
+                  (_, index: number): number => index,
+                ),
+              ],
+              times,
+              yAxis: {
+                title: "Units",
+              },
             },
           ],
-          times,
-          yAxis: {
-            title: "Units",
-          },
         },
       ],
       testMetricsID,

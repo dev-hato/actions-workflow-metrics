@@ -1,10 +1,13 @@
 import { promises as fs } from "node:fs";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary, warning } from "@actions/core";
+import { context } from "@actions/github";
+import { Octokit } from "@octokit/action";
 import { getMetricsData, render } from "./lib";
 import { serverPort } from "../lib";
+import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
-import type { metricsDataSchema } from "../type";
+import type { metricsDataWithStepsSchema } from "./lib";
 
 function reportError(
   error: unknown,
@@ -30,12 +33,21 @@ function reportError(
 
 async function index(): Promise<void> {
   try {
+    const octokit: Octokit = new Octokit();
+    const jobs: components["schemas"]["job"][] = await octokit.paginate(
+      octokit.rest.actions.listJobsForWorkflowRun,
+      {
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        run_id: context.runId,
+      },
+    );
     const maxRetryCount: number = 10;
-    let metricsData: z.TypeOf<typeof metricsDataSchema> | undefined;
+    let metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> | undefined;
 
     for (let i = 0; i < maxRetryCount; i++) {
       try {
-        metricsData = await getMetricsData();
+        metricsData = await getMetricsData(jobs);
         break;
       } catch (error) {
         if (
