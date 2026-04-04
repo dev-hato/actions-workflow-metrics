@@ -52,7 +52,7 @@ export class Metrics {
       });
     } catch (error) {
       console.error(error);
-      setFailed(error);
+      setFailed(error instanceof Error ? error : String(error));
     } finally {
       const nextUNIXTimeMs: number = unixTimeMs + this.intervalMs;
       setTimeout(

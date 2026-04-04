@@ -31,7 +31,7 @@ function reportError(
 async function index(): Promise<void> {
   try {
     const maxRetryCount: number = 10;
-    let metricsData: z.TypeOf<typeof metricsDataSchema>;
+    let metricsData: z.TypeOf<typeof metricsDataSchema> | undefined;
 
     for (let i = 0; i < maxRetryCount; i++) {
       try {
@@ -48,6 +48,10 @@ async function index(): Promise<void> {
       }
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    if (metricsData === undefined) {
+      throw new Error("Failed to retrieve metrics data");
     }
 
     const fileBaseName: string = "workflow_metrics";

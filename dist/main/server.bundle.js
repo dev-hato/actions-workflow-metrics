@@ -4,25 +4,43 @@ var __getProtoOf = Object.getPrototypeOf;
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+function __accessProp(key) {
+  return this[key];
+}
+var __toESMCache_node;
+var __toESMCache_esm;
 var __toESM = (mod, isNodeMode, target) => {
+  var canCache = mod != null && typeof mod === "object";
+  if (canCache) {
+    var cache = isNodeMode ? __toESMCache_node ??= new WeakMap : __toESMCache_esm ??= new WeakMap;
+    var cached = cache.get(mod);
+    if (cached)
+      return cached;
+  }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
   const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
   for (let key of __getOwnPropNames(mod))
     if (!__hasOwnProp.call(to, key))
       __defProp(to, key, {
-        get: () => mod[key],
+        get: __accessProp.bind(mod, key),
         enumerable: true
       });
+  if (canCache)
+    cache.set(mod, to);
   return to;
 };
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
+var __returnValue = (v) => v;
+function __exportSetter(name, newValue) {
+  this[name] = __returnValue.bind(null, newValue);
+}
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, {
       get: all[name],
       enumerable: true,
       configurable: true,
-      set: (newValue) => all[name] = () => newValue
+      set: __exportSetter.bind(all, name)
     });
 };
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
@@ -653,6 +671,22 @@ var require_errors = __commonJS((exports, module) => {
     }
     [kSecureProxyConnectionError] = true;
   }
+  var kMessageSizeExceededError = Symbol.for("undici.error.UND_ERR_WS_MESSAGE_SIZE_EXCEEDED");
+
+  class MessageSizeExceededError extends UndiciError {
+    constructor(message) {
+      super(message);
+      this.name = "MessageSizeExceededError";
+      this.message = message || "Max decompressed message size exceeded";
+      this.code = "UND_ERR_WS_MESSAGE_SIZE_EXCEEDED";
+    }
+    static [Symbol.hasInstance](instance) {
+      return instance && instance[kMessageSizeExceededError] === true;
+    }
+    get [kMessageSizeExceededError]() {
+      return true;
+    }
+  }
   module.exports = {
     AbortError,
     HTTPParserError,
@@ -676,7 +710,8 @@ var require_errors = __commonJS((exports, module) => {
     ResponseExceededMaxSizeError,
     RequestRetryError,
     ResponseError,
-    SecureProxyConnectionError
+    SecureProxyConnectionError,
+    MessageSizeExceededError
   };
 });
 
@@ -1593,6 +1628,9 @@ var require_request = __commonJS((exports, module) => {
       if (upgrade && typeof upgrade !== "string") {
         throw new InvalidArgumentError("upgrade must be a string");
       }
+      if (upgrade && !isValidHeaderValue(upgrade)) {
+        throw new InvalidArgumentError("invalid upgrade header");
+      }
       if (headersTimeout != null && (!Number.isFinite(headersTimeout) || headersTimeout < 0)) {
         throw new InvalidArgumentError("invalid headersTimeout");
       }
@@ -1825,12 +1863,18 @@ var require_request = __commonJS((exports, module) => {
     } else {
       val = `${val}`;
     }
-    if (request.host === null && headerName === "host") {
+    if (headerName === "host") {
+      if (request.host !== null) {
+        throw new InvalidArgumentError("duplicate host header");
+      }
       if (typeof val !== "string") {
         throw new InvalidArgumentError("invalid host header");
       }
       request.host = val;
-    } else if (request.contentLength === null && headerName === "content-length") {
+    } else if (headerName === "content-length") {
+      if (request.contentLength !== null) {
+        throw new InvalidArgumentError("duplicate content-length header");
+      }
       request.contentLength = parseInt(val, 10);
       if (!Number.isFinite(request.contentLength)) {
         throw new InvalidArgumentError("invalid content-length header");
@@ -15510,13 +15554,17 @@ var require_util7 = __commonJS((exports, module) => {
     return extensionList;
   }
   function isValidClientWindowBits(value) {
+    if (value.length === 0) {
+      return false;
+    }
     for (let i = 0;i < value.length; i++) {
       const byte = value.charCodeAt(i);
       if (byte < 48 || byte > 57) {
         return false;
       }
     }
-    return true;
+    const num = Number.parseInt(value, 10);
+    return num >= 8 && num <= 15;
   }
   var hasIntl = typeof process.versions.icu === "string";
   var fatalDecoder = hasIntl ? new TextDecoder("utf-8", { fatal: true }) : undefined;
@@ -15802,18 +15850,26 @@ var require_connection = __commonJS((exports, module) => {
 var require_permessage_deflate = __commonJS((exports, module) => {
   var { createInflateRaw, Z_DEFAULT_WINDOWBITS } = __require("node:zlib");
   var { isValidClientWindowBits } = require_util7();
+  var { MessageSizeExceededError } = require_errors();
   var tail = Buffer.from([0, 0, 255, 255]);
   var kBuffer = Symbol("kBuffer");
   var kLength = Symbol("kLength");
+  var kDefaultMaxDecompressedSize = 4 * 1024 * 1024;
 
   class PerMessageDeflate {
     #inflate;
     #options = {};
+    #aborted = false;
+    #currentCallback = null;
     constructor(extensions) {
       this.#options.serverNoContextTakeover = extensions.has("server_no_context_takeover");
       this.#options.serverMaxWindowBits = extensions.get("server_max_window_bits");
     }
     decompress(chunk, fin, callback) {
+      if (this.#aborted) {
+        callback(new MessageSizeExceededError);
+        return;
+      }
       if (!this.#inflate) {
         let windowBits = Z_DEFAULT_WINDOWBITS;
         if (this.#options.serverMaxWindowBits) {
@@ -15823,26 +15879,51 @@ var require_permessage_deflate = __commonJS((exports, module) => {
           }
           windowBits = Number.parseInt(this.#options.serverMaxWindowBits);
         }
-        this.#inflate = createInflateRaw({ windowBits });
+        try {
+          this.#inflate = createInflateRaw({ windowBits });
+        } catch (err) {
+          callback(err);
+          return;
+        }
         this.#inflate[kBuffer] = [];
         this.#inflate[kLength] = 0;
         this.#inflate.on("data", (data) => {
-          this.#inflate[kBuffer].push(data);
+          if (this.#aborted) {
+            return;
+          }
           this.#inflate[kLength] += data.length;
+          if (this.#inflate[kLength] > kDefaultMaxDecompressedSize) {
+            this.#aborted = true;
+            this.#inflate.removeAllListeners();
+            this.#inflate.destroy();
+            this.#inflate = null;
+            if (this.#currentCallback) {
+              const cb = this.#currentCallback;
+              this.#currentCallback = null;
+              cb(new MessageSizeExceededError);
+            }
+            return;
+          }
+          this.#inflate[kBuffer].push(data);
         });
         this.#inflate.on("error", (err) => {
           this.#inflate = null;
           callback(err);
         });
       }
+      this.#currentCallback = callback;
       this.#inflate.write(chunk);
       if (fin) {
         this.#inflate.write(tail);
       }
       this.#inflate.flush(() => {
+        if (this.#aborted || !this.#inflate) {
+          return;
+        }
         const full = Buffer.concat(this.#inflate[kBuffer], this.#inflate[kLength]);
         this.#inflate[kBuffer].length = 0;
         this.#inflate[kLength] = 0;
+        this.#currentCallback = null;
         callback(null, full);
       });
     }
@@ -15973,12 +16054,12 @@ var require_receiver = __commonJS((exports, module) => {
           }
           const buffer = this.consume(8);
           const upper = buffer.readUInt32BE(0);
-          if (upper > 2 ** 31 - 1) {
+          const lower = buffer.readUInt32BE(4);
+          if (upper !== 0 || lower > 2 ** 31 - 1) {
             failWebsocketConnection(this.ws, "Received payload length > 2^31 bytes.");
             return;
           }
-          const lower = buffer.readUInt32BE(4);
-          this.#info.payloadLength = (upper << 8) + lower;
+          this.#info.payloadLength = lower;
           this.#state = parserStates.READ_DATA;
         } else if (this.#state === parserStates.READ_DATA) {
           if (this.#byteOffset < this.#info.payloadLength) {
@@ -16000,7 +16081,7 @@ var require_receiver = __commonJS((exports, module) => {
             } else {
               this.#extensions.get("permessage-deflate").decompress(body, this.#info.fin, (error, data) => {
                 if (error) {
-                  closeWebSocketConnection(this.ws, 1007, error.message, error.message.length);
+                  failWebsocketConnection(this.ws, error.message);
                   return;
                 }
                 this.#fragments.push(data);
@@ -17175,7 +17256,7 @@ var require_undici = __commonJS((exports, module) => {
 var require_package = __commonJS((exports, module) => {
   module.exports = {
     name: "systeminformation",
-    version: "5.31.1",
+    version: "5.31.5",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -18514,6 +18595,86 @@ var require_util9 = __commonJS((exports) => {
   }
   function getAppleModel(key) {
     const appleModelIds = [
+      {
+        key: "Mac17,7",
+        name: "MacBook Pro",
+        size: "16-inch",
+        processor: "M5 Max",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,6",
+        name: "MacBook Pro",
+        size: "14-inch",
+        processor: "M5 Max",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,5",
+        name: "MacBook Pro",
+        size: "16-inch",
+        processor: "M5 Pro",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,4",
+        name: "MacBook Pro",
+        size: "14-inch",
+        processor: "M5 Pro",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,1",
+        name: "MacBook Neo",
+        size: "14-inch",
+        processor: "A18 Pro",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,3",
+        name: "MacBook Pro",
+        size: "16-inch",
+        processor: "M5",
+        year: "2025",
+        additional: ""
+      },
+      {
+        key: "Mac17,2",
+        name: "MacBook Pro",
+        size: "14-inch",
+        processor: "M5",
+        year: "2025",
+        additional: ""
+      },
+      {
+        key: "Mac16,13",
+        name: "MacBook Air",
+        size: "15-inch",
+        processor: "M4",
+        year: "2025",
+        additional: ""
+      },
+      {
+        key: "Mac16,12",
+        name: "MacBook Air",
+        size: "13-inch",
+        processor: "M4",
+        year: "2025",
+        additional: ""
+      },
+      {
+        key: "Mac15,13",
+        name: "MacBook Air",
+        size: "15-inch",
+        processor: "M3",
+        year: "2024",
+        additional: ""
+      },
       {
         key: "Mac15,12",
         name: "MacBook Air",
@@ -25819,6 +25980,7 @@ var require_graphics = __commonJS((exports) => {
 var require_filesystem = __commonJS((exports) => {
   var util = require_util9();
   var fs2 = __require("fs");
+  var os4 = __require("os");
   var exec = __require("child_process").exec;
   var execSync = __require("child_process").execSync;
   var execPromiseSave = util.promisifySave(__require("child_process").exec);
@@ -27024,7 +27186,7 @@ ${BSDName}|"; smartctl -H ${BSDName} | grep overall;`;
         }
         if (_darwin) {
           let cmdFullSmart = "";
-          exec("system_profiler SPSerialATADataType SPNVMeDataType SPUSBDataType", { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
+          exec(`system_profiler SPSerialATADataType SPNVMeDataType ${parseInt(os4.release(), 10) > 24 ? "SPUSBHostDataType" : "SPUSBDataType"} `, { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
             if (!error2) {
               const lines = stdout.toString().split(`
 `);
@@ -28740,7 +28902,7 @@ Profile on interface`);
               result2.operstate = (stdout.toString().split(":")[1] || "").trim();
               result2.operstate = (result2.operstate || "").toLowerCase();
               result2.operstate = result2.operstate === "active" ? "up" : result2.operstate === "inactive" ? "down" : "unknown";
-              cmd = "netstat -bdI " + ifaceSanitized;
+              cmd = "netstat -bdnI " + ifaceSanitized;
               exec(cmd, (error3, stdout2) => {
                 if (!error3) {
                   lines = stdout2.toString().split(`
@@ -36462,7 +36624,7 @@ class Metrics {
       });
     } catch (error2) {
       console.error(error2);
-      setFailed(error2);
+      setFailed(error2 instanceof Error ? error2 : String(error2));
     } finally {
       const nextUNIXTimeMs = unixTimeMs + this.intervalMs;
       setTimeout(() => this.append(nextUNIXTimeMs).catch(setFailed), Math.max(0, nextUNIXTimeMs - Date.now()));
@@ -36496,7 +36658,7 @@ async function server() {
       response.setHeader("Content-Type", "application/json");
       response.end(JSON.stringify({ error: "Internal server error" }));
       console.error(error2);
-      setFailed(error2);
+      setFailed(error2 instanceof Error ? error2 : String(error2));
     }
   });
   server2.on("error", setFailed);
@@ -36504,5 +36666,5 @@ async function server() {
 }
 await server();
 
-//# debugId=36AA5B44C362866F64756E2164756E21
+//# debugId=F82EDD2F335ED14464756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
