@@ -16,86 +16,97 @@ const ZERO_WIDTH_ZERO: string = "\u200b";
 const ZERO_WIDTH_ONE: string = "\u200c";
 const ZERO_WIDTH_SENTINEL: string = "\u200d";
 
-export const calculateLabelStep = (count: number): number => {
-  if (count <= 2) {
-    return 1;
-  }
-
-  const totalGapWidth: number = CHART_WIDTH_PX - TICK_WIDTH_PX * count;
-  if (totalGapWidth <= 0) {
-    return count;
-  }
-
-  const numerator: number = REQUIRED_GAP_PX * (count - 1);
-  return Math.max(1, Math.ceil(numerator / totalGapWidth));
-};
-
-const encodeHiddenLabel = (index: number): string => {
-  const binary: string = index.toString(2);
-  return (
-    ZERO_WIDTH_SENTINEL +
-    binary
-      .split("")
-      .map((digit: string): string =>
-        digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE,
-      )
-      .join("")
-  );
-};
-
-const formatTimeLabels = (times: z.TypeOf<typeof timesSchema>): string[] => {
-  if (times.length === 0) {
-    return [];
-  }
-
-  const formattedTimes: string[] = times.map((d: Date): string =>
-    d.toLocaleTimeString("en-GB", { hour12: false }),
-  );
-
-  const labelStep: number = calculateLabelStep(formattedTimes.length);
-  if (labelStep <= 1 || formattedTimes.length <= 2) {
-    return formattedTimes;
-  }
-
-  const lastIndex: number = formattedTimes.length - 1;
-  const totalInteriorPositions: number = Math.max(formattedTimes.length - 2, 0);
-  const estimatedInteriorLabels: number = Math.max(
-    Math.floor(lastIndex / labelStep) - 1,
-    0,
-  );
-  const usableInteriorLabels: number = Math.min(
-    totalInteriorPositions,
-    estimatedInteriorLabels,
-  );
-
-  const visibleInteriorIndices: Set<number> = new Set<number>();
-  if (usableInteriorLabels > 0) {
-    const spacing: number = totalInteriorPositions / (usableInteriorLabels + 1);
-    for (let slot: number = 1; slot <= usableInteriorLabels; slot += 1) {
-      const targetIndex: number = 1 + Math.round(slot * spacing);
-      let clamped: number = Math.min(lastIndex - 1, Math.max(1, targetIndex));
-      while (visibleInteriorIndices.has(clamped) && clamped < lastIndex - 1) {
-        clamped += 1;
-      }
-      visibleInteriorIndices.add(clamped);
-    }
-  }
-
-  return formattedTimes.map(
-    (label: string, index: number, array: string[]): string => {
-      if (
-        index === 0 ||
-        index === array.length - 1 ||
-        visibleInteriorIndices.has(index)
-      ) {
-        return label;
-      }
-      return encodeHiddenLabel(index);
-    },
-  );
-};
-
 export class Renderer {
+  public static calculateLabelStep(count: number): number {
+    if (count <= 2) {
+      return 1;
+    }
+
+    const totalGapWidth: number = CHART_WIDTH_PX - TICK_WIDTH_PX * count;
+    if (totalGapWidth <= 0) {
+      return count;
+    }
+
+    const numerator: number = REQUIRED_GAP_PX * (count - 1);
+    return Math.max(1, Math.ceil(numerator / totalGapWidth));
+  }
+
+  private static encodeHiddenLabel(index: number): string {
+    const binary: string = index.toString(2);
+    return (
+      ZERO_WIDTH_SENTINEL +
+      binary
+        .split("")
+        .map((digit: string): string =>
+          digit === "0" ? ZERO_WIDTH_ZERO : ZERO_WIDTH_ONE,
+        )
+        .join("")
+    );
+  }
+
+  private static formatTimeLabels(
+    times: z.TypeOf<typeof timesSchema>,
+  ): string[] {
+    if (times.length === 0) {
+      return [];
+    }
+
+    const formattedTimes: string[] = times.map((d: Date): string =>
+      d.toLocaleTimeString("en-GB", { hour12: false }),
+    );
+
+    const labelStep: number = Renderer.calculateLabelStep(
+      formattedTimes.length,
+    );
+    if (labelStep <= 1 || formattedTimes.length <= 2) {
+      return formattedTimes;
+    }
+
+    const lastIndex: number = formattedTimes.length - 1;
+    const totalInteriorPositions: number = Math.max(
+      formattedTimes.length - 2,
+      0,
+    );
+    const estimatedInteriorLabels: number = Math.max(
+      Math.floor(lastIndex / labelStep) - 1,
+      0,
+    );
+    const usableInteriorLabels: number = Math.min(
+      totalInteriorPositions,
+      estimatedInteriorLabels,
+    );
+
+    const visibleInteriorIndices: Set<number> = new Set<number>();
+    if (usableInteriorLabels > 0) {
+      const spacing: number =
+        totalInteriorPositions / (usableInteriorLabels + 1);
+      for (let slot: number = 1; slot <= usableInteriorLabels; slot += 1) {
+        const targetIndex: number = 1 + Math.round(slot * spacing);
+        let clamped: number = Math.min(lastIndex - 1, Math.max(1, targetIndex));
+        while (
+          visibleInteriorIndices.has(clamped) &&
+          clamped < lastIndex - 1
+        ) {
+          clamped += 1;
+        }
+        visibleInteriorIndices.add(clamped);
+      }
+    }
+
+    return formattedTimes.map(
+      (label: string, index: number, array: string[]): string => {
+        if (
+          index === 0 ||
+          index === array.length - 1 ||
+          visibleInteriorIndices.has(index)
+        ) {
+          return label;
+        }
+        return Renderer.encodeHiddenLabel(index);
+      },
+    );
+  }
+
   render(
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
     metricsID: string,
@@ -133,7 +144,7 @@ ${charts}`;
   }
 
   private formatTimes(times: z.TypeOf<typeof timesSchema>): string {
-    return JSON.stringify(formatTimeLabels(times));
+    return JSON.stringify(Renderer.formatTimeLabels(times));
   }
 
   private formatYAxisRange(range?: string): string {

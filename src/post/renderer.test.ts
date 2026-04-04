@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { Renderer, calculateLabelStep } from "./renderer";
+import { Renderer } from "./renderer";
 
 describe("Renderer", () => {
   const testMetricsID: string = "1234567890";
@@ -500,7 +500,7 @@ describe("Renderer", () => {
     expect(visibleIndices[0]).toBe(0);
     expect(visibleIndices[visibleIndices.length - 1]).toBe(labels.length - 1);
 
-    const labelStep: number = calculateLabelStep(labels.length);
+    const labelStep: number = Renderer.calculateLabelStep(labels.length);
     for (let i = 1; i < visibleIndices.length; i += 1) {
       const current: number = visibleIndices[i];
       const previous: number = visibleIndices[i - 1];
