@@ -4,25 +4,43 @@ var __getProtoOf = Object.getPrototypeOf;
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+function __accessProp(key) {
+  return this[key];
+}
+var __toESMCache_node;
+var __toESMCache_esm;
 var __toESM = (mod, isNodeMode, target) => {
+  var canCache = mod != null && typeof mod === "object";
+  if (canCache) {
+    var cache = isNodeMode ? __toESMCache_node ??= new WeakMap : __toESMCache_esm ??= new WeakMap;
+    var cached = cache.get(mod);
+    if (cached)
+      return cached;
+  }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
   const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
   for (let key of __getOwnPropNames(mod))
     if (!__hasOwnProp.call(to, key))
       __defProp(to, key, {
-        get: () => mod[key],
+        get: __accessProp.bind(mod, key),
         enumerable: true
       });
+  if (canCache)
+    cache.set(mod, to);
   return to;
 };
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
+var __returnValue = (v) => v;
+function __exportSetter(name, newValue) {
+  this[name] = __returnValue.bind(null, newValue);
+}
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, {
       get: all[name],
       enumerable: true,
       configurable: true,
-      set: (newValue) => all[name] = () => newValue
+      set: __exportSetter.bind(all, name)
     });
 };
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
@@ -22329,32 +22347,33 @@ var require_path = __commonJS((exports, module) => {
   module.exports = isWindows ? { sep: "\\" } : { sep: "/" };
 });
 
-// node_modules/balanced-match/dist/commonjs/index.js
-var require_commonjs3 = __commonJS((exports) => {
-  Object.defineProperty(exports, "__esModule", { value: true });
-  exports.range = exports.balanced = undefined;
-  var balanced = (a, b, str) => {
-    const ma = a instanceof RegExp ? maybeMatch(a, str) : a;
-    const mb = b instanceof RegExp ? maybeMatch(b, str) : b;
-    const r = ma !== null && mb != null && (0, exports.range)(ma, mb, str);
+// node_modules/readdir-glob/node_modules/minimatch/node_modules/brace-expansion/node_modules/balanced-match/index.js
+var require_balanced_match = __commonJS((exports, module) => {
+  module.exports = balanced;
+  function balanced(a, b, str) {
+    if (a instanceof RegExp)
+      a = maybeMatch(a, str);
+    if (b instanceof RegExp)
+      b = maybeMatch(b, str);
+    var r = range2(a, b, str);
     return r && {
       start: r[0],
       end: r[1],
       pre: str.slice(0, r[0]),
-      body: str.slice(r[0] + ma.length, r[1]),
-      post: str.slice(r[1] + mb.length)
+      body: str.slice(r[0] + a.length, r[1]),
+      post: str.slice(r[1] + b.length)
     };
-  };
-  exports.balanced = balanced;
-  var maybeMatch = (reg, str) => {
-    const m = str.match(reg);
+  }
+  function maybeMatch(reg, str) {
+    var m = str.match(reg);
     return m ? m[0] : null;
-  };
-  var range2 = (a, b, str) => {
-    let begs, beg, left, right = undefined, result;
-    let ai = str.indexOf(a);
-    let bi = str.indexOf(b, ai + 1);
-    let i = ai;
+  }
+  balanced.range = range2;
+  function range2(a, b, str) {
+    var begs, beg, left, right, result;
+    var ai = str.indexOf(a);
+    var bi = str.indexOf(b, ai + 1);
+    var i = ai;
     if (ai >= 0 && bi > 0) {
       if (a === b) {
         return [ai, bi];
@@ -22362,16 +22381,14 @@ var require_commonjs3 = __commonJS((exports) => {
       begs = [];
       left = str.length;
       while (i >= 0 && !result) {
-        if (i === ai) {
+        if (i == ai) {
           begs.push(i);
           ai = str.indexOf(a, i + 1);
-        } else if (begs.length === 1) {
-          const r = begs.pop();
-          if (r !== undefined)
-            result = [r, bi];
+        } else if (begs.length == 1) {
+          result = [begs.pop(), bi];
         } else {
           beg = begs.pop();
-          if (beg !== undefined && beg < left) {
+          if (beg < left) {
             left = beg;
             right = bi;
           }
@@ -22379,18 +22396,17 @@ var require_commonjs3 = __commonJS((exports) => {
         }
         i = ai < bi && ai >= 0 ? ai : bi;
       }
-      if (begs.length && right !== undefined) {
+      if (begs.length) {
         result = [left, right];
       }
     }
     return result;
-  };
-  exports.range = range2;
+  }
 });
 
 // node_modules/readdir-glob/node_modules/minimatch/node_modules/brace-expansion/index.js
 var require_brace_expansion = __commonJS((exports, module) => {
-  var balanced = require_commonjs3();
+  var balanced = require_balanced_match();
   module.exports = expandTop;
   var escSlash = "\x00SLASH" + Math.random() + "\x00";
   var escOpen = "\x00OPEN" + Math.random() + "\x00";
@@ -29130,7 +29146,7 @@ var require_errors2 = __commonJS((exports, module) => {
     return innerError || outerError;
   }
 
-  class AbortError3 extends Error {
+  class AbortError4 extends Error {
     constructor(message = "The operation was aborted", options = undefined) {
       if (options !== undefined && typeof options !== "object") {
         throw new codes.ERR_INVALID_ARG_TYPE("options", "Object", options);
@@ -29313,7 +29329,7 @@ var require_errors2 = __commonJS((exports, module) => {
   E("ERR_STREAM_WRITE_AFTER_END", "write after end", Error);
   E("ERR_UNKNOWN_ENCODING", "Unknown encoding: %s", TypeError);
   module.exports = {
-    AbortError: AbortError3,
+    AbortError: AbortError4,
     aggregateTwoErrors: hideStackFrames(aggregateTwoErrors),
     hideStackFrames,
     codes
@@ -30464,7 +30480,7 @@ var require_utils2 = __commonJS((exports, module) => {
 // node_modules/readable-stream/lib/internal/streams/end-of-stream.js
 var require_end_of_stream = __commonJS((exports, module) => {
   var process4 = require_process();
-  var { AbortError: AbortError3, codes } = require_errors2();
+  var { AbortError: AbortError4, codes } = require_errors2();
   var { ERR_INVALID_ARG_TYPE, ERR_STREAM_PREMATURE_CLOSE } = codes;
   var { kEmptyObject, once } = require_util10();
   var { validateAbortSignal, validateFunction, validateObject, validateBoolean } = require_validators();
@@ -30631,7 +30647,7 @@ var require_end_of_stream = __commonJS((exports, module) => {
       const abort = () => {
         const endCallback = callback;
         cleanup();
-        endCallback.call(stream2, new AbortError3(undefined, {
+        endCallback.call(stream2, new AbortError4(undefined, {
           cause: options.signal.reason
         }));
       };
@@ -30655,7 +30671,7 @@ var require_end_of_stream = __commonJS((exports, module) => {
     if (options.signal) {
       abort = () => {
         isAborted = true;
-        callback.call(stream2, new AbortError3(undefined, {
+        callback.call(stream2, new AbortError4(undefined, {
           cause: options.signal.reason
         }));
       };
@@ -30712,7 +30728,7 @@ var require_destroy2 = __commonJS((exports, module) => {
   var {
     aggregateTwoErrors,
     codes: { ERR_MULTIPLE_CALLBACK },
-    AbortError: AbortError3
+    AbortError: AbortError4
   } = require_errors2();
   var { Symbol: Symbol2 } = require_primordials();
   var { kIsDestroyed, isDestroyed, isFinished, isServerRequest } = require_utils2();
@@ -30937,7 +30953,7 @@ var require_destroy2 = __commonJS((exports, module) => {
       return;
     }
     if (!err && !isFinished(stream2)) {
-      err = new AbortError3;
+      err = new AbortError4;
     }
     if (isServerRequest(stream2)) {
       stream2.socket = null;
@@ -31053,7 +31069,7 @@ var require_legacy = __commonJS((exports, module) => {
 // node_modules/readable-stream/lib/internal/streams/add-abort-signal.js
 var require_add_abort_signal = __commonJS((exports, module) => {
   var { SymbolDispose } = require_primordials();
-  var { AbortError: AbortError3, codes } = require_errors2();
+  var { AbortError: AbortError4, codes } = require_errors2();
   var { isNodeStream, isWebStream, kControllerErrorFunction } = require_utils2();
   var eos = require_end_of_stream();
   var { ERR_INVALID_ARG_TYPE } = codes;
@@ -31075,11 +31091,11 @@ var require_add_abort_signal = __commonJS((exports, module) => {
       return stream2;
     }
     const onAbort = isNodeStream(stream2) ? () => {
-      stream2.destroy(new AbortError3(undefined, {
+      stream2.destroy(new AbortError4(undefined, {
         cause: signal.reason
       }));
     } : () => {
-      stream2[kControllerErrorFunction](new AbortError3(undefined, {
+      stream2[kControllerErrorFunction](new AbortError4(undefined, {
         cause: signal.reason
       }));
     };
@@ -31731,7 +31747,7 @@ var require_readable3 = __commonJS((exports, module) => {
       ERR_STREAM_PUSH_AFTER_EOF,
       ERR_STREAM_UNSHIFT_AFTER_END_EVENT
     },
-    AbortError: AbortError3
+    AbortError: AbortError4
   } = require_errors2();
   var { validateObject } = require_validators();
   var kPaused = Symbol2("kPaused");
@@ -31856,7 +31872,7 @@ var require_readable3 = __commonJS((exports, module) => {
   Readable5.prototype[SymbolAsyncDispose] = function() {
     let error2;
     if (!this.destroyed) {
-      error2 = this.readableEnded ? null : new AbortError3;
+      error2 = this.readableEnded ? null : new AbortError4;
       this.destroy(error2);
     }
     return new Promise2((resolve2, reject) => eos(this, (err) => err && err !== error2 ? reject(err) : resolve2(null)));
@@ -33325,7 +33341,7 @@ var require_duplexify = __commonJS((exports, module) => {
   } = require_utils2();
   var eos = require_end_of_stream();
   var {
-    AbortError: AbortError3,
+    AbortError: AbortError4,
     codes: { ERR_INVALID_ARG_TYPE, ERR_INVALID_RETURN_VALUE }
   } = require_errors2();
   var { destroyer } = require_destroy2();
@@ -33490,7 +33506,7 @@ var require_duplexify = __commonJS((exports, module) => {
         if (done)
           return;
         if (signal.aborted)
-          throw new AbortError3(undefined, {
+          throw new AbortError4(undefined, {
             cause: signal.reason
           });
         ({ promise, resolve: resolve2 } = createDeferredPromise());
@@ -33616,7 +33632,7 @@ var require_duplexify = __commonJS((exports, module) => {
     }
     d._destroy = function(err, callback) {
       if (!err && onclose !== null) {
-        err = new AbortError3;
+        err = new AbortError4;
       }
       onreadable = null;
       ondrain = null;
@@ -33880,7 +33896,7 @@ var require_pipeline = __commonJS((exports, module) => {
       ERR_STREAM_DESTROYED,
       ERR_STREAM_PREMATURE_CLOSE
     },
-    AbortError: AbortError3
+    AbortError: AbortError4
   } = require_errors2();
   var { validateFunction, validateAbortSignal } = require_validators();
   var {
@@ -34027,7 +34043,7 @@ var require_pipeline = __commonJS((exports, module) => {
     const lastStreamCleanup = [];
     validateAbortSignal(outerSignal, "options.signal");
     function abort() {
-      finishImpl(new AbortError3);
+      finishImpl(new AbortError4);
     }
     addAbortListener = addAbortListener || require_util10().addAbortListener;
     let disposable;
@@ -34275,7 +34291,7 @@ var require_compose = __commonJS((exports, module) => {
     isReadableStream: isReadableStream2
   } = require_utils2();
   var {
-    AbortError: AbortError3,
+    AbortError: AbortError4,
     codes: { ERR_INVALID_ARG_VALUE, ERR_MISSING_ARGS }
   } = require_errors2();
   var eos = require_end_of_stream();
@@ -34429,7 +34445,7 @@ var require_compose = __commonJS((exports, module) => {
     }
     d._destroy = function(err, callback) {
       if (!err && onclose !== null) {
-        err = new AbortError3;
+        err = new AbortError4;
       }
       onreadable = null;
       ondrain = null;
@@ -34452,7 +34468,7 @@ var require_operators = __commonJS((exports, module) => {
   var AbortController2 = globalThis.AbortController || require_abort_controller().AbortController;
   var {
     codes: { ERR_INVALID_ARG_VALUE, ERR_INVALID_ARG_TYPE, ERR_MISSING_ARGS, ERR_OUT_OF_RANGE },
-    AbortError: AbortError3
+    AbortError: AbortError4
   } = require_errors2();
   var { validateAbortSignal, validateInteger, validateObject } = require_validators();
   var kWeakHandler = require_primordials().Symbol("kWeak");
@@ -34545,7 +34561,7 @@ var require_operators = __commonJS((exports, module) => {
               return;
             }
             if (signal.aborted) {
-              throw new AbortError3;
+              throw new AbortError4;
             }
             try {
               val = fn(val, signalOpt);
@@ -34591,7 +34607,7 @@ var require_operators = __commonJS((exports, module) => {
               return;
             }
             if (signal.aborted) {
-              throw new AbortError3;
+              throw new AbortError4;
             }
             if (val !== kEmpty) {
               yield val;
@@ -34624,7 +34640,7 @@ var require_operators = __commonJS((exports, module) => {
       for await (const val of this) {
         var _options$signal;
         if (options !== null && options !== undefined && (_options$signal = options.signal) !== null && _options$signal !== undefined && _options$signal.aborted) {
-          throw new AbortError3({
+          throw new AbortError4({
             cause: options.signal.reason
           });
         }
@@ -34695,7 +34711,7 @@ var require_operators = __commonJS((exports, module) => {
     }
     let hasInitialValue = arguments.length > 1;
     if (options !== null && options !== undefined && (_options$signal2 = options.signal) !== null && _options$signal2 !== undefined && _options$signal2.aborted) {
-      const err = new AbortError3(undefined, {
+      const err = new AbortError4(undefined, {
         cause: options.signal.reason
       });
       this.once("error", () => {});
@@ -34718,7 +34734,7 @@ var require_operators = __commonJS((exports, module) => {
         var _options$signal3;
         gotAnyItemFromStream = true;
         if (options !== null && options !== undefined && (_options$signal3 = options.signal) !== null && _options$signal3 !== undefined && _options$signal3.aborted) {
-          throw new AbortError3;
+          throw new AbortError4;
         }
         if (!hasInitialValue) {
           initialValue = value;
@@ -34748,7 +34764,7 @@ var require_operators = __commonJS((exports, module) => {
     for await (const val of this) {
       var _options$signal4;
       if (options !== null && options !== undefined && (_options$signal4 = options.signal) !== null && _options$signal4 !== undefined && _options$signal4.aborted) {
-        throw new AbortError3(undefined, {
+        throw new AbortError4(undefined, {
           cause: options.signal.reason
         });
       }
@@ -34785,12 +34801,12 @@ var require_operators = __commonJS((exports, module) => {
     return async function* drop2() {
       var _options$signal5;
       if (options !== null && options !== undefined && (_options$signal5 = options.signal) !== null && _options$signal5 !== undefined && _options$signal5.aborted) {
-        throw new AbortError3;
+        throw new AbortError4;
       }
       for await (const val of this) {
         var _options$signal6;
         if (options !== null && options !== undefined && (_options$signal6 = options.signal) !== null && _options$signal6 !== undefined && _options$signal6.aborted) {
-          throw new AbortError3;
+          throw new AbortError4;
         }
         if (number-- <= 0) {
           yield val;
@@ -34809,12 +34825,12 @@ var require_operators = __commonJS((exports, module) => {
     return async function* take2() {
       var _options$signal7;
       if (options !== null && options !== undefined && (_options$signal7 = options.signal) !== null && _options$signal7 !== undefined && _options$signal7.aborted) {
-        throw new AbortError3;
+        throw new AbortError4;
       }
       for await (const val of this) {
         var _options$signal8;
         if (options !== null && options !== undefined && (_options$signal8 = options.signal) !== null && _options$signal8 !== undefined && _options$signal8.aborted) {
-          throw new AbortError3;
+          throw new AbortError4;
         }
         if (number-- > 0) {
           yield val;
@@ -35757,7 +35773,7 @@ var require_isPlainObject = __commonJS((exports, module) => {
 });
 
 // node_modules/archiver-utils/node_modules/glob/node_modules/minimatch/node_modules/brace-expansion/node_modules/balanced-match/index.js
-var require_balanced_match = __commonJS((exports, module) => {
+var require_balanced_match2 = __commonJS((exports, module) => {
   module.exports = balanced;
   function balanced(a, b, str) {
     if (a instanceof RegExp)
@@ -35815,7 +35831,7 @@ var require_balanced_match = __commonJS((exports, module) => {
 
 // node_modules/archiver-utils/node_modules/glob/node_modules/minimatch/node_modules/brace-expansion/index.js
 var require_brace_expansion2 = __commonJS((exports, module) => {
-  var balanced = require_balanced_match();
+  var balanced = require_balanced_match2();
   module.exports = expandTop;
   var escSlash = "\x00SLASH" + Math.random() + "\x00";
   var escOpen = "\x00OPEN" + Math.random() + "\x00";
@@ -36651,7 +36667,7 @@ var require_escape = __commonJS((exports) => {
 });
 
 // node_modules/archiver-utils/node_modules/glob/node_modules/minimatch/dist/commonjs/index.js
-var require_commonjs4 = __commonJS((exports) => {
+var require_commonjs3 = __commonJS((exports) => {
   var __importDefault = exports && exports.__importDefault || function(mod) {
     return mod && mod.__esModule ? mod : { default: mod };
   };
@@ -37431,7 +37447,7 @@ var require_commonjs4 = __commonJS((exports) => {
 });
 
 // node_modules/archiver-utils/node_modules/glob/node_modules/path-scurry/node_modules/lru-cache/dist/commonjs/index.js
-var require_commonjs5 = __commonJS((exports) => {
+var require_commonjs4 = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.LRUCache = undefined;
   var perf = typeof performance === "object" && performance && typeof performance.now === "function" ? performance : Date;
@@ -38546,7 +38562,7 @@ var require_commonjs5 = __commonJS((exports) => {
 });
 
 // node_modules/minipass/dist/commonjs/index.js
-var require_commonjs6 = __commonJS((exports) => {
+var require_commonjs5 = __commonJS((exports) => {
   var __importDefault = exports && exports.__importDefault || function(mod) {
     return mod && mod.__esModule ? mod : { default: mod };
   };
@@ -39220,7 +39236,7 @@ var require_commonjs6 = __commonJS((exports) => {
 });
 
 // node_modules/archiver-utils/node_modules/glob/node_modules/path-scurry/dist/commonjs/index.js
-var require_commonjs7 = __commonJS((exports) => {
+var require_commonjs6 = __commonJS((exports) => {
   var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
     if (k2 === undefined)
       k2 = k;
@@ -39255,14 +39271,14 @@ var require_commonjs7 = __commonJS((exports) => {
   };
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.PathScurry = exports.Path = exports.PathScurryDarwin = exports.PathScurryPosix = exports.PathScurryWin32 = exports.PathScurryBase = exports.PathPosix = exports.PathWin32 = exports.PathBase = exports.ChildrenCache = exports.ResolveCache = undefined;
-  var lru_cache_1 = require_commonjs5();
+  var lru_cache_1 = require_commonjs4();
   var node_path_1 = __require("node:path");
   var node_url_1 = __require("node:url");
   var fs_1 = __require("fs");
   var actualFS = __importStar(__require("node:fs"));
   var realpathSync = fs_1.realpathSync.native;
   var promises_1 = __require("node:fs/promises");
-  var minipass_1 = require_commonjs6();
+  var minipass_1 = require_commonjs5();
   var defaultFS = {
     lstatSync: fs_1.lstatSync,
     readdir: fs_1.readdir,
@@ -40573,7 +40589,7 @@ var require_commonjs7 = __commonJS((exports) => {
 var require_pattern = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.Pattern = undefined;
-  var minimatch_1 = require_commonjs4();
+  var minimatch_1 = require_commonjs3();
   var isPatternList = (pl) => pl.length >= 1;
   var isGlobList = (gl) => gl.length >= 1;
 
@@ -40697,7 +40713,7 @@ var require_pattern = __commonJS((exports) => {
 var require_ignore = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.Ignore = undefined;
-  var minimatch_1 = require_commonjs4();
+  var minimatch_1 = require_commonjs3();
   var pattern_js_1 = require_pattern();
   var defaultPlatform = typeof process === "object" && process && typeof process.platform === "string" ? process.platform : "linux";
 
@@ -40792,7 +40808,7 @@ var require_ignore = __commonJS((exports) => {
 var require_processor = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.Processor = exports.SubWalks = exports.MatchRecord = exports.HasWalkedCache = undefined;
-  var minimatch_1 = require_commonjs4();
+  var minimatch_1 = require_commonjs3();
 
   class HasWalkedCache {
     store;
@@ -41020,7 +41036,7 @@ var require_processor = __commonJS((exports) => {
 var require_walker = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.GlobStream = exports.GlobWalker = exports.GlobUtil = undefined;
-  var minipass_1 = require_commonjs6();
+  var minipass_1 = require_commonjs5();
   var ignore_js_1 = require_ignore();
   var processor_js_1 = require_processor();
   var makeIgnore = (ignore, opts) => typeof ignore === "string" ? new ignore_js_1.Ignore([ignore], opts) : Array.isArray(ignore) ? new ignore_js_1.Ignore(ignore, opts) : ignore;
@@ -41357,9 +41373,9 @@ var require_walker = __commonJS((exports) => {
 var require_glob = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.Glob = undefined;
-  var minimatch_1 = require_commonjs4();
+  var minimatch_1 = require_commonjs3();
   var node_url_1 = __require("node:url");
-  var path_scurry_1 = require_commonjs7();
+  var path_scurry_1 = require_commonjs6();
   var pattern_js_1 = require_pattern();
   var walker_js_1 = require_walker();
   var defaultPlatform = typeof process === "object" && process && typeof process.platform === "string" ? process.platform : "linux";
@@ -41541,7 +41557,7 @@ var require_glob = __commonJS((exports) => {
 var require_has_magic = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.hasMagic = undefined;
-  var minimatch_1 = require_commonjs4();
+  var minimatch_1 = require_commonjs3();
   var hasMagic = (pattern, options = {}) => {
     if (!Array.isArray(pattern)) {
       pattern = [pattern];
@@ -41556,7 +41572,7 @@ var require_has_magic = __commonJS((exports) => {
 });
 
 // node_modules/archiver-utils/node_modules/glob/dist/commonjs/index.js
-var require_commonjs8 = __commonJS((exports) => {
+var require_commonjs7 = __commonJS((exports) => {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.glob = exports.sync = exports.iterate = exports.iterateSync = exports.stream = exports.streamSync = exports.Ignore = exports.hasMagic = exports.Glob = exports.unescape = exports.escape = undefined;
   exports.globStreamSync = globStreamSync;
@@ -41564,10 +41580,10 @@ var require_commonjs8 = __commonJS((exports) => {
   exports.globSync = globSync;
   exports.globIterateSync = globIterateSync;
   exports.globIterate = globIterate;
-  var minimatch_1 = require_commonjs4();
+  var minimatch_1 = require_commonjs3();
   var glob_js_1 = require_glob();
   var has_magic_js_1 = require_has_magic();
-  var minimatch_2 = require_commonjs4();
+  var minimatch_2 = require_commonjs3();
   Object.defineProperty(exports, "escape", { enumerable: true, get: function() {
     return minimatch_2.escape;
   } });
@@ -41642,7 +41658,7 @@ var require_file2 = __commonJS((exports, module) => {
   var difference = require_difference();
   var union = require_union();
   var isPlainObject = require_isPlainObject();
-  var glob = require_commonjs8();
+  var glob = require_commonjs7();
   var file = module.exports = {};
   var pathSeparatorRe = /[\/\\]/g;
   var processPatterns = function(patterns, fn) {
@@ -50787,7 +50803,7 @@ var require_errors3 = __commonJS((exports, module) => {
   }
   var kAbortError = Symbol.for("undici.error.UND_ERR_ABORT");
 
-  class AbortError3 extends UndiciError {
+  class AbortError4 extends UndiciError {
     constructor(message) {
       super(message);
       this.name = "AbortError";
@@ -50803,7 +50819,7 @@ var require_errors3 = __commonJS((exports, module) => {
   }
   var kRequestAbortedError = Symbol.for("undici.error.UND_ERR_ABORTED");
 
-  class RequestAbortedError extends AbortError3 {
+  class RequestAbortedError extends AbortError4 {
     constructor(message) {
       super(message);
       this.name = "AbortError";
@@ -51050,7 +51066,7 @@ var require_errors3 = __commonJS((exports, module) => {
     }
   }
   module.exports = {
-    AbortError: AbortError3,
+    AbortError: AbortError4,
     HTTPParserError,
     UndiciError,
     HeadersTimeoutError,
@@ -59882,7 +59898,7 @@ var require_h2c_client = __commonJS((exports, module) => {
 var require_readable4 = __commonJS((exports, module) => {
   var assert = __require("node:assert");
   var { Readable: Readable5 } = __require("node:stream");
-  var { RequestAbortedError, NotSupportedError, InvalidArgumentError, AbortError: AbortError3 } = require_errors3();
+  var { RequestAbortedError, NotSupportedError, InvalidArgumentError, AbortError: AbortError4 } = require_errors3();
   var util3 = require_util13();
   var { ReadableStreamFrom } = require_util13();
   var kConsume = Symbol("kConsume");
@@ -59999,24 +60015,24 @@ var require_readable4 = __commonJS((exports, module) => {
       }
       const limit = opts?.limit && Number.isFinite(opts.limit) ? opts.limit : 128 * 1024;
       if (signal?.aborted) {
-        return Promise.reject(signal.reason ?? new AbortError3);
+        return Promise.reject(signal.reason ?? new AbortError4);
       }
       if (this._readableState.closeEmitted) {
         return Promise.resolve(null);
       }
       return new Promise((resolve2, reject) => {
         if (this[kContentLength] && this[kContentLength] > limit || this[kBytesRead] > limit) {
-          this.destroy(new AbortError3);
+          this.destroy(new AbortError4);
         }
         if (signal) {
           const onAbort = () => {
-            this.destroy(signal.reason ?? new AbortError3);
+            this.destroy(signal.reason ?? new AbortError4);
           };
           signal.addEventListener("abort", onAbort);
           this.on("close", function() {
             signal.removeEventListener("abort", onAbort);
             if (signal.aborted) {
-              reject(signal.reason ?? new AbortError3);
+              reject(signal.reason ?? new AbortError4);
             } else {
               resolve2(null);
             }
@@ -64661,7 +64677,7 @@ var require_cache3 = __commonJS((exports, module) => {
   var MemoryCacheStore = require_memory_cache_store();
   var CacheRevalidationHandler = require_cache_revalidation_handler();
   var { assertCacheStore, assertCacheMethods, makeCacheKey, normalizeHeaders, parseCacheControlHeader } = require_cache2();
-  var { AbortError: AbortError3 } = require_errors3();
+  var { AbortError: AbortError4 } = require_errors3();
   function assertCacheOrigins(origins, name) {
     if (origins === undefined)
       return;
@@ -64764,7 +64780,7 @@ var require_cache3 = __commonJS((exports, module) => {
         return stream4.errored;
       },
       abort(reason) {
-        stream4.destroy(reason ?? new AbortError3);
+        stream4.destroy(reason ?? new AbortError4);
       }
     };
     stream4.on("error", function(err) {
@@ -74391,269 +74407,11 @@ function getUploadZipSpecification(filesToZip, rootDirectory) {
   }
   return specification;
 }
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/abort-controller/AbortError.js
-class AbortError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "AbortError";
-  }
+// node_modules/@azure/core-auth/dist/esm/tokenCredential.js
+function isTokenCredential(credential) {
+  const castCredential = credential;
+  return castCredential && typeof castCredential.getToken === "function" && (castCredential.signRequest === undefined || castCredential.getToken.length > 0);
 }
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/logger/log.js
-import { EOL as EOL4 } from "node:os";
-import util from "node:util";
-import process2 from "node:process";
-function log(message, ...args) {
-  process2.stderr.write(`${util.format(message, ...args)}${EOL4}`);
-}
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/logger/debug.js
-var debugEnvVariable = typeof process !== "undefined" && process.env && process.env.DEBUG || undefined;
-var enabledString;
-var enabledNamespaces = [];
-var skippedNamespaces = [];
-var debuggers = [];
-if (debugEnvVariable) {
-  enable(debugEnvVariable);
-}
-var debugObj = Object.assign((namespace) => {
-  return createDebugger(namespace);
-}, {
-  enable,
-  enabled,
-  disable,
-  log
-});
-function enable(namespaces) {
-  enabledString = namespaces;
-  enabledNamespaces = [];
-  skippedNamespaces = [];
-  const namespaceList = namespaces.split(",").map((ns) => ns.trim());
-  for (const ns of namespaceList) {
-    if (ns.startsWith("-")) {
-      skippedNamespaces.push(ns.substring(1));
-    } else {
-      enabledNamespaces.push(ns);
-    }
-  }
-  for (const instance of debuggers) {
-    instance.enabled = enabled(instance.namespace);
-  }
-}
-function enabled(namespace) {
-  if (namespace.endsWith("*")) {
-    return true;
-  }
-  for (const skipped of skippedNamespaces) {
-    if (namespaceMatches(namespace, skipped)) {
-      return false;
-    }
-  }
-  for (const enabledNamespace of enabledNamespaces) {
-    if (namespaceMatches(namespace, enabledNamespace)) {
-      return true;
-    }
-  }
-  return false;
-}
-function namespaceMatches(namespace, patternToMatch) {
-  if (patternToMatch.indexOf("*") === -1) {
-    return namespace === patternToMatch;
-  }
-  let pattern = patternToMatch;
-  if (patternToMatch.indexOf("**") !== -1) {
-    const patternParts = [];
-    let lastCharacter = "";
-    for (const character of patternToMatch) {
-      if (character === "*" && lastCharacter === "*") {
-        continue;
-      } else {
-        lastCharacter = character;
-        patternParts.push(character);
-      }
-    }
-    pattern = patternParts.join("");
-  }
-  let namespaceIndex = 0;
-  let patternIndex = 0;
-  const patternLength = pattern.length;
-  const namespaceLength = namespace.length;
-  let lastWildcard = -1;
-  let lastWildcardNamespace = -1;
-  while (namespaceIndex < namespaceLength && patternIndex < patternLength) {
-    if (pattern[patternIndex] === "*") {
-      lastWildcard = patternIndex;
-      patternIndex++;
-      if (patternIndex === patternLength) {
-        return true;
-      }
-      while (namespace[namespaceIndex] !== pattern[patternIndex]) {
-        namespaceIndex++;
-        if (namespaceIndex === namespaceLength) {
-          return false;
-        }
-      }
-      lastWildcardNamespace = namespaceIndex;
-      namespaceIndex++;
-      patternIndex++;
-      continue;
-    } else if (pattern[patternIndex] === namespace[namespaceIndex]) {
-      patternIndex++;
-      namespaceIndex++;
-    } else if (lastWildcard >= 0) {
-      patternIndex = lastWildcard + 1;
-      namespaceIndex = lastWildcardNamespace + 1;
-      if (namespaceIndex === namespaceLength) {
-        return false;
-      }
-      while (namespace[namespaceIndex] !== pattern[patternIndex]) {
-        namespaceIndex++;
-        if (namespaceIndex === namespaceLength) {
-          return false;
-        }
-      }
-      lastWildcardNamespace = namespaceIndex;
-      namespaceIndex++;
-      patternIndex++;
-      continue;
-    } else {
-      return false;
-    }
-  }
-  const namespaceDone = namespaceIndex === namespace.length;
-  const patternDone = patternIndex === pattern.length;
-  const trailingWildCard = patternIndex === pattern.length - 1 && pattern[patternIndex] === "*";
-  return namespaceDone && (patternDone || trailingWildCard);
-}
-function disable() {
-  const result = enabledString || "";
-  enable("");
-  return result;
-}
-function createDebugger(namespace) {
-  const newDebugger = Object.assign(debug2, {
-    enabled: enabled(namespace),
-    destroy,
-    log: debugObj.log,
-    namespace,
-    extend
-  });
-  function debug2(...args) {
-    if (!newDebugger.enabled) {
-      return;
-    }
-    if (args.length > 0) {
-      args[0] = `${namespace} ${args[0]}`;
-    }
-    newDebugger.log(...args);
-  }
-  debuggers.push(newDebugger);
-  return newDebugger;
-}
-function destroy() {
-  const index = debuggers.indexOf(this);
-  if (index >= 0) {
-    debuggers.splice(index, 1);
-    return true;
-  }
-  return false;
-}
-function extend(namespace) {
-  const newDebugger = createDebugger(`${this.namespace}:${namespace}`);
-  newDebugger.log = this.log;
-  return newDebugger;
-}
-var debug_default = debugObj;
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/logger/logger.js
-var TYPESPEC_RUNTIME_LOG_LEVELS = ["verbose", "info", "warning", "error"];
-var levelMap = {
-  verbose: 400,
-  info: 300,
-  warning: 200,
-  error: 100
-};
-function patchLogMethod(parent, child) {
-  child.log = (...args) => {
-    parent.log(...args);
-  };
-}
-function isTypeSpecRuntimeLogLevel(level) {
-  return TYPESPEC_RUNTIME_LOG_LEVELS.includes(level);
-}
-function createLoggerContext(options) {
-  const registeredLoggers = new Set;
-  const logLevelFromEnv = typeof process !== "undefined" && process.env && process.env[options.logLevelEnvVarName] || undefined;
-  let logLevel;
-  const clientLogger = debug_default(options.namespace);
-  clientLogger.log = (...args) => {
-    debug_default.log(...args);
-  };
-  function contextSetLogLevel(level) {
-    if (level && !isTypeSpecRuntimeLogLevel(level)) {
-      throw new Error(`Unknown log level '${level}'. Acceptable values: ${TYPESPEC_RUNTIME_LOG_LEVELS.join(",")}`);
-    }
-    logLevel = level;
-    const enabledNamespaces2 = [];
-    for (const logger of registeredLoggers) {
-      if (shouldEnable(logger)) {
-        enabledNamespaces2.push(logger.namespace);
-      }
-    }
-    debug_default.enable(enabledNamespaces2.join(","));
-  }
-  if (logLevelFromEnv) {
-    if (isTypeSpecRuntimeLogLevel(logLevelFromEnv)) {
-      contextSetLogLevel(logLevelFromEnv);
-    } else {
-      console.error(`${options.logLevelEnvVarName} set to unknown log level '${logLevelFromEnv}'; logging is not enabled. Acceptable values: ${TYPESPEC_RUNTIME_LOG_LEVELS.join(", ")}.`);
-    }
-  }
-  function shouldEnable(logger) {
-    return Boolean(logLevel && levelMap[logger.level] <= levelMap[logLevel]);
-  }
-  function createLogger(parent, level) {
-    const logger = Object.assign(parent.extend(level), {
-      level
-    });
-    patchLogMethod(parent, logger);
-    if (shouldEnable(logger)) {
-      const enabledNamespaces2 = debug_default.disable();
-      debug_default.enable(enabledNamespaces2 + "," + logger.namespace);
-    }
-    registeredLoggers.add(logger);
-    return logger;
-  }
-  function contextGetLogLevel() {
-    return logLevel;
-  }
-  function contextCreateClientLogger(namespace) {
-    const clientRootLogger = clientLogger.extend(namespace);
-    patchLogMethod(clientLogger, clientRootLogger);
-    return {
-      error: createLogger(clientRootLogger, "error"),
-      warning: createLogger(clientRootLogger, "warning"),
-      info: createLogger(clientRootLogger, "info"),
-      verbose: createLogger(clientRootLogger, "verbose")
-    };
-  }
-  return {
-    setLogLevel: contextSetLogLevel,
-    getLogLevel: contextGetLogLevel,
-    createClientLogger: contextCreateClientLogger,
-    logger: clientLogger
-  };
-}
-var context = createLoggerContext({
-  logLevelEnvVarName: "TYPESPEC_RUNTIME_LOG_LEVEL",
-  namespace: "typeSpecRuntime"
-});
-var TypeSpecRuntimeLogger = context.logger;
-function createClientLogger(namespace) {
-  return context.createClientLogger(namespace);
-}
-
 // node_modules/@typespec/ts-http-runtime/dist/esm/httpHeaders.js
 function normalizeName(name) {
   return name.toLowerCase();
@@ -75129,16 +74887,273 @@ function isRestError(e) {
   }
   return isError(e) && e.name === "RestError";
 }
-// node_modules/@typespec/ts-http-runtime/dist/esm/util/bytesEncoding.js
-function stringToUint8Array(value, format) {
-  return Buffer.from(value, format);
-}
-
 // node_modules/@typespec/ts-http-runtime/dist/esm/nodeHttpClient.js
 import http2 from "node:http";
 import https2 from "node:https";
 import zlib from "node:zlib";
 import { Transform } from "node:stream";
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/abort-controller/AbortError.js
+class AbortError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "AbortError";
+  }
+}
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/logger/log.js
+import { EOL as EOL4 } from "node:os";
+import util from "node:util";
+import process2 from "node:process";
+function log(message, ...args) {
+  process2.stderr.write(`${util.format(message, ...args)}${EOL4}`);
+}
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/logger/debug.js
+var debugEnvVariable = typeof process !== "undefined" && process.env && process.env.DEBUG || undefined;
+var enabledString;
+var enabledNamespaces = [];
+var skippedNamespaces = [];
+var debuggers = [];
+if (debugEnvVariable) {
+  enable(debugEnvVariable);
+}
+var debugObj = Object.assign((namespace) => {
+  return createDebugger(namespace);
+}, {
+  enable,
+  enabled,
+  disable,
+  log
+});
+function enable(namespaces) {
+  enabledString = namespaces;
+  enabledNamespaces = [];
+  skippedNamespaces = [];
+  const namespaceList = namespaces.split(",").map((ns) => ns.trim());
+  for (const ns of namespaceList) {
+    if (ns.startsWith("-")) {
+      skippedNamespaces.push(ns.substring(1));
+    } else {
+      enabledNamespaces.push(ns);
+    }
+  }
+  for (const instance of debuggers) {
+    instance.enabled = enabled(instance.namespace);
+  }
+}
+function enabled(namespace) {
+  if (namespace.endsWith("*")) {
+    return true;
+  }
+  for (const skipped of skippedNamespaces) {
+    if (namespaceMatches(namespace, skipped)) {
+      return false;
+    }
+  }
+  for (const enabledNamespace of enabledNamespaces) {
+    if (namespaceMatches(namespace, enabledNamespace)) {
+      return true;
+    }
+  }
+  return false;
+}
+function namespaceMatches(namespace, patternToMatch) {
+  if (patternToMatch.indexOf("*") === -1) {
+    return namespace === patternToMatch;
+  }
+  let pattern = patternToMatch;
+  if (patternToMatch.indexOf("**") !== -1) {
+    const patternParts = [];
+    let lastCharacter = "";
+    for (const character of patternToMatch) {
+      if (character === "*" && lastCharacter === "*") {
+        continue;
+      } else {
+        lastCharacter = character;
+        patternParts.push(character);
+      }
+    }
+    pattern = patternParts.join("");
+  }
+  let namespaceIndex = 0;
+  let patternIndex = 0;
+  const patternLength = pattern.length;
+  const namespaceLength = namespace.length;
+  let lastWildcard = -1;
+  let lastWildcardNamespace = -1;
+  while (namespaceIndex < namespaceLength && patternIndex < patternLength) {
+    if (pattern[patternIndex] === "*") {
+      lastWildcard = patternIndex;
+      patternIndex++;
+      if (patternIndex === patternLength) {
+        return true;
+      }
+      while (namespace[namespaceIndex] !== pattern[patternIndex]) {
+        namespaceIndex++;
+        if (namespaceIndex === namespaceLength) {
+          return false;
+        }
+      }
+      lastWildcardNamespace = namespaceIndex;
+      namespaceIndex++;
+      patternIndex++;
+      continue;
+    } else if (pattern[patternIndex] === namespace[namespaceIndex]) {
+      patternIndex++;
+      namespaceIndex++;
+    } else if (lastWildcard >= 0) {
+      patternIndex = lastWildcard + 1;
+      namespaceIndex = lastWildcardNamespace + 1;
+      if (namespaceIndex === namespaceLength) {
+        return false;
+      }
+      while (namespace[namespaceIndex] !== pattern[patternIndex]) {
+        namespaceIndex++;
+        if (namespaceIndex === namespaceLength) {
+          return false;
+        }
+      }
+      lastWildcardNamespace = namespaceIndex;
+      namespaceIndex++;
+      patternIndex++;
+      continue;
+    } else {
+      return false;
+    }
+  }
+  const namespaceDone = namespaceIndex === namespace.length;
+  const patternDone = patternIndex === pattern.length;
+  const trailingWildCard = patternIndex === pattern.length - 1 && pattern[patternIndex] === "*";
+  return namespaceDone && (patternDone || trailingWildCard);
+}
+function disable() {
+  const result = enabledString || "";
+  enable("");
+  return result;
+}
+function createDebugger(namespace) {
+  const newDebugger = Object.assign(debug2, {
+    enabled: enabled(namespace),
+    destroy,
+    log: debugObj.log,
+    namespace,
+    extend
+  });
+  function debug2(...args) {
+    if (!newDebugger.enabled) {
+      return;
+    }
+    if (args.length > 0) {
+      args[0] = `${namespace} ${args[0]}`;
+    }
+    newDebugger.log(...args);
+  }
+  debuggers.push(newDebugger);
+  return newDebugger;
+}
+function destroy() {
+  const index = debuggers.indexOf(this);
+  if (index >= 0) {
+    debuggers.splice(index, 1);
+    return true;
+  }
+  return false;
+}
+function extend(namespace) {
+  const newDebugger = createDebugger(`${this.namespace}:${namespace}`);
+  newDebugger.log = this.log;
+  return newDebugger;
+}
+var debug_default = debugObj;
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/logger/logger.js
+var TYPESPEC_RUNTIME_LOG_LEVELS = ["verbose", "info", "warning", "error"];
+var levelMap = {
+  verbose: 400,
+  info: 300,
+  warning: 200,
+  error: 100
+};
+function patchLogMethod(parent, child) {
+  child.log = (...args) => {
+    parent.log(...args);
+  };
+}
+function isTypeSpecRuntimeLogLevel(level) {
+  return TYPESPEC_RUNTIME_LOG_LEVELS.includes(level);
+}
+function createLoggerContext(options) {
+  const registeredLoggers = new Set;
+  const logLevelFromEnv = typeof process !== "undefined" && process.env && process.env[options.logLevelEnvVarName] || undefined;
+  let logLevel;
+  const clientLogger = debug_default(options.namespace);
+  clientLogger.log = (...args) => {
+    debug_default.log(...args);
+  };
+  function contextSetLogLevel(level) {
+    if (level && !isTypeSpecRuntimeLogLevel(level)) {
+      throw new Error(`Unknown log level '${level}'. Acceptable values: ${TYPESPEC_RUNTIME_LOG_LEVELS.join(",")}`);
+    }
+    logLevel = level;
+    const enabledNamespaces2 = [];
+    for (const logger of registeredLoggers) {
+      if (shouldEnable(logger)) {
+        enabledNamespaces2.push(logger.namespace);
+      }
+    }
+    debug_default.enable(enabledNamespaces2.join(","));
+  }
+  if (logLevelFromEnv) {
+    if (isTypeSpecRuntimeLogLevel(logLevelFromEnv)) {
+      contextSetLogLevel(logLevelFromEnv);
+    } else {
+      console.error(`${options.logLevelEnvVarName} set to unknown log level '${logLevelFromEnv}'; logging is not enabled. Acceptable values: ${TYPESPEC_RUNTIME_LOG_LEVELS.join(", ")}.`);
+    }
+  }
+  function shouldEnable(logger) {
+    return Boolean(logLevel && levelMap[logger.level] <= levelMap[logLevel]);
+  }
+  function createLogger(parent, level) {
+    const logger = Object.assign(parent.extend(level), {
+      level
+    });
+    patchLogMethod(parent, logger);
+    if (shouldEnable(logger)) {
+      const enabledNamespaces2 = debug_default.disable();
+      debug_default.enable(enabledNamespaces2 + "," + logger.namespace);
+    }
+    registeredLoggers.add(logger);
+    return logger;
+  }
+  function contextGetLogLevel() {
+    return logLevel;
+  }
+  function contextCreateClientLogger(namespace) {
+    const clientRootLogger = clientLogger.extend(namespace);
+    patchLogMethod(clientLogger, clientRootLogger);
+    return {
+      error: createLogger(clientRootLogger, "error"),
+      warning: createLogger(clientRootLogger, "warning"),
+      info: createLogger(clientRootLogger, "info"),
+      verbose: createLogger(clientRootLogger, "verbose")
+    };
+  }
+  return {
+    setLogLevel: contextSetLogLevel,
+    getLogLevel: contextGetLogLevel,
+    createClientLogger: contextCreateClientLogger,
+    logger: clientLogger
+  };
+}
+var context = createLoggerContext({
+  logLevelEnvVarName: "TYPESPEC_RUNTIME_LOG_LEVEL",
+  namespace: "typeSpecRuntime"
+});
+var TypeSpecRuntimeLogger = context.logger;
+function createClientLogger(namespace) {
+  return context.createClientLogger(namespace);
+}
 
 // node_modules/@typespec/ts-http-runtime/dist/esm/log.js
 var logger = createClientLogger("ts-http-runtime");
@@ -75432,70 +75447,36 @@ function createNodeHttpClient() {
 function createDefaultHttpClient() {
   return createNodeHttpClient();
 }
-// node_modules/@typespec/ts-http-runtime/dist/esm/policies/logPolicy.js
-var logPolicyName = "logPolicy";
-function logPolicy(options = {}) {
-  const logger2 = options.logger ?? logger.info;
-  const sanitizer = new Sanitizer({
-    additionalAllowedHeaderNames: options.additionalAllowedHeaderNames,
-    additionalAllowedQueryParameters: options.additionalAllowedQueryParameters
-  });
+// node_modules/@azure/core-rest-pipeline/dist/esm/pipeline.js
+function createEmptyPipeline2() {
+  return createEmptyPipeline();
+}
+// node_modules/@azure/logger/dist/esm/index.js
+var context2 = createLoggerContext({
+  logLevelEnvVarName: "AZURE_LOG_LEVEL",
+  namespace: "azure"
+});
+var AzureLogger = context2.logger;
+function createClientLogger3(namespace) {
+  return context2.createClientLogger(namespace);
+}
+
+// node_modules/@azure/core-rest-pipeline/dist/esm/log.js
+var logger2 = createClientLogger3("core-rest-pipeline");
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/policies/agentPolicy.js
+var agentPolicyName = "agentPolicy";
+function agentPolicy(agent) {
   return {
-    name: logPolicyName,
-    async sendRequest(request, next) {
-      if (!logger2.enabled) {
-        return next(request);
+    name: agentPolicyName,
+    sendRequest: async (req, next) => {
+      if (!req.agent) {
+        req.agent = agent;
       }
-      logger2(`Request: ${sanitizer.sanitize(request)}`);
-      const response = await next(request);
-      logger2(`Response status code: ${response.status}`);
-      logger2(`Headers: ${sanitizer.sanitize(response.headers)}`);
-      return response;
+      return next(req);
     }
   };
 }
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/policies/redirectPolicy.js
-var redirectPolicyName = "redirectPolicy";
-var allowedRedirect = ["GET", "HEAD"];
-function redirectPolicy(options = {}) {
-  const { maxRetries = 20, allowCrossOriginRedirects = false } = options;
-  return {
-    name: redirectPolicyName,
-    async sendRequest(request, next) {
-      const response = await next(request);
-      return handleRedirect(next, response, maxRetries, allowCrossOriginRedirects);
-    }
-  };
-}
-async function handleRedirect(next, response, maxRetries, allowCrossOriginRedirects, currentRetries = 0) {
-  const { request, status, headers } = response;
-  const locationHeader = headers.get("location");
-  if (locationHeader && (status === 300 || status === 301 && allowedRedirect.includes(request.method) || status === 302 && allowedRedirect.includes(request.method) || status === 303 && request.method === "POST" || status === 307) && currentRetries < maxRetries) {
-    const url = new URL(locationHeader, request.url);
-    if (!allowCrossOriginRedirects) {
-      const originalUrl = new URL(request.url);
-      if (url.origin !== originalUrl.origin) {
-        logger.verbose(`Skipping cross-origin redirect from ${originalUrl.origin} to ${url.origin}.`);
-        return response;
-      }
-    }
-    request.url = url.toString();
-    if (status === 303) {
-      request.method = "GET";
-      request.headers.delete("Content-Length");
-      delete request.body;
-    }
-    request.headers.delete("Authorization");
-    const res = await next(request);
-    return handleRedirect(next, res, maxRetries, allowCrossOriginRedirects, currentRetries + 1);
-  }
-  return response;
-}
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/constants.js
-var DEFAULT_RETRY_POLICY_COUNT = 3;
-
 // node_modules/@typespec/ts-http-runtime/dist/esm/policies/decompressResponsePolicy.js
 var decompressResponsePolicyName = "decompressResponsePolicy";
 function decompressResponsePolicy() {
@@ -75509,7 +75490,6 @@ function decompressResponsePolicy() {
     }
   };
 }
-
 // node_modules/@typespec/ts-http-runtime/dist/esm/util/random.js
 function getRandomIntegerInclusive(min, max) {
   min = Math.ceil(min);
@@ -75648,11 +75628,14 @@ function isSystemError(err) {
   return err.code === "ETIMEDOUT" || err.code === "ESOCKETTIMEDOUT" || err.code === "ECONNREFUSED" || err.code === "ECONNRESET" || err.code === "ENOENT" || err.code === "ENOTFOUND";
 }
 
+// node_modules/@typespec/ts-http-runtime/dist/esm/constants.js
+var DEFAULT_RETRY_POLICY_COUNT = 3;
+
 // node_modules/@typespec/ts-http-runtime/dist/esm/policies/retryPolicy.js
 var retryPolicyLogger = createClientLogger("ts-http-runtime retryPolicy");
 var retryPolicyName = "retryPolicy";
 function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_COUNT }) {
-  const logger2 = options.logger || retryPolicyLogger;
+  const logger3 = options.logger || retryPolicyLogger;
   return {
     name: retryPolicyName,
     async sendRequest(request, next) {
@@ -75665,11 +75648,11 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
           response = undefined;
           responseError = undefined;
           try {
-            logger2.info(`Retry ${retryCount}: Attempting to send request`, request.requestId);
+            logger3.info(`Retry ${retryCount}: Attempting to send request`, request.requestId);
             response = await next(request);
-            logger2.info(`Retry ${retryCount}: Received a response from request`, request.requestId);
+            logger3.info(`Retry ${retryCount}: Received a response from request`, request.requestId);
           } catch (e) {
-            logger2.error(`Retry ${retryCount}: Received an error from request`, request.requestId);
+            logger3.error(`Retry ${retryCount}: Received an error from request`, request.requestId);
             responseError = e;
             if (!e || responseError.name !== "RestError") {
               throw e;
@@ -75677,12 +75660,12 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
             response = responseError.response;
           }
           if (request.abortSignal?.aborted) {
-            logger2.error(`Retry ${retryCount}: Request aborted.`);
+            logger3.error(`Retry ${retryCount}: Request aborted.`);
             const abortError = new AbortError;
             throw abortError;
           }
           if (retryCount >= (options.maxRetries ?? DEFAULT_RETRY_POLICY_COUNT)) {
-            logger2.info(`Retry ${retryCount}: Maximum retries reached. Returning the last received response, or throwing the last received error.`);
+            logger3.info(`Retry ${retryCount}: Maximum retries reached. Returning the last received response, or throwing the last received error.`);
             if (responseError) {
               throw responseError;
             } else if (response) {
@@ -75691,10 +75674,10 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
               throw new Error("Maximum retries reached with no response or error to throw");
             }
           }
-          logger2.info(`Retry ${retryCount}: Processing ${strategies.length} retry strategies.`);
+          logger3.info(`Retry ${retryCount}: Processing ${strategies.length} retry strategies.`);
           strategiesLoop:
             for (const strategy of strategies) {
-              const strategyLogger = strategy.logger || logger2;
+              const strategyLogger = strategy.logger || logger3;
               strategyLogger.info(`Retry ${retryCount}: Processing retry strategy ${strategy.name}.`);
               const modifiers = strategy.retry({
                 retryCount,
@@ -75722,11 +75705,11 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
               }
             }
           if (responseError) {
-            logger2.info(`None of the retry strategies could work with the received error. Throwing it.`);
+            logger3.info(`None of the retry strategies could work with the received error. Throwing it.`);
             throw responseError;
           }
           if (response) {
-            logger2.info(`None of the retry strategies could work with the received response. Returning it.`);
+            logger3.info(`None of the retry strategies could work with the received response. Returning it.`);
             return response;
           }
         }
@@ -75743,6 +75726,10 @@ function defaultRetryPolicy(options = {}) {
       maxRetries: options.maxRetries ?? DEFAULT_RETRY_POLICY_COUNT
     }).sendRequest
   };
+}
+// node_modules/@typespec/ts-http-runtime/dist/esm/util/bytesEncoding.js
+function stringToUint8Array2(value, format) {
+  return Buffer.from(value, format);
 }
 
 // node_modules/@typespec/ts-http-runtime/dist/esm/util/checkEnvironment.js
@@ -75811,7 +75798,7 @@ async function prepareFormData(formData, request) {
           headers: createHttpHeaders({
             "Content-Disposition": `form-data; name="${fieldName}"`
           }),
-          body: stringToUint8Array(value, "utf-8")
+          body: stringToUint8Array2(value, "utf-8")
         });
       } else if (value === undefined || value === null || typeof value !== "object") {
         throw new Error(`Unexpected value for key ${fieldName}: ${value}. Value should be serialized to string first.`);
@@ -75829,7 +75816,187 @@ async function prepareFormData(formData, request) {
   }
   request.multipartBody = { parts };
 }
+// node_modules/@typespec/ts-http-runtime/dist/esm/policies/logPolicy.js
+var logPolicyName = "logPolicy";
+function logPolicy(options = {}) {
+  const logger3 = options.logger ?? logger.info;
+  const sanitizer = new Sanitizer({
+    additionalAllowedHeaderNames: options.additionalAllowedHeaderNames,
+    additionalAllowedQueryParameters: options.additionalAllowedQueryParameters
+  });
+  return {
+    name: logPolicyName,
+    async sendRequest(request, next) {
+      if (!logger3.enabled) {
+        return next(request);
+      }
+      logger3(`Request: ${sanitizer.sanitize(request)}`);
+      const response = await next(request);
+      logger3(`Response status code: ${response.status}`);
+      logger3(`Headers: ${sanitizer.sanitize(response.headers)}`);
+      return response;
+    }
+  };
+}
+// node_modules/@typespec/ts-http-runtime/dist/esm/util/typeGuards.js
+function isBlob(x) {
+  return typeof x.stream === "function";
+}
 
+// node_modules/@typespec/ts-http-runtime/dist/esm/util/concat.js
+import { Readable } from "stream";
+async function* streamAsyncIterator() {
+  const reader = this.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        return;
+      }
+      yield value;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+function makeAsyncIterable(webStream) {
+  if (!webStream[Symbol.asyncIterator]) {
+    webStream[Symbol.asyncIterator] = streamAsyncIterator.bind(webStream);
+  }
+  if (!webStream.values) {
+    webStream.values = streamAsyncIterator.bind(webStream);
+  }
+}
+function ensureNodeStream(stream) {
+  if (stream instanceof ReadableStream) {
+    makeAsyncIterable(stream);
+    return Readable.fromWeb(stream);
+  } else {
+    return stream;
+  }
+}
+function toStream(source) {
+  if (source instanceof Uint8Array) {
+    return Readable.from(Buffer.from(source));
+  } else if (isBlob(source)) {
+    return ensureNodeStream(source.stream());
+  } else {
+    return ensureNodeStream(source);
+  }
+}
+async function concat(sources) {
+  return function() {
+    const streams = sources.map((x) => typeof x === "function" ? x() : x).map(toStream);
+    return Readable.from(async function* () {
+      for (const stream of streams) {
+        for await (const chunk of stream) {
+          yield chunk;
+        }
+      }
+    }());
+  };
+}
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/policies/multipartPolicy.js
+function generateBoundary() {
+  return `----AzSDKFormBoundary${randomUUID()}`;
+}
+function encodeHeaders(headers) {
+  let result = "";
+  for (const [key, value] of headers) {
+    result += `${key}: ${value}\r
+`;
+  }
+  return result;
+}
+function getLength(source) {
+  if (source instanceof Uint8Array) {
+    return source.byteLength;
+  } else if (isBlob(source)) {
+    return source.size === -1 ? undefined : source.size;
+  } else {
+    return;
+  }
+}
+function getTotalLength(sources) {
+  let total = 0;
+  for (const source of sources) {
+    const partLength = getLength(source);
+    if (partLength === undefined) {
+      return;
+    } else {
+      total += partLength;
+    }
+  }
+  return total;
+}
+async function buildRequestBody(request, parts, boundary) {
+  const sources = [
+    stringToUint8Array2(`--${boundary}`, "utf-8"),
+    ...parts.flatMap((part) => [
+      stringToUint8Array2(`\r
+`, "utf-8"),
+      stringToUint8Array2(encodeHeaders(part.headers), "utf-8"),
+      stringToUint8Array2(`\r
+`, "utf-8"),
+      part.body,
+      stringToUint8Array2(`\r
+--${boundary}`, "utf-8")
+    ]),
+    stringToUint8Array2(`--\r
+\r
+`, "utf-8")
+  ];
+  const contentLength = getTotalLength(sources);
+  if (contentLength) {
+    request.headers.set("Content-Length", contentLength);
+  }
+  request.body = await concat(sources);
+}
+var multipartPolicyName = "multipartPolicy";
+var maxBoundaryLength = 70;
+var validBoundaryCharacters = new Set(`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'()+,-./:=?`);
+function assertValidBoundary(boundary) {
+  if (boundary.length > maxBoundaryLength) {
+    throw new Error(`Multipart boundary "${boundary}" exceeds maximum length of 70 characters`);
+  }
+  if (Array.from(boundary).some((x) => !validBoundaryCharacters.has(x))) {
+    throw new Error(`Multipart boundary "${boundary}" contains invalid characters`);
+  }
+}
+function multipartPolicy() {
+  return {
+    name: multipartPolicyName,
+    async sendRequest(request, next) {
+      if (!request.multipartBody) {
+        return next(request);
+      }
+      if (request.body) {
+        throw new Error("multipartBody and regular body cannot be set at the same time");
+      }
+      let boundary = request.multipartBody.boundary;
+      const contentTypeHeader = request.headers.get("Content-Type") ?? "multipart/mixed";
+      const parsedHeader = contentTypeHeader.match(/^(multipart\/[^ ;]+)(?:; *boundary=(.+))?$/);
+      if (!parsedHeader) {
+        throw new Error(`Got multipart request body, but content-type header was not multipart: ${contentTypeHeader}`);
+      }
+      const [, contentType, parsedBoundary] = parsedHeader;
+      if (parsedBoundary && boundary && parsedBoundary !== boundary) {
+        throw new Error(`Multipart boundary was specified as ${parsedBoundary} in the header, but got ${boundary} in the request body`);
+      }
+      boundary ??= parsedBoundary;
+      if (boundary) {
+        assertValidBoundary(boundary);
+      } else {
+        boundary = generateBoundary();
+      }
+      request.headers.set("Content-Type", `${contentType}; boundary=${boundary}`);
+      await buildRequestBody(request, request.multipartBody.parts, boundary);
+      request.multipartBody = undefined;
+      return next(request);
+    }
+  };
+}
 // node_modules/@typespec/ts-http-runtime/dist/esm/policies/proxyPolicy.js
 var import_https_proxy_agent = __toESM(require_dist2(), 1);
 var import_http_proxy_agent = __toESM(require_dist3(), 1);
@@ -75969,21 +76136,43 @@ function proxyPolicy(proxySettings, options) {
     }
   };
 }
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/policies/agentPolicy.js
-var agentPolicyName = "agentPolicy";
-function agentPolicy(agent) {
+// node_modules/@typespec/ts-http-runtime/dist/esm/policies/redirectPolicy.js
+var redirectPolicyName = "redirectPolicy";
+var allowedRedirect = ["GET", "HEAD"];
+function redirectPolicy(options = {}) {
+  const { maxRetries = 20, allowCrossOriginRedirects = false } = options;
   return {
-    name: agentPolicyName,
-    sendRequest: async (req, next) => {
-      if (!req.agent) {
-        req.agent = agent;
-      }
-      return next(req);
+    name: redirectPolicyName,
+    async sendRequest(request, next) {
+      const response = await next(request);
+      return handleRedirect(next, response, maxRetries, allowCrossOriginRedirects);
     }
   };
 }
-
+async function handleRedirect(next, response, maxRetries, allowCrossOriginRedirects, currentRetries = 0) {
+  const { request, status, headers } = response;
+  const locationHeader = headers.get("location");
+  if (locationHeader && (status === 300 || status === 301 && allowedRedirect.includes(request.method) || status === 302 && allowedRedirect.includes(request.method) || status === 303 && request.method === "POST" || status === 307) && currentRetries < maxRetries) {
+    const url = new URL(locationHeader, request.url);
+    if (!allowCrossOriginRedirects) {
+      const originalUrl = new URL(request.url);
+      if (url.origin !== originalUrl.origin) {
+        logger.verbose(`Skipping cross-origin redirect from ${originalUrl.origin} to ${url.origin}.`);
+        return response;
+      }
+    }
+    request.url = url.toString();
+    if (status === 303) {
+      request.method = "GET";
+      request.headers.delete("Content-Length");
+      delete request.body;
+    }
+    request.headers.delete("Authorization");
+    const res = await next(request);
+    return handleRedirect(next, res, maxRetries, allowCrossOriginRedirects, currentRetries + 1);
+  }
+  return response;
+}
 // node_modules/@typespec/ts-http-runtime/dist/esm/policies/tlsPolicy.js
 var tlsPolicyName = "tlsPolicy";
 function tlsPolicy(tlsSettings) {
@@ -75997,183 +76186,6 @@ function tlsPolicy(tlsSettings) {
     }
   };
 }
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/util/typeGuards.js
-function isBlob(x) {
-  return typeof x.stream === "function";
-}
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/util/concat.js
-import { Readable } from "stream";
-async function* streamAsyncIterator() {
-  const reader = this.getReader();
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        return;
-      }
-      yield value;
-    }
-  } finally {
-    reader.releaseLock();
-  }
-}
-function makeAsyncIterable(webStream) {
-  if (!webStream[Symbol.asyncIterator]) {
-    webStream[Symbol.asyncIterator] = streamAsyncIterator.bind(webStream);
-  }
-  if (!webStream.values) {
-    webStream.values = streamAsyncIterator.bind(webStream);
-  }
-}
-function ensureNodeStream(stream) {
-  if (stream instanceof ReadableStream) {
-    makeAsyncIterable(stream);
-    return Readable.fromWeb(stream);
-  } else {
-    return stream;
-  }
-}
-function toStream(source) {
-  if (source instanceof Uint8Array) {
-    return Readable.from(Buffer.from(source));
-  } else if (isBlob(source)) {
-    return ensureNodeStream(source.stream());
-  } else {
-    return ensureNodeStream(source);
-  }
-}
-async function concat(sources) {
-  return function() {
-    const streams = sources.map((x) => typeof x === "function" ? x() : x).map(toStream);
-    return Readable.from(async function* () {
-      for (const stream of streams) {
-        for await (const chunk of stream) {
-          yield chunk;
-        }
-      }
-    }());
-  };
-}
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/policies/multipartPolicy.js
-function generateBoundary() {
-  return `----AzSDKFormBoundary${randomUUID()}`;
-}
-function encodeHeaders(headers) {
-  let result = "";
-  for (const [key, value] of headers) {
-    result += `${key}: ${value}\r
-`;
-  }
-  return result;
-}
-function getLength(source) {
-  if (source instanceof Uint8Array) {
-    return source.byteLength;
-  } else if (isBlob(source)) {
-    return source.size === -1 ? undefined : source.size;
-  } else {
-    return;
-  }
-}
-function getTotalLength(sources) {
-  let total = 0;
-  for (const source of sources) {
-    const partLength = getLength(source);
-    if (partLength === undefined) {
-      return;
-    } else {
-      total += partLength;
-    }
-  }
-  return total;
-}
-async function buildRequestBody(request, parts, boundary) {
-  const sources = [
-    stringToUint8Array(`--${boundary}`, "utf-8"),
-    ...parts.flatMap((part) => [
-      stringToUint8Array(`\r
-`, "utf-8"),
-      stringToUint8Array(encodeHeaders(part.headers), "utf-8"),
-      stringToUint8Array(`\r
-`, "utf-8"),
-      part.body,
-      stringToUint8Array(`\r
---${boundary}`, "utf-8")
-    ]),
-    stringToUint8Array(`--\r
-\r
-`, "utf-8")
-  ];
-  const contentLength = getTotalLength(sources);
-  if (contentLength) {
-    request.headers.set("Content-Length", contentLength);
-  }
-  request.body = await concat(sources);
-}
-var multipartPolicyName = "multipartPolicy";
-var maxBoundaryLength = 70;
-var validBoundaryCharacters = new Set(`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'()+,-./:=?`);
-function assertValidBoundary(boundary) {
-  if (boundary.length > maxBoundaryLength) {
-    throw new Error(`Multipart boundary "${boundary}" exceeds maximum length of 70 characters`);
-  }
-  if (Array.from(boundary).some((x) => !validBoundaryCharacters.has(x))) {
-    throw new Error(`Multipart boundary "${boundary}" contains invalid characters`);
-  }
-}
-function multipartPolicy() {
-  return {
-    name: multipartPolicyName,
-    async sendRequest(request, next) {
-      if (!request.multipartBody) {
-        return next(request);
-      }
-      if (request.body) {
-        throw new Error("multipartBody and regular body cannot be set at the same time");
-      }
-      let boundary = request.multipartBody.boundary;
-      const contentTypeHeader = request.headers.get("Content-Type") ?? "multipart/mixed";
-      const parsedHeader = contentTypeHeader.match(/^(multipart\/[^ ;]+)(?:; *boundary=(.+))?$/);
-      if (!parsedHeader) {
-        throw new Error(`Got multipart request body, but content-type header was not multipart: ${contentTypeHeader}`);
-      }
-      const [, contentType, parsedBoundary] = parsedHeader;
-      if (parsedBoundary && boundary && parsedBoundary !== boundary) {
-        throw new Error(`Multipart boundary was specified as ${parsedBoundary} in the header, but got ${boundary} in the request body`);
-      }
-      boundary ??= parsedBoundary;
-      if (boundary) {
-        assertValidBoundary(boundary);
-      } else {
-        boundary = generateBoundary();
-      }
-      request.headers.set("Content-Type", `${contentType}; boundary=${boundary}`);
-      await buildRequestBody(request, request.multipartBody.parts, boundary);
-      request.multipartBody = undefined;
-      return next(request);
-    }
-  };
-}
-
-// node_modules/@azure/core-rest-pipeline/dist/esm/pipeline.js
-function createEmptyPipeline2() {
-  return createEmptyPipeline();
-}
-// node_modules/@azure/logger/dist/esm/index.js
-var context2 = createLoggerContext({
-  logLevelEnvVarName: "AZURE_LOG_LEVEL",
-  namespace: "azure"
-});
-var AzureLogger = context2.logger;
-function createClientLogger2(namespace) {
-  return context2.createClientLogger(namespace);
-}
-
-// node_modules/@azure/core-rest-pipeline/dist/esm/log.js
-var logger2 = createClientLogger2("core-rest-pipeline");
 // node_modules/@azure/core-rest-pipeline/dist/esm/policies/logPolicy.js
 function logPolicy2(options = {}) {
   return logPolicy({
@@ -76234,11 +76246,11 @@ async function getUserAgentValue(prefix) {
 
 // node_modules/@azure/core-rest-pipeline/dist/esm/policies/userAgentPolicy.js
 var UserAgentHeaderName = getUserAgentHeaderName();
-var userAgentPolicyName = "userAgentPolicy";
-function userAgentPolicy(options = {}) {
+var userAgentPolicyName2 = "userAgentPolicy";
+function userAgentPolicy2(options = {}) {
   const userAgentValue = getUserAgentValue(options.userAgentPrefix);
   return {
-    name: userAgentPolicyName,
+    name: userAgentPolicyName2,
     async sendRequest(request, next) {
       if (!request.headers.has(UserAgentHeaderName)) {
         request.headers.set(UserAgentHeaderName, await userAgentValue);
@@ -76248,7 +76260,7 @@ function userAgentPolicy(options = {}) {
   };
 }
 // node_modules/@azure/abort-controller/dist/esm/AbortError.js
-class AbortError2 extends Error {
+class AbortError3 extends Error {
   constructor(message) {
     super(message);
     this.name = "AbortError";
@@ -76259,7 +76271,7 @@ function createAbortablePromise(buildPromise, options) {
   const { cleanupBeforeAbort, abortSignal, abortErrorMsg } = options ?? {};
   return new Promise((resolve2, reject) => {
     function rejectOnAbort() {
-      reject(new AbortError2(abortErrorMsg ?? "The operation was aborted."));
+      reject(new AbortError3(abortErrorMsg ?? "The operation was aborted."));
     }
     function removeListeners() {
       abortSignal?.removeEventListener("abort", onAbort);
@@ -76406,7 +76418,6 @@ function agentPolicy2(agent) {
 function tlsPolicy2(tlsSettings) {
   return tlsPolicy(tlsSettings);
 }
-
 // node_modules/@azure/core-tracing/dist/esm/tracingContext.js
 var knownContextKeys = {
   span: Symbol.for("@azure/core-tracing span"),
@@ -76706,7 +76717,7 @@ function createPipelineFromOptions(options) {
   }
   pipeline.addPolicy(wrapAbortSignalLikePolicy());
   pipeline.addPolicy(formDataPolicy2(), { beforePolicies: [multipartPolicyName2] });
-  pipeline.addPolicy(userAgentPolicy(options.userAgentOptions));
+  pipeline.addPolicy(userAgentPolicy2(options.userAgentOptions));
   pipeline.addPolicy(setClientRequestIdPolicy(options.telemetryOptions?.clientRequestIdHeaderName));
   pipeline.addPolicy(multipartPolicy2(), { afterPhase: "Deserialize" });
   pipeline.addPolicy(defaultRetryPolicy2(options.retryOptions), { phase: "Retry" });
@@ -76980,11 +76991,6 @@ function getCaeChallengeClaims(challenges) {
   }
   const parsedChallenges = parseChallenges(challenges);
   return parsedChallenges.find((x) => x.scheme === "Bearer" && x.params.claims && x.params.error === "insufficient_claims")?.params.claims;
-}
-// node_modules/@azure/core-auth/dist/esm/tokenCredential.js
-function isTokenCredential(credential) {
-  const castCredential = credential;
-  return castCredential && typeof castCredential.getToken === "function" && (castCredential.signRequest === undefined || castCredential.getToken.length > 0);
 }
 // node_modules/@azure/core-http-compat/dist/esm/policies/disableKeepAlivePolicy.js
 var disableKeepAlivePolicyName = "DisableKeepAlivePolicy";
@@ -78413,7 +78419,7 @@ function appendQueryParams(url, queryParams, sequenceParams, noOverwrite = false
 }
 
 // node_modules/@azure/core-client/dist/esm/log.js
-var logger3 = createClientLogger2("core-client");
+var logger3 = createClientLogger3("core-client");
 
 // node_modules/@azure/core-client/dist/esm/serviceClient.js
 class ServiceClient {
@@ -81779,7 +81785,7 @@ async function parseXML(str, opts = {}) {
   return parsedXml;
 }
 // node_modules/@azure/storage-blob/dist/esm/log.js
-var logger4 = createClientLogger2("storage-blob");
+var logger4 = createClientLogger3("storage-blob");
 
 // node_modules/@azure/storage-common/dist/esm/BufferScheduler.js
 import { EventEmitter } from "events";
@@ -82768,7 +82774,7 @@ class StorageSharedKeyCredential extends Credential {
   }
 }
 // node_modules/@azure/storage-common/dist/esm/log.js
-var logger5 = createClientLogger2("storage-common");
+var logger5 = createClientLogger3("storage-common");
 
 // node_modules/@azure/storage-common/dist/esm/policies/StorageRetryPolicyType.js
 var StorageRetryPolicyType;
@@ -82786,7 +82792,7 @@ var DEFAULT_RETRY_OPTIONS = {
   secondaryHost: "",
   tryTimeoutInMs: undefined
 };
-var RETRY_ABORT_ERROR = new AbortError2("The operation was aborted.");
+var RETRY_ABORT_ERROR = new AbortError3("The operation was aborted.");
 
 class StorageRetryPolicy extends BaseRequestPolicy {
   retryOptions;
@@ -82968,7 +82974,7 @@ var retriableErrors = [
   "EPIPE",
   "REQUEST_SEND_ERROR"
 ];
-var RETRY_ABORT_ERROR2 = new AbortError2("The operation was aborted.");
+var RETRY_ABORT_ERROR2 = new AbortError3("The operation was aborted.");
 function storageRetryPolicy(options = {}) {
   const retryPolicyType = options.retryPolicyType ?? DEFAULT_RETRY_OPTIONS2.retryPolicyType;
   const maxTries = options.maxTries ?? DEFAULT_RETRY_OPTIONS2.maxTries;
@@ -97944,7 +97950,7 @@ class RetriableReadableStream extends Readable3 {
     }
   };
   sourceAbortedHandler = () => {
-    const abortError = new AbortError2("The operation was aborted.");
+    const abortError = new AbortError3("The operation was aborted.");
     this.destroy(abortError);
   };
   sourceErrorOrEndHandler = (err) => {
@@ -98547,7 +98553,7 @@ class AvroReadable {
 
 // node_modules/@azure/storage-blob/dist/esm/internal-avro/AvroReadableFromStream.js
 import { Buffer as Buffer2 } from "buffer";
-var ABORT_ERROR = new AbortError2("Reading from the avro stream was aborted.");
+var ABORT_ERROR = new AbortError3("Reading from the avro stream was aborted.");
 
 class AvroReadableFromStream extends AvroReadable {
   _position;
@@ -105685,7 +105691,7 @@ var createActionAuth = function createActionAuth2() {
 };
 
 // node_modules/@octokit/action/node_modules/undici/index.js
-var __filename = "/Users/goryudyuma/go/src/github.com/dev-hato/actions-workflow-metrics/node_modules/@octokit/action/node_modules/undici/index.js";
+var __filename = "/home/runner/work/actions-workflow-metrics/actions-workflow-metrics/node_modules/@octokit/action/node_modules/undici/index.js";
 var Client = require_client2();
 var Dispatcher = require_dispatcher2();
 var Pool = require_pool2();
@@ -119799,5 +119805,5 @@ async function index() {
 }
 await index();
 
-//# debugId=B408F627711A91FB64756E2164756E21
+//# debugId=BBEC8B87B2D9C02364756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
