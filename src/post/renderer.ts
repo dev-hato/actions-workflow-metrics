@@ -95,12 +95,10 @@ export class Renderer {
     }
 
     return formattedTimes.map(
-      (label: string, index: number, array: string[]): string => {
-        if (visibleLabelIndices.has(index)) {
-          return label;
-        }
-        return Renderer.encodeHiddenLabel(index);
-      },
+      (label: string, index: number): string =>
+        visibleLabelIndices.has(index)
+          ? label
+          : Renderer.encodeHiddenLabel(index),
     );
   }
 
