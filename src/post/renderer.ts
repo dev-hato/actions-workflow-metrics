@@ -9,7 +9,6 @@ import type {
 import { TimeLabelFormatter } from "./timeLabels";
 
 export class Renderer {
-
   render(
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
     metricsID: string,
