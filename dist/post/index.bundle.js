@@ -22442,13 +22442,15 @@ var require_brace_expansion = __commonJS((exports, module) => {
     parts.push.apply(parts, p);
     return parts;
   }
-  function expandTop(str) {
+  function expandTop(str, options) {
     if (!str)
       return [];
+    options = options || {};
+    var max = options.max == null ? Infinity : options.max;
     if (str.substr(0, 2) === "{}") {
       str = "\\{\\}" + str.substr(2);
     }
-    return expand(escapeBraces(str), true).map(unescapeBraces);
+    return expand(escapeBraces(str), max, true).map(unescapeBraces);
   }
   function embrace(str) {
     return "{" + str + "}";
@@ -22462,15 +22464,15 @@ var require_brace_expansion = __commonJS((exports, module) => {
   function gte(i, y) {
     return i >= y;
   }
-  function expand(str, isTop) {
+  function expand(str, max, isTop) {
     var expansions = [];
     var m = balanced("{", "}", str);
     if (!m)
       return [str];
     var pre = m.pre;
-    var post = m.post.length ? expand(m.post, false) : [""];
+    var post = m.post.length ? expand(m.post, max, false) : [""];
     if (/\$$/.test(m.pre)) {
-      for (var k = 0;k < post.length; k++) {
+      for (var k = 0;k < post.length && k < max; k++) {
         var expansion = pre + "{" + m.body + "}" + post[k];
         expansions.push(expansion);
       }
@@ -22482,7 +22484,7 @@ var require_brace_expansion = __commonJS((exports, module) => {
       if (!isSequence && !isOptions) {
         if (m.post.match(/,(?!,).*\}/)) {
           str = m.pre + "{" + m.body + escClose + m.post;
-          return expand(str);
+          return expand(str, max, true);
         }
         return [str];
       }
@@ -22492,7 +22494,7 @@ var require_brace_expansion = __commonJS((exports, module) => {
       } else {
         n = parseCommaParts(m.body);
         if (n.length === 1) {
-          n = expand(n[0], false).map(embrace);
+          n = expand(n[0], max, false).map(embrace);
           if (n.length === 1) {
             return post.map(function(p) {
               return m.pre + n[0] + p;
@@ -22538,11 +22540,11 @@ var require_brace_expansion = __commonJS((exports, module) => {
       } else {
         N = [];
         for (var j = 0;j < n.length; j++) {
-          N.push.apply(N, expand(n[j], false));
+          N.push.apply(N, expand(n[j], max, false));
         }
       }
       for (var j = 0;j < N.length; j++) {
-        for (var k = 0;k < post.length; k++) {
+        for (var k = 0;k < post.length && expansions.length < max; k++) {
           var expansion = pre + N[j] + post[k];
           if (!isTop || isSequence || expansion)
             expansions.push(expansion);
@@ -35867,13 +35869,15 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
     parts.push.apply(parts, p);
     return parts;
   }
-  function expandTop(str) {
+  function expandTop(str, options) {
     if (!str)
       return [];
+    options = options || {};
+    var max = options.max == null ? Infinity : options.max;
     if (str.substr(0, 2) === "{}") {
       str = "\\{\\}" + str.substr(2);
     }
-    return expand(escapeBraces(str), true).map(unescapeBraces);
+    return expand(escapeBraces(str), max, true).map(unescapeBraces);
   }
   function embrace(str) {
     return "{" + str + "}";
@@ -35887,15 +35891,15 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
   function gte(i, y) {
     return i >= y;
   }
-  function expand(str, isTop) {
+  function expand(str, max, isTop) {
     var expansions = [];
     var m = balanced("{", "}", str);
     if (!m)
       return [str];
     var pre = m.pre;
-    var post = m.post.length ? expand(m.post, false) : [""];
+    var post = m.post.length ? expand(m.post, max, false) : [""];
     if (/\$$/.test(m.pre)) {
-      for (var k = 0;k < post.length; k++) {
+      for (var k = 0;k < post.length && k < max; k++) {
         var expansion = pre + "{" + m.body + "}" + post[k];
         expansions.push(expansion);
       }
@@ -35907,7 +35911,7 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
       if (!isSequence && !isOptions) {
         if (m.post.match(/,(?!,).*\}/)) {
           str = m.pre + "{" + m.body + escClose + m.post;
-          return expand(str);
+          return expand(str, max, true);
         }
         return [str];
       }
@@ -35917,7 +35921,7 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
       } else {
         n = parseCommaParts(m.body);
         if (n.length === 1) {
-          n = expand(n[0], false).map(embrace);
+          n = expand(n[0], max, false).map(embrace);
           if (n.length === 1) {
             return post.map(function(p) {
               return m.pre + n[0] + p;
@@ -35963,11 +35967,11 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
       } else {
         N = [];
         for (var j = 0;j < n.length; j++) {
-          N.push.apply(N, expand(n[j], false));
+          N.push.apply(N, expand(n[j], max, false));
         }
       }
       for (var j = 0;j < N.length; j++) {
-        for (var k = 0;k < post.length; k++) {
+        for (var k = 0;k < post.length && expansions.length < max; k++) {
           var expansion = pre + N[j] + post[k];
           if (!isTop || isSequence || expansion)
             expansions.push(expansion);
@@ -75862,11 +75866,11 @@ class Sanitizer {
           message: value.message
         };
       }
-      if (key === "headers") {
+      if (key === "headers" && isObject(value)) {
         return this.sanitizeHeaders(value);
-      } else if (key === "url") {
+      } else if (key === "url" && typeof value === "string") {
         return this.sanitizeUrl(value);
-      } else if (key === "query") {
+      } else if (key === "query" && isObject(value)) {
         return this.sanitizeQuery(value);
       } else if (key === "body") {
         return;
@@ -76733,11 +76737,11 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
             logger3.info(`Retry ${retryCount}: Received a response from request`, request.requestId);
           } catch (e) {
             logger3.error(`Retry ${retryCount}: Received an error from request`, request.requestId);
-            responseError = e;
-            if (!e || responseError.name !== "RestError") {
+            if (!isRestError(e)) {
               throw e;
             }
-            response = responseError.response;
+            responseError = e;
+            response = e.response;
           }
           if (request.abortSignal?.aborted) {
             logger3.error(`Retry ${retryCount}: Request aborted.`);
@@ -76920,7 +76924,7 @@ function logPolicy(options = {}) {
 }
 // node_modules/@typespec/ts-http-runtime/dist/esm/util/typeGuards.js
 function isBlob(x) {
-  return typeof x.stream === "function";
+  return typeof Blob !== "undefined" && x instanceof Blob;
 }
 
 // node_modules/@typespec/ts-http-runtime/dist/esm/util/concat.js
@@ -77185,15 +77189,14 @@ function setProxyAgentOnRequest(request, cachedAgents, proxyUrl) {
   if (request.tlsSettings) {
     logger.warning("TLS settings are not supported in combination with custom Proxy, certificates provided to the client will be ignored.");
   }
-  const headers = request.headers.toJSON();
   if (isInsecure) {
     if (!cachedAgents.httpProxyAgent) {
-      cachedAgents.httpProxyAgent = new import_http_proxy_agent.HttpProxyAgent(proxyUrl, { headers });
+      cachedAgents.httpProxyAgent = new import_http_proxy_agent.HttpProxyAgent(proxyUrl);
     }
     request.agent = cachedAgents.httpProxyAgent;
   } else {
     if (!cachedAgents.httpsProxyAgent) {
-      cachedAgents.httpsProxyAgent = new import_https_proxy_agent.HttpsProxyAgent(proxyUrl, { headers });
+      cachedAgents.httpsProxyAgent = new import_https_proxy_agent.HttpsProxyAgent(proxyUrl);
     }
     request.agent = cachedAgents.httpsProxyAgent;
   }
@@ -80469,6 +80472,7 @@ var buildOptions = function(options) {
     built.onDangerousProperty = defaultOnDangerousProperty;
   }
   built.processEntities = normalizeProcessEntities(built.processEntities);
+  built.unpairedTagsSet = new Set(built.unpairedTags);
   if (built.stopNodes && Array.isArray(built.stopNodes)) {
     built.stopNodes = built.stopNodes.map((node) => {
       if (typeof node === "string" && node.startsWith("*.")) {
@@ -80952,10 +80956,11 @@ function getIgnoreAttributesFn(ignoreAttributes) {
 
 // node_modules/path-expression-matcher/src/Expression.js
 class Expression {
-  constructor(pattern, options = {}) {
+  constructor(pattern, options = {}, data) {
     this.pattern = pattern;
     this.separator = options.separator || ".";
     this.segments = this._parse(pattern);
+    this.data = data;
     this._hasDeepWildcard = this.segments.some((seg) => seg.type === "deep-wildcard");
     this._hasAttributeCondition = this.segments.some((seg) => seg.attrName !== undefined);
     this._hasPositionSelector = this.segments.some((seg) => seg.position !== undefined);
@@ -81074,20 +81079,161 @@ class Expression {
   }
 }
 
+// node_modules/path-expression-matcher/src/ExpressionSet.js
+class ExpressionSet {
+  constructor() {
+    this._byDepthAndTag = new Map;
+    this._wildcardByDepth = new Map;
+    this._deepWildcards = [];
+    this._patterns = new Set;
+    this._sealed = false;
+  }
+  add(expression) {
+    if (this._sealed) {
+      throw new TypeError("ExpressionSet is sealed. Create a new ExpressionSet to add more expressions.");
+    }
+    if (this._patterns.has(expression.pattern))
+      return this;
+    this._patterns.add(expression.pattern);
+    if (expression.hasDeepWildcard()) {
+      this._deepWildcards.push(expression);
+      return this;
+    }
+    const depth = expression.length;
+    const lastSeg = expression.segments[expression.segments.length - 1];
+    const tag = lastSeg?.tag;
+    if (!tag || tag === "*") {
+      if (!this._wildcardByDepth.has(depth))
+        this._wildcardByDepth.set(depth, []);
+      this._wildcardByDepth.get(depth).push(expression);
+    } else {
+      const key = `${depth}:${tag}`;
+      if (!this._byDepthAndTag.has(key))
+        this._byDepthAndTag.set(key, []);
+      this._byDepthAndTag.get(key).push(expression);
+    }
+    return this;
+  }
+  addAll(expressions) {
+    for (const expr of expressions)
+      this.add(expr);
+    return this;
+  }
+  has(expression) {
+    return this._patterns.has(expression.pattern);
+  }
+  get size() {
+    return this._patterns.size;
+  }
+  seal() {
+    this._sealed = true;
+    return this;
+  }
+  get isSealed() {
+    return this._sealed;
+  }
+  matchesAny(matcher) {
+    return this.findMatch(matcher) !== null;
+  }
+  findMatch(matcher) {
+    const depth = matcher.getDepth();
+    const tag = matcher.getCurrentTag();
+    const exactKey = `${depth}:${tag}`;
+    const exactBucket = this._byDepthAndTag.get(exactKey);
+    if (exactBucket) {
+      for (let i = 0;i < exactBucket.length; i++) {
+        if (matcher.matches(exactBucket[i]))
+          return exactBucket[i];
+      }
+    }
+    const wildcardBucket = this._wildcardByDepth.get(depth);
+    if (wildcardBucket) {
+      for (let i = 0;i < wildcardBucket.length; i++) {
+        if (matcher.matches(wildcardBucket[i]))
+          return wildcardBucket[i];
+      }
+    }
+    for (let i = 0;i < this._deepWildcards.length; i++) {
+      if (matcher.matches(this._deepWildcards[i]))
+        return this._deepWildcards[i];
+    }
+    return null;
+  }
+}
+
 // node_modules/path-expression-matcher/src/Matcher.js
-var MUTATING_METHODS = new Set(["push", "pop", "reset", "updateCurrent", "restore"]);
+class MatcherView {
+  constructor(matcher) {
+    this._matcher = matcher;
+  }
+  get separator() {
+    return this._matcher.separator;
+  }
+  getCurrentTag() {
+    const path = this._matcher.path;
+    return path.length > 0 ? path[path.length - 1].tag : undefined;
+  }
+  getCurrentNamespace() {
+    const path = this._matcher.path;
+    return path.length > 0 ? path[path.length - 1].namespace : undefined;
+  }
+  getAttrValue(attrName) {
+    const path = this._matcher.path;
+    if (path.length === 0)
+      return;
+    return path[path.length - 1].values?.[attrName];
+  }
+  hasAttr(attrName) {
+    const path = this._matcher.path;
+    if (path.length === 0)
+      return false;
+    const current = path[path.length - 1];
+    return current.values !== undefined && attrName in current.values;
+  }
+  getPosition() {
+    const path = this._matcher.path;
+    if (path.length === 0)
+      return -1;
+    return path[path.length - 1].position ?? 0;
+  }
+  getCounter() {
+    const path = this._matcher.path;
+    if (path.length === 0)
+      return -1;
+    return path[path.length - 1].counter ?? 0;
+  }
+  getIndex() {
+    return this.getPosition();
+  }
+  getDepth() {
+    return this._matcher.path.length;
+  }
+  toString(separator, includeNamespace = true) {
+    return this._matcher.toString(separator, includeNamespace);
+  }
+  toArray() {
+    return this._matcher.path.map((n) => n.tag);
+  }
+  matches(expression) {
+    return this._matcher.matches(expression);
+  }
+  matchesAny(exprSet) {
+    return exprSet.matchesAny(this._matcher);
+  }
+}
 
 class Matcher {
   constructor(options = {}) {
     this.separator = options.separator || ".";
     this.path = [];
     this.siblingStacks = [];
+    this._pathStringCache = null;
+    this._view = new MatcherView(this);
   }
   push(tagName, attrValues = null, namespace = null) {
     this._pathStringCache = null;
     if (this.path.length > 0) {
-      const prev = this.path[this.path.length - 1];
-      prev.values = undefined;
+      this.path[this.path.length - 1].values = undefined;
     }
     const currentLevel = this.path.length;
     if (!this.siblingStacks[currentLevel]) {
@@ -81115,9 +81261,8 @@ class Matcher {
     this.path.push(node);
   }
   pop() {
-    if (this.path.length === 0) {
+    if (this.path.length === 0)
       return;
-    }
     this._pathStringCache = null;
     const node = this.path.pop();
     if (this.siblingStacks.length > this.path.length + 1) {
@@ -81142,8 +81287,7 @@ class Matcher {
   getAttrValue(attrName) {
     if (this.path.length === 0)
       return;
-    const current = this.path[this.path.length - 1];
-    return current.values?.[attrName];
+    return this.path[this.path.length - 1].values?.[attrName];
   }
   hasAttr(attrName) {
     if (this.path.length === 0)
@@ -81171,10 +81315,10 @@ class Matcher {
     const sep = separator || this.separator;
     const isDefault = sep === this.separator && includeNamespace === true;
     if (isDefault) {
-      if (this._pathStringCache !== null && this._pathStringCache !== undefined) {
+      if (this._pathStringCache !== null) {
         return this._pathStringCache;
       }
-      const result = this.path.map((n) => includeNamespace && n.namespace ? `${n.namespace}:${n.tag}` : n.tag).join(sep);
+      const result = this.path.map((n) => n.namespace ? `${n.namespace}:${n.tag}` : n.tag).join(sep);
       this._pathStringCache = result;
       return result;
     }
@@ -81203,10 +81347,7 @@ class Matcher {
       return false;
     }
     for (let i = 0;i < segments.length; i++) {
-      const segment = segments[i];
-      const node = this.path[i];
-      const isCurrentNode = i === this.path.length - 1;
-      if (!this._matchSegment(segment, node, isCurrentNode)) {
+      if (!this._matchSegment(segments[i], this.path[i], i === this.path.length - 1)) {
         return false;
       }
     }
@@ -81225,8 +81366,7 @@ class Matcher {
         const nextSeg = segments[segIdx];
         let found = false;
         for (let i = pathIdx;i >= 0; i--) {
-          const isCurrentNode = i === this.path.length - 1;
-          if (this._matchSegment(nextSeg, this.path[i], isCurrentNode)) {
+          if (this._matchSegment(nextSeg, this.path[i], i === this.path.length - 1)) {
             pathIdx = i - 1;
             segIdx--;
             found = true;
@@ -81237,8 +81377,7 @@ class Matcher {
           return false;
         }
       } else {
-        const isCurrentNode = pathIdx === this.path.length - 1;
-        if (!this._matchSegment(segment, this.path[pathIdx], isCurrentNode)) {
+        if (!this._matchSegment(segment, this.path[pathIdx], pathIdx === this.path.length - 1)) {
           return false;
         }
         pathIdx--;
@@ -81264,8 +81403,7 @@ class Matcher {
         return false;
       }
       if (segment.attrValue !== undefined) {
-        const actualValue = node.values[segment.attrName];
-        if (String(actualValue) !== String(segment.attrValue)) {
+        if (String(node.values[segment.attrName]) !== String(segment.attrValue)) {
           return false;
         }
       }
@@ -81281,13 +81419,14 @@ class Matcher {
         return false;
       } else if (segment.position === "even" && counter % 2 !== 0) {
         return false;
-      } else if (segment.position === "nth") {
-        if (counter !== segment.positionValue) {
-          return false;
-        }
+      } else if (segment.position === "nth" && counter !== segment.positionValue) {
+        return false;
       }
     }
     return true;
+  }
+  matchesAny(exprSet) {
+    return exprSet.matchesAny(this);
   }
   snapshot() {
     return {
@@ -81301,30 +81440,7 @@ class Matcher {
     this.siblingStacks = snapshot.siblingStacks.map((map) => new Map(map));
   }
   readOnly() {
-    const self2 = this;
-    return new Proxy(self2, {
-      get(target, prop, receiver) {
-        if (MUTATING_METHODS.has(prop)) {
-          return () => {
-            throw new TypeError(`Cannot call '${prop}' on a read-only Matcher. ` + `Obtain a writable instance to mutate state.`);
-          };
-        }
-        const value = Reflect.get(target, prop, receiver);
-        if (prop === "path" || prop === "siblingStacks") {
-          return Object.freeze(Array.isArray(value) ? value.map((item) => item instanceof Map ? Object.freeze(new Map(item)) : Object.freeze({ ...item })) : value);
-        }
-        if (typeof value === "function") {
-          return value.bind(target);
-        }
-        return value;
-      },
-      set(_target, prop) {
-        throw new TypeError(`Cannot set property '${String(prop)}' on a read-only Matcher.`);
-      },
-      deleteProperty(_target, prop) {
-        throw new TypeError(`Cannot delete property '${String(prop)}' from a read-only Matcher.`);
-      }
-    });
+    return this._view;
   }
 }
 
@@ -81400,16 +81516,18 @@ class OrderedObjParser {
     this.matcher = new Matcher;
     this.readonlyMatcher = this.matcher.readOnly();
     this.isCurrentNodeStopNode = false;
-    if (this.options.stopNodes && this.options.stopNodes.length > 0) {
-      this.stopNodeExpressions = [];
-      for (let i = 0;i < this.options.stopNodes.length; i++) {
-        const stopNodeExp = this.options.stopNodes[i];
+    this.stopNodeExpressionsSet = new ExpressionSet;
+    const stopNodesOpts = this.options.stopNodes;
+    if (stopNodesOpts && stopNodesOpts.length > 0) {
+      for (let i = 0;i < stopNodesOpts.length; i++) {
+        const stopNodeExp = stopNodesOpts[i];
         if (typeof stopNodeExp === "string") {
-          this.stopNodeExpressions.push(new Expression(stopNodeExp));
+          this.stopNodeExpressionsSet.add(new Expression(stopNodeExp));
         } else if (stopNodeExp instanceof Expression) {
-          this.stopNodeExpressions.push(stopNodeExp);
+          this.stopNodeExpressionsSet.add(stopNodeExp);
         }
       }
+      this.stopNodeExpressionsSet.seal();
     }
   }
 }
@@ -81425,25 +81543,26 @@ function addExternalEntities(externalEntities) {
   }
 }
 function parseTextData(val, tagName, jPath, dontTrim, hasAttributes, isLeafNode, escapeEntities) {
+  const options = this.options;
   if (val !== undefined) {
-    if (this.options.trimValues && !dontTrim) {
+    if (options.trimValues && !dontTrim) {
       val = val.trim();
     }
     if (val.length > 0) {
       if (!escapeEntities)
         val = this.replaceEntitiesValue(val, tagName, jPath);
-      const jPathOrMatcher = this.options.jPath ? jPath.toString() : jPath;
-      const newval = this.options.tagValueProcessor(tagName, val, jPathOrMatcher, hasAttributes, isLeafNode);
+      const jPathOrMatcher = options.jPath ? jPath.toString() : jPath;
+      const newval = options.tagValueProcessor(tagName, val, jPathOrMatcher, hasAttributes, isLeafNode);
       if (newval === null || newval === undefined) {
         return val;
       } else if (typeof newval !== typeof val || newval !== val) {
         return newval;
-      } else if (this.options.trimValues) {
-        return parseValue(val, this.options.parseTagValue, this.options.numberParseOptions);
+      } else if (options.trimValues) {
+        return parseValue(val, options.parseTagValue, options.numberParseOptions);
       } else {
         const trimmedVal = val.trim();
         if (trimmedVal === val) {
-          return parseValue(val, this.options.parseTagValue, this.options.numberParseOptions);
+          return parseValue(val, options.parseTagValue, options.numberParseOptions);
         } else {
           return val;
         }
@@ -81466,7 +81585,8 @@ function resolveNameSpace(tagname) {
 }
 var attrsRegx = new RegExp(`([^\\s=]+)\\s*(=\\s*(['"])([\\s\\S]*?)\\3)?`, "gm");
 function buildAttributesMap(attrStr, jPath, tagName) {
-  if (this.options.ignoreAttributes !== true && typeof attrStr === "string") {
+  const options = this.options;
+  if (options.ignoreAttributes !== true && typeof attrStr === "string") {
     const matches = getAllMatches(attrStr, attrsRegx);
     const len = matches.length;
     const attrs = {};
@@ -81478,7 +81598,7 @@ function buildAttributesMap(attrStr, jPath, tagName) {
       const oldVal = matches[i][4];
       if (attrName.length && oldVal !== undefined) {
         let val = oldVal;
-        if (this.options.trimValues)
+        if (options.trimValues)
           val = val.trim();
         val = this.replaceEntitiesValue(val, tagName, this.readonlyMatcher);
         processedVals[i] = val;
@@ -81489,30 +81609,30 @@ function buildAttributesMap(attrStr, jPath, tagName) {
     if (hasRawAttrs && typeof jPath === "object" && jPath.updateCurrent) {
       jPath.updateCurrent(rawAttrsForMatcher);
     }
-    const jPathStr = this.options.jPath ? jPath.toString() : this.readonlyMatcher;
+    const jPathStr = options.jPath ? jPath.toString() : this.readonlyMatcher;
     let hasAttrs = false;
     for (let i = 0;i < len; i++) {
       const attrName = this.resolveNameSpace(matches[i][1]);
       if (this.ignoreAttributesFn(attrName, jPathStr))
         continue;
-      let aName = this.options.attributeNamePrefix + attrName;
+      let aName = options.attributeNamePrefix + attrName;
       if (attrName.length) {
-        if (this.options.transformAttributeName) {
-          aName = this.options.transformAttributeName(aName);
+        if (options.transformAttributeName) {
+          aName = options.transformAttributeName(aName);
         }
-        aName = sanitizeName(aName, this.options);
+        aName = sanitizeName(aName, options);
         if (matches[i][4] !== undefined) {
           const oldVal = processedVals[i];
-          const newVal = this.options.attributeValueProcessor(attrName, oldVal, jPathStr);
+          const newVal = options.attributeValueProcessor(attrName, oldVal, jPathStr);
           if (newVal === null || newVal === undefined) {
             attrs[aName] = oldVal;
           } else if (typeof newVal !== typeof oldVal || newVal !== oldVal) {
             attrs[aName] = newVal;
           } else {
-            attrs[aName] = parseValue(oldVal, this.options.parseAttributeValue, this.options.numberParseOptions);
+            attrs[aName] = parseValue(oldVal, options.parseAttributeValue, options.numberParseOptions);
           }
           hasAttrs = true;
-        } else if (this.options.allowBooleanAttributes) {
+        } else if (options.allowBooleanAttributes) {
           attrs[aName] = true;
           hasAttrs = true;
         }
@@ -81520,9 +81640,9 @@ function buildAttributesMap(attrStr, jPath, tagName) {
     }
     if (!hasAttrs)
       return;
-    if (this.options.attributesGroupName) {
+    if (options.attributesGroupName) {
       const attrCollection = {};
-      attrCollection[this.options.attributesGroupName] = attrs;
+      attrCollection[options.attributesGroupName] = attrs;
       return attrCollection;
     }
     return attrs;
@@ -81537,28 +81657,34 @@ var parseXml = function(xmlData) {
   this.matcher.reset();
   this.entityExpansionCount = 0;
   this.currentExpandedLength = 0;
-  const docTypeReader = new DocTypeReader(this.options.processEntities);
-  for (let i = 0;i < xmlData.length; i++) {
+  this.docTypeEntitiesKeys = [];
+  this.lastEntitiesKeys = Object.keys(this.lastEntities);
+  this.htmlEntitiesKeys = this.options.htmlEntities ? Object.keys(this.htmlEntities) : [];
+  const options = this.options;
+  const docTypeReader = new DocTypeReader(options.processEntities);
+  const xmlLen = xmlData.length;
+  for (let i = 0;i < xmlLen; i++) {
     const ch = xmlData[i];
     if (ch === "<") {
-      if (xmlData[i + 1] === "/") {
+      const c1 = xmlData.charCodeAt(i + 1);
+      if (c1 === 47) {
         const closeIndex = findClosingIndex(xmlData, ">", i, "Closing Tag is not closed.");
         let tagName = xmlData.substring(i + 2, closeIndex).trim();
-        if (this.options.removeNSPrefix) {
+        if (options.removeNSPrefix) {
           const colonIndex = tagName.indexOf(":");
           if (colonIndex !== -1) {
             tagName = tagName.substr(colonIndex + 1);
           }
         }
-        tagName = transformTagName(this.options.transformTagName, tagName, "", this.options).tagName;
+        tagName = transformTagName(options.transformTagName, tagName, "", options).tagName;
         if (currentNode) {
           textData = this.saveTextToParentTag(textData, currentNode, this.readonlyMatcher);
         }
         const lastTagName = this.matcher.getCurrentTag();
-        if (tagName && this.options.unpairedTags.indexOf(tagName) !== -1) {
+        if (tagName && options.unpairedTagsSet.has(tagName)) {
           throw new Error(`Unpaired tag can not be used as closing tag: </${tagName}>`);
         }
-        if (lastTagName && this.options.unpairedTags.indexOf(lastTagName) !== -1) {
+        if (lastTagName && options.unpairedTagsSet.has(lastTagName)) {
           this.matcher.pop();
           this.tagsNodeStack.pop();
         }
@@ -81567,49 +81693,50 @@ var parseXml = function(xmlData) {
         currentNode = this.tagsNodeStack.pop();
         textData = "";
         i = closeIndex;
-      } else if (xmlData[i + 1] === "?") {
+      } else if (c1 === 63) {
         let tagData = readTagExp(xmlData, i, false, "?>");
         if (!tagData)
           throw new Error("Pi Tag is not closed.");
         textData = this.saveTextToParentTag(textData, currentNode, this.readonlyMatcher);
-        if (this.options.ignoreDeclaration && tagData.tagName === "?xml" || this.options.ignorePiTags) {} else {
+        if (options.ignoreDeclaration && tagData.tagName === "?xml" || options.ignorePiTags) {} else {
           const childNode = new XmlNode(tagData.tagName);
-          childNode.add(this.options.textNodeName, "");
+          childNode.add(options.textNodeName, "");
           if (tagData.tagName !== tagData.tagExp && tagData.attrExpPresent) {
             childNode[":@"] = this.buildAttributesMap(tagData.tagExp, this.matcher, tagData.tagName);
           }
           this.addChild(currentNode, childNode, this.readonlyMatcher, i);
         }
         i = tagData.closeIndex + 1;
-      } else if (xmlData.substr(i + 1, 3) === "!--") {
+      } else if (c1 === 33 && xmlData.charCodeAt(i + 2) === 45 && xmlData.charCodeAt(i + 3) === 45) {
         const endIndex = findClosingIndex(xmlData, "-->", i + 4, "Comment is not closed.");
-        if (this.options.commentPropName) {
+        if (options.commentPropName) {
           const comment = xmlData.substring(i + 4, endIndex - 2);
           textData = this.saveTextToParentTag(textData, currentNode, this.readonlyMatcher);
-          currentNode.add(this.options.commentPropName, [{ [this.options.textNodeName]: comment }]);
+          currentNode.add(options.commentPropName, [{ [options.textNodeName]: comment }]);
         }
         i = endIndex;
-      } else if (xmlData.substr(i + 1, 2) === "!D") {
+      } else if (c1 === 33 && xmlData.charCodeAt(i + 2) === 68) {
         const result = docTypeReader.readDocType(xmlData, i);
         this.docTypeEntities = result.entities;
+        this.docTypeEntitiesKeys = Object.keys(this.docTypeEntities) || [];
         i = result.i;
-      } else if (xmlData.substr(i + 1, 2) === "![") {
+      } else if (c1 === 33 && xmlData.charCodeAt(i + 2) === 91) {
         const closeIndex = findClosingIndex(xmlData, "]]>", i, "CDATA is not closed.") - 2;
         const tagExp = xmlData.substring(i + 9, closeIndex);
         textData = this.saveTextToParentTag(textData, currentNode, this.readonlyMatcher);
         let val = this.parseTextData(tagExp, currentNode.tagname, this.readonlyMatcher, true, false, true, true);
         if (val == undefined)
           val = "";
-        if (this.options.cdataPropName) {
-          currentNode.add(this.options.cdataPropName, [{ [this.options.textNodeName]: tagExp }]);
+        if (options.cdataPropName) {
+          currentNode.add(options.cdataPropName, [{ [options.textNodeName]: tagExp }]);
         } else {
-          currentNode.add(this.options.textNodeName, val);
+          currentNode.add(options.textNodeName, val);
         }
         i = closeIndex + 2;
       } else {
-        let result = readTagExp(xmlData, i, this.options.removeNSPrefix);
+        let result = readTagExp(xmlData, i, options.removeNSPrefix);
         if (!result) {
-          const context3 = xmlData.substring(Math.max(0, i - 50), Math.min(xmlData.length, i + 50));
+          const context3 = xmlData.substring(Math.max(0, i - 50), Math.min(xmlLen, i + 50));
           throw new Error(`readTagExp returned undefined at position ${i}. Context: "${context3}"`);
         }
         let tagName = result.tagName;
@@ -81617,8 +81744,8 @@ var parseXml = function(xmlData) {
         let tagExp = result.tagExp;
         let attrExpPresent = result.attrExpPresent;
         let closeIndex = result.closeIndex;
-        ({ tagName, tagExp } = transformTagName(this.options.transformTagName, tagName, tagExp, this.options));
-        if (this.options.strictReservedNames && (tagName === this.options.commentPropName || tagName === this.options.cdataPropName || tagName === this.options.textNodeName || tagName === this.options.attributesGroupName)) {
+        ({ tagName, tagExp } = transformTagName(options.transformTagName, tagName, tagExp, options));
+        if (options.strictReservedNames && (tagName === options.commentPropName || tagName === options.cdataPropName || tagName === options.textNodeName || tagName === options.attributesGroupName)) {
           throw new Error(`Invalid tag name: ${tagName}`);
         }
         if (currentNode && textData) {
@@ -81627,7 +81754,7 @@ var parseXml = function(xmlData) {
           }
         }
         const lastTag = currentNode;
-        if (lastTag && this.options.unpairedTags.indexOf(lastTag.tagname) !== -1) {
+        if (lastTag && options.unpairedTagsSet.has(lastTag.tagname)) {
           currentNode = this.tagsNodeStack.pop();
           this.matcher.pop();
         }
@@ -81652,18 +81779,18 @@ var parseXml = function(xmlData) {
         if (tagName !== tagExp && attrExpPresent) {
           prefixedAttrs = this.buildAttributesMap(tagExp, this.matcher, tagName);
           if (prefixedAttrs) {
-            rawAttrs = extractRawAttributes(prefixedAttrs, this.options);
+            rawAttrs = extractRawAttributes(prefixedAttrs, options);
           }
         }
         if (tagName !== xmlObj.tagname) {
-          this.isCurrentNodeStopNode = this.isItStopNode(this.stopNodeExpressions, this.matcher);
+          this.isCurrentNodeStopNode = this.isItStopNode();
         }
         const startIndex = i;
         if (this.isCurrentNodeStopNode) {
           let tagContent = "";
           if (isSelfClosing) {
             i = result.closeIndex;
-          } else if (this.options.unpairedTags.indexOf(tagName) !== -1) {
+          } else if (options.unpairedTagsSet.has(tagName)) {
             i = result.closeIndex;
           } else {
             const result2 = this.readStopNodeData(xmlData, rawTagName, closeIndex + 1);
@@ -81676,13 +81803,13 @@ var parseXml = function(xmlData) {
           if (prefixedAttrs) {
             childNode[":@"] = prefixedAttrs;
           }
-          childNode.add(this.options.textNodeName, tagContent);
+          childNode.add(options.textNodeName, tagContent);
           this.matcher.pop();
           this.isCurrentNodeStopNode = false;
           this.addChild(currentNode, childNode, this.readonlyMatcher, startIndex);
         } else {
           if (isSelfClosing) {
-            ({ tagName, tagExp } = transformTagName(this.options.transformTagName, tagName, tagExp, this.options));
+            ({ tagName, tagExp } = transformTagName(options.transformTagName, tagName, tagExp, options));
             const childNode = new XmlNode(tagName);
             if (prefixedAttrs) {
               childNode[":@"] = prefixedAttrs;
@@ -81690,7 +81817,7 @@ var parseXml = function(xmlData) {
             this.addChild(currentNode, childNode, this.readonlyMatcher, startIndex);
             this.matcher.pop();
             this.isCurrentNodeStopNode = false;
-          } else if (this.options.unpairedTags.indexOf(tagName) !== -1) {
+          } else if (options.unpairedTagsSet.has(tagName)) {
             const childNode = new XmlNode(tagName);
             if (prefixedAttrs) {
               childNode[":@"] = prefixedAttrs;
@@ -81702,7 +81829,7 @@ var parseXml = function(xmlData) {
             continue;
           } else {
             const childNode = new XmlNode(tagName);
-            if (this.tagsNodeStack.length > this.options.maxNestedTags) {
+            if (this.tagsNodeStack.length > options.maxNestedTags) {
               throw new Error("Maximum nested tags exceeded");
             }
             this.tagsNodeStack.push(currentNode);
@@ -81752,7 +81879,7 @@ function replaceEntitiesValue(val, tagName, jPath) {
       return val;
     }
   }
-  for (const entityName of Object.keys(this.docTypeEntities)) {
+  for (const entityName of this.docTypeEntitiesKeys) {
     const entity = this.docTypeEntities[entityName];
     const matches = val.match(entity.regx);
     if (matches) {
@@ -81772,7 +81899,7 @@ function replaceEntitiesValue(val, tagName, jPath) {
   }
   if (val.indexOf("&") === -1)
     return val;
-  for (const entityName of Object.keys(this.lastEntities)) {
+  for (const entityName of this.lastEntitiesKeys) {
     const entity = this.lastEntities[entityName];
     const matches = val.match(entity.regex);
     if (matches) {
@@ -81785,18 +81912,16 @@ function replaceEntitiesValue(val, tagName, jPath) {
   }
   if (val.indexOf("&") === -1)
     return val;
-  if (this.options.htmlEntities) {
-    for (const entityName of Object.keys(this.htmlEntities)) {
-      const entity = this.htmlEntities[entityName];
-      const matches = val.match(entity.regex);
-      if (matches) {
-        this.entityExpansionCount += matches.length;
-        if (entityConfig.maxTotalExpansions && this.entityExpansionCount > entityConfig.maxTotalExpansions) {
-          throw new Error(`Entity expansion limit exceeded: ${this.entityExpansionCount} > ${entityConfig.maxTotalExpansions}`);
-        }
+  for (const entityName of this.htmlEntitiesKeys) {
+    const entity = this.htmlEntities[entityName];
+    const matches = val.match(entity.regex);
+    if (matches) {
+      this.entityExpansionCount += matches.length;
+      if (entityConfig.maxTotalExpansions && this.entityExpansionCount > entityConfig.maxTotalExpansions) {
+        throw new Error(`Entity expansion limit exceeded: ${this.entityExpansionCount} > ${entityConfig.maxTotalExpansions}`);
       }
-      val = val.replace(entity.regex, entity.val);
     }
+    val = val.replace(entity.regex, entity.val);
   }
   val = val.replace(this.ampEntity.regex, this.ampEntity.val);
   return val;
@@ -81812,44 +81937,37 @@ function saveTextToParentTag(textData, parentNode, matcher, isLeafNode) {
   }
   return textData;
 }
-function isItStopNode(stopNodeExpressions, matcher) {
-  if (!stopNodeExpressions || stopNodeExpressions.length === 0)
+function isItStopNode() {
+  if (this.stopNodeExpressionsSet.size === 0)
     return false;
-  for (let i = 0;i < stopNodeExpressions.length; i++) {
-    if (matcher.matches(stopNodeExpressions[i])) {
-      return true;
-    }
-  }
-  return false;
+  return this.matcher.matchesAny(this.stopNodeExpressionsSet);
 }
 function tagExpWithClosingIndex(xmlData, i, closingChar = ">") {
-  let attrBoundary;
-  let tagExp = "";
-  for (let index = i;index < xmlData.length; index++) {
-    let ch = xmlData[index];
+  let attrBoundary = 0;
+  const chars = [];
+  const len = xmlData.length;
+  const closeCode0 = closingChar.charCodeAt(0);
+  const closeCode1 = closingChar.length > 1 ? closingChar.charCodeAt(1) : -1;
+  for (let index = i;index < len; index++) {
+    const code = xmlData.charCodeAt(index);
     if (attrBoundary) {
-      if (ch === attrBoundary)
-        attrBoundary = "";
-    } else if (ch === '"' || ch === "'") {
-      attrBoundary = ch;
-    } else if (ch === closingChar[0]) {
-      if (closingChar[1]) {
-        if (xmlData[index + 1] === closingChar[1]) {
-          return {
-            data: tagExp,
-            index
-          };
+      if (code === attrBoundary)
+        attrBoundary = 0;
+    } else if (code === 34 || code === 39) {
+      attrBoundary = code;
+    } else if (code === closeCode0) {
+      if (closeCode1 !== -1) {
+        if (xmlData.charCodeAt(index + 1) === closeCode1) {
+          return { data: String.fromCharCode(...chars), index };
         }
       } else {
-        return {
-          data: tagExp,
-          index
-        };
+        return { data: String.fromCharCode(...chars), index };
       }
-    } else if (ch === "\t") {
-      ch = " ";
+    } else if (code === 9) {
+      chars.push(32);
+      continue;
     }
-    tagExp += ch;
+    chars.push(code);
   }
 }
 function findClosingIndex(xmlData, str, i, errMsg) {
@@ -81859,6 +81977,12 @@ function findClosingIndex(xmlData, str, i, errMsg) {
   } else {
     return closingIndex + str.length - 1;
   }
+}
+function findClosingChar(xmlData, char, i, errMsg) {
+  const closingIndex = xmlData.indexOf(char, i);
+  if (closingIndex === -1)
+    throw new Error(errMsg);
+  return closingIndex;
 }
 function readTagExp(xmlData, i, removeNSPrefix, closingChar = ">") {
   const result = tagExpWithClosingIndex(xmlData, i + 1, closingChar);
@@ -81892,10 +82016,12 @@ function readTagExp(xmlData, i, removeNSPrefix, closingChar = ">") {
 function readStopNodeData(xmlData, tagName, i) {
   const startIndex = i;
   let openTagCount = 1;
-  for (;i < xmlData.length; i++) {
+  const xmllen = xmlData.length;
+  for (;i < xmllen; i++) {
     if (xmlData[i] === "<") {
-      if (xmlData[i + 1] === "/") {
-        const closeIndex = findClosingIndex(xmlData, ">", i, `${tagName} is not closed`);
+      const c1 = xmlData.charCodeAt(i + 1);
+      if (c1 === 47) {
+        const closeIndex = findClosingChar(xmlData, ">", i, `${tagName} is not closed`);
         let closeTagName = xmlData.substring(i + 2, closeIndex).trim();
         if (closeTagName === tagName) {
           openTagCount--;
@@ -81907,13 +82033,13 @@ function readStopNodeData(xmlData, tagName, i) {
           }
         }
         i = closeIndex;
-      } else if (xmlData[i + 1] === "?") {
+      } else if (c1 === 63) {
         const closeIndex = findClosingIndex(xmlData, "?>", i + 1, "StopNode is not closed.");
         i = closeIndex;
-      } else if (xmlData.substr(i + 1, 3) === "!--") {
+      } else if (c1 === 33 && xmlData.charCodeAt(i + 2) === 45 && xmlData.charCodeAt(i + 3) === 45) {
         const closeIndex = findClosingIndex(xmlData, "-->", i + 3, "StopNode is not closed.");
         i = closeIndex;
-      } else if (xmlData.substr(i + 1, 2) === "![") {
+      } else if (c1 === 33 && xmlData.charCodeAt(i + 2) === 91) {
         const closeIndex = findClosingIndex(xmlData, "]]>", i, "StopNode is not closed.") - 2;
         i = closeIndex;
       } else {
@@ -82821,20 +82947,34 @@ var XML_CHARKEY2 = "_";
 
 // node_modules/@azure/core-xml/dist/esm/xml.js
 function getCommonOptions(options) {
-  var _a;
   return {
     attributesGroupName: XML_ATTRKEY2,
-    textNodeName: (_a = options.xmlCharKey) !== null && _a !== undefined ? _a : XML_CHARKEY2,
+    textNodeName: options.xmlCharKey ?? XML_CHARKEY2,
     ignoreAttributes: false,
     suppressBooleanAttributes: false
   };
 }
 function getSerializerOptions(options = {}) {
-  var _a, _b;
-  return Object.assign(Object.assign({}, getCommonOptions(options)), { attributeNamePrefix: "@_", format: true, suppressEmptyNode: true, indentBy: "", rootNodeName: (_a = options.rootName) !== null && _a !== undefined ? _a : "root", cdataPropName: (_b = options.cdataPropName) !== null && _b !== undefined ? _b : "__cdata" });
+  return {
+    ...getCommonOptions(options),
+    attributeNamePrefix: "@_",
+    format: true,
+    suppressEmptyNode: true,
+    indentBy: "",
+    rootNodeName: options.rootName ?? "root",
+    cdataPropName: options.cdataPropName ?? "__cdata"
+  };
 }
 function getParserOptions(options = {}) {
-  return Object.assign(Object.assign({}, getCommonOptions(options)), { parseAttributeValue: false, parseTagValue: false, attributeNamePrefix: "", stopNodes: options.stopNodes, processEntities: true, trimValues: false });
+  return {
+    ...getCommonOptions(options),
+    parseAttributeValue: false,
+    parseTagValue: false,
+    attributeNamePrefix: "",
+    stopNodes: options.stopNodes,
+    processEntities: true,
+    trimValues: false
+  };
 }
 function stringifyXML(obj, opts = {}) {
   const parserOptions = getSerializerOptions(opts);
@@ -82859,7 +82999,7 @@ async function parseXML(str, opts = {}) {
   if (!opts.includeRoot) {
     for (const key of Object.keys(parsedXml)) {
       const value = parsedXml[key];
-      return typeof value === "object" ? Object.assign({}, value) : value;
+      return typeof value === "object" ? { ...value } : value;
     }
   }
   return parsedXml;
@@ -102389,6 +102529,19 @@ function getProxyFetch(destinationUrl) {
 function getApiBaseUrl() {
   return process.env["GITHUB_API_URL"] || "https://api.github.com";
 }
+function getUserAgentWithOrchestrationId(baseUserAgent) {
+  var _a;
+  const orchId = (_a = process.env["ACTIONS_ORCHESTRATION_ID"]) === null || _a === undefined ? undefined : _a.trim();
+  if (orchId) {
+    const sanitizedId = orchId.replace(/[^a-z0-9_.-]/gi, "_");
+    const tag = `actions_orchestration_id/${sanitizedId}`;
+    if (baseUserAgent === null || baseUserAgent === undefined ? undefined : baseUserAgent.includes(tag))
+      return baseUserAgent;
+    const ua = baseUserAgent ? `${baseUserAgent} ` : "";
+    return `${ua}${tag}`;
+  }
+  return baseUserAgent;
+}
 
 // node_modules/universal-user-agent/index.js
 function getUserAgent() {
@@ -105938,6 +106091,10 @@ function getOctokitOptions(token, options) {
   const auth2 = getAuthString(token, opts);
   if (auth2) {
     opts.auth = auth2;
+  }
+  const userAgent2 = getUserAgentWithOrchestrationId(opts.userAgent);
+  if (userAgent2) {
+    opts.userAgent = userAgent2;
   }
   return opts;
 }
@@ -120886,5 +121043,5 @@ async function index() {
 }
 await index();
 
-//# debugId=CB523849633DDA6264756E2164756E21
+//# debugId=50D13DA35489AA4E64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
