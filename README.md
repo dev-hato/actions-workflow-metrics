@@ -45,6 +45,9 @@ on: [push]
 jobs:
   example:
     runs-on: ubuntu-latest
+    permissions:
+      # Required for private repositories
+      actions: read
     steps:
       # Run actions-workflow-metrics at the beginning of the workflow
       - name: Start Workflow Telemetry

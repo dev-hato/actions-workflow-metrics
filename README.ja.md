@@ -49,6 +49,9 @@ on: [push]
 jobs:
   example:
     runs-on: ubuntu-latest
+    permissions:
+      # private repositoryにおいては必須
+      actions: read
     steps:
       # ワークフローの先頭でactions-workflow-metricsを実行
       - name: Start Workflow Telemetry
