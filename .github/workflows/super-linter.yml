@@ -18,11 +18,7 @@ on:
     branches:
       - main
   pull_request:
-permissions:
-  contents: read
-  packages: read
-  pull-requests: write
-  statuses: write
+permissions: {}
 ###############
 # Set the Job #
 ###############
