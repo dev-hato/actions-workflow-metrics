@@ -1967,14 +1967,21 @@ var require_dispatcher_base = __commonJS((exports, module) => {
   var kOnDestroyed = Symbol("onDestroyed");
   var kOnClosed = Symbol("onClosed");
   var kInterceptedDispatch = Symbol("Intercepted Dispatch");
+  var kWebSocketOptions = Symbol("webSocketOptions");
 
   class DispatcherBase extends Dispatcher {
-    constructor() {
+    constructor(opts) {
       super();
       this[kDestroyed] = false;
       this[kOnDestroyed] = null;
       this[kClosed] = false;
       this[kOnClosed] = [];
+      this[kWebSocketOptions] = opts?.webSocket ?? {};
+    }
+    get webSocketOptions() {
+      return {
+        maxPayloadSize: this[kWebSocketOptions].maxPayloadSize ?? 128 * 1024 * 1024
+      };
     }
     get destroyed() {
       return this[kDestroyed];
@@ -6991,9 +6998,10 @@ var require_client = __commonJS((exports, module) => {
       autoSelectFamily,
       autoSelectFamilyAttemptTimeout,
       maxConcurrentStreams,
-      allowH2
+      allowH2,
+      webSocket
     } = {}) {
-      super();
+      super({ webSocket });
       if (keepAlive !== undefined) {
         throw new InvalidArgumentError("unsupported keepAlive, use pipelining=0 instead");
       }
@@ -7490,8 +7498,8 @@ var require_pool_base = __commonJS((exports, module) => {
   var kStats = Symbol("stats");
 
   class PoolBase extends DispatcherBase {
-    constructor() {
-      super();
+    constructor(opts) {
+      super(opts);
       this[kQueue] = new FixedQueue;
       this[kClients] = [];
       this[kQueued] = 0;
@@ -7660,7 +7668,6 @@ var require_pool = __commonJS((exports, module) => {
       allowH2,
       ...options
     } = {}) {
-      super();
       if (connections != null && (!Number.isFinite(connections) || connections < 0)) {
         throw new InvalidArgumentError("invalid connections");
       }
@@ -7681,6 +7688,7 @@ var require_pool = __commonJS((exports, module) => {
           ...connect
         });
       }
+      super(options);
       this[kInterceptors] = options.interceptors?.Pool && Array.isArray(options.interceptors.Pool) ? options.interceptors.Pool : [];
       this[kConnections] = connections || null;
       this[kUrl] = util.parseOrigin(origin);
@@ -7877,7 +7885,6 @@ var require_agent = __commonJS((exports, module) => {
 
   class Agent extends DispatcherBase {
     constructor({ factory = defaultFactory, maxRedirections = 0, connect, ...options } = {}) {
-      super();
       if (typeof factory !== "function") {
         throw new InvalidArgumentError("factory must be a function.");
       }
@@ -7887,6 +7894,7 @@ var require_agent = __commonJS((exports, module) => {
       if (!Number.isInteger(maxRedirections) || maxRedirections < 0) {
         throw new InvalidArgumentError("maxRedirections must be a positive number");
       }
+      super(options);
       if (connect && typeof connect !== "function") {
         connect = { ...connect };
       }
@@ -15854,22 +15862,17 @@ var require_permessage_deflate = __commonJS((exports, module) => {
   var tail = Buffer.from([0, 0, 255, 255]);
   var kBuffer = Symbol("kBuffer");
   var kLength = Symbol("kLength");
-  var kDefaultMaxDecompressedSize = 4 * 1024 * 1024;
 
   class PerMessageDeflate {
     #inflate;
     #options = {};
-    #aborted = false;
-    #currentCallback = null;
-    constructor(extensions) {
+    #maxPayloadSize = 0;
+    constructor(extensions, options) {
       this.#options.serverNoContextTakeover = extensions.has("server_no_context_takeover");
       this.#options.serverMaxWindowBits = extensions.get("server_max_window_bits");
+      this.#maxPayloadSize = options.maxPayloadSize;
     }
     decompress(chunk, fin, callback) {
-      if (this.#aborted) {
-        callback(new MessageSizeExceededError);
-        return;
-      }
       if (!this.#inflate) {
         let windowBits = Z_DEFAULT_WINDOWBITS;
         if (this.#options.serverMaxWindowBits) {
@@ -15888,20 +15891,11 @@ var require_permessage_deflate = __commonJS((exports, module) => {
         this.#inflate[kBuffer] = [];
         this.#inflate[kLength] = 0;
         this.#inflate.on("data", (data) => {
-          if (this.#aborted) {
-            return;
-          }
           this.#inflate[kLength] += data.length;
-          if (this.#inflate[kLength] > kDefaultMaxDecompressedSize) {
-            this.#aborted = true;
+          if (this.#maxPayloadSize > 0 && this.#inflate[kLength] > this.#maxPayloadSize) {
+            callback(new MessageSizeExceededError);
             this.#inflate.removeAllListeners();
-            this.#inflate.destroy();
             this.#inflate = null;
-            if (this.#currentCallback) {
-              const cb = this.#currentCallback;
-              this.#currentCallback = null;
-              cb(new MessageSizeExceededError);
-            }
             return;
           }
           this.#inflate[kBuffer].push(data);
@@ -15911,19 +15905,17 @@ var require_permessage_deflate = __commonJS((exports, module) => {
           callback(err);
         });
       }
-      this.#currentCallback = callback;
       this.#inflate.write(chunk);
       if (fin) {
         this.#inflate.write(tail);
       }
       this.#inflate.flush(() => {
-        if (this.#aborted || !this.#inflate) {
+        if (!this.#inflate) {
           return;
         }
         const full = Buffer.concat(this.#inflate[kBuffer], this.#inflate[kLength]);
         this.#inflate[kBuffer].length = 0;
         this.#inflate[kLength] = 0;
-        this.#currentCallback = null;
         callback(null, full);
       });
     }
@@ -15951,21 +15943,25 @@ var require_receiver = __commonJS((exports, module) => {
   var { WebsocketFrameSend } = require_frame();
   var { closeWebSocketConnection } = require_connection();
   var { PerMessageDeflate } = require_permessage_deflate();
+  var { MessageSizeExceededError } = require_errors();
 
   class ByteParser extends Writable {
     #buffers = [];
+    #fragmentsBytes = 0;
     #byteOffset = 0;
     #loop = false;
     #state = parserStates.INFO;
     #info = {};
     #fragments = [];
     #extensions;
-    constructor(ws, extensions) {
+    #maxPayloadSize;
+    constructor(ws, extensions, options = {}) {
       super();
       this.ws = ws;
       this.#extensions = extensions == null ? new Map : extensions;
+      this.#maxPayloadSize = options.maxPayloadSize ?? 0;
       if (this.#extensions.has("permessage-deflate")) {
-        this.#extensions.set("permessage-deflate", new PerMessageDeflate(extensions));
+        this.#extensions.set("permessage-deflate", new PerMessageDeflate(extensions, options));
       }
     }
     _write(chunk, _2, callback) {
@@ -15973,6 +15969,13 @@ var require_receiver = __commonJS((exports, module) => {
       this.#byteOffset += chunk.length;
       this.#loop = true;
       this.run(callback);
+    }
+    #validatePayloadLength() {
+      if (this.#maxPayloadSize > 0 && !isControlFrame(this.#info.opcode) && this.#info.payloadLength > this.#maxPayloadSize) {
+        failWebsocketConnection(this.ws, "Payload size exceeds maximum allowed size");
+        return false;
+      }
+      return true;
     }
     run(callback) {
       while (this.#loop) {
@@ -16028,6 +16031,9 @@ var require_receiver = __commonJS((exports, module) => {
           if (payloadLength <= 125) {
             this.#info.payloadLength = payloadLength;
             this.#state = parserStates.READ_DATA;
+            if (!this.#validatePayloadLength()) {
+              return;
+            }
           } else if (payloadLength === 126) {
             this.#state = parserStates.PAYLOADLENGTH_16;
           } else if (payloadLength === 127) {
@@ -16048,6 +16054,9 @@ var require_receiver = __commonJS((exports, module) => {
           const buffer = this.consume(2);
           this.#info.payloadLength = buffer.readUInt16BE(0);
           this.#state = parserStates.READ_DATA;
+          if (!this.#validatePayloadLength()) {
+            return;
+          }
         } else if (this.#state === parserStates.PAYLOADLENGTH_64) {
           if (this.#byteOffset < 8) {
             return callback();
@@ -16061,6 +16070,9 @@ var require_receiver = __commonJS((exports, module) => {
           }
           this.#info.payloadLength = lower;
           this.#state = parserStates.READ_DATA;
+          if (!this.#validatePayloadLength()) {
+            return;
+          }
         } else if (this.#state === parserStates.READ_DATA) {
           if (this.#byteOffset < this.#info.payloadLength) {
             return callback();
@@ -16071,11 +16083,13 @@ var require_receiver = __commonJS((exports, module) => {
             this.#state = parserStates.INFO;
           } else {
             if (!this.#info.compressed) {
-              this.#fragments.push(body);
+              this.writeFragments(body);
+              if (this.#maxPayloadSize > 0 && this.#fragmentsBytes > this.#maxPayloadSize) {
+                failWebsocketConnection(this.ws, new MessageSizeExceededError().message);
+                return;
+              }
               if (!this.#info.fragmented && this.#info.fin) {
-                const fullMessage = Buffer.concat(this.#fragments);
-                websocketMessageReceived(this.ws, this.#info.binaryType, fullMessage);
-                this.#fragments.length = 0;
+                websocketMessageReceived(this.ws, this.#info.binaryType, this.consumeFragments());
               }
               this.#state = parserStates.INFO;
             } else {
@@ -16084,17 +16098,20 @@ var require_receiver = __commonJS((exports, module) => {
                   failWebsocketConnection(this.ws, error.message);
                   return;
                 }
-                this.#fragments.push(data);
+                this.writeFragments(data);
+                if (this.#maxPayloadSize > 0 && this.#fragmentsBytes > this.#maxPayloadSize) {
+                  failWebsocketConnection(this.ws, new MessageSizeExceededError().message);
+                  return;
+                }
                 if (!this.#info.fin) {
                   this.#state = parserStates.INFO;
                   this.#loop = true;
                   this.run(callback);
                   return;
                 }
-                websocketMessageReceived(this.ws, this.#info.binaryType, Buffer.concat(this.#fragments));
+                websocketMessageReceived(this.ws, this.#info.binaryType, this.consumeFragments());
                 this.#loop = true;
                 this.#state = parserStates.INFO;
-                this.#fragments.length = 0;
                 this.run(callback);
               });
               this.#loop = false;
@@ -16133,6 +16150,21 @@ var require_receiver = __commonJS((exports, module) => {
       }
       this.#byteOffset -= n;
       return buffer;
+    }
+    writeFragments(fragment) {
+      this.#fragmentsBytes += fragment.length;
+      this.#fragments.push(fragment);
+    }
+    consumeFragments() {
+      const fragments = this.#fragments;
+      if (fragments.length === 1) {
+        this.#fragmentsBytes = 0;
+        return fragments.shift();
+      }
+      const output = Buffer.concat(fragments, this.#fragmentsBytes);
+      this.#fragments = [];
+      this.#fragmentsBytes = 0;
+      return output;
     }
     parseCloseBody(data) {
       assert(data.length !== 1);
@@ -16523,7 +16555,10 @@ var require_websocket = __commonJS((exports, module) => {
     }
     #onConnectionEstablished(response, parsedExtensions) {
       this[kResponse] = response;
-      const parser = new ByteParser(this, parsedExtensions);
+      const maxPayloadSize = this[kController]?.dispatcher?.webSocketOptions?.maxPayloadSize;
+      const parser = new ByteParser(this, parsedExtensions, {
+        maxPayloadSize
+      });
       parser.on("drain", onParserDrain);
       parser.on("error", onParserError.bind(this));
       response.socket.ws = this;
@@ -55606,7 +55641,7 @@ var require_util14 = __commonJS((exports, module) => {
     return !!(url2.username || url2.password);
   }
   function isTraversableNavigable(navigable) {
-    return true;
+    return navigable != null && navigable !== "client" && navigable !== "no-traversable";
   }
 
   class EnvironmentSettingsObjectBase {
@@ -68804,10 +68839,10 @@ var require_fetch2 = __commonJS((exports, module) => {
       response.rangeRequested = true;
     }
     response.requestIncludesCredentials = includeCredentials;
-    if (response.status === 401 && httpRequest.responseTainting !== "cors" && includeCredentials && isTraversableNavigable(request2.traversableForUserPrompts)) {
+    if (response.status === 401 && httpRequest.responseTainting !== "cors" && includeCredentials && (request2.useURLCredentials !== undefined || isTraversableNavigable(request2.traversableForUserPrompts))) {
       if (request2.body != null) {
         if (request2.body.source == null) {
-          return makeNetworkError("expected non-null body source");
+          return response;
         }
         request2.body = safelyExtractBody(request2.body.source)[0];
       }
@@ -80365,6 +80400,1352 @@ function getPositionFromMatch(match) {
   return match.startIndex + match[1].length;
 }
 
+// node_modules/@nodable/entities/src/entities.js
+var BASIC_LATIN = {
+  amp: "&",
+  AMP: "&",
+  lt: "<",
+  LT: "<",
+  gt: ">",
+  GT: ">",
+  quot: '"',
+  QUOT: '"',
+  apos: "'",
+  lsquo: "‘",
+  rsquo: "’",
+  ldquo: "“",
+  rdquo: "”",
+  lsquor: "‚",
+  rsquor: "’",
+  ldquor: "„",
+  bdquo: "„",
+  comma: ",",
+  period: ".",
+  colon: ":",
+  semi: ";",
+  excl: "!",
+  quest: "?",
+  num: "#",
+  dollar: "$",
+  percent: "%",
+  amp: "&",
+  ast: "*",
+  commat: "@",
+  lowbar: "_",
+  verbar: "|",
+  vert: "|",
+  sol: "/",
+  bsol: "\\",
+  lbrace: "{",
+  rbrace: "}",
+  lbrack: "[",
+  rbrack: "]",
+  lpar: "(",
+  rpar: ")",
+  nbsp: " ",
+  iexcl: "¡",
+  cent: "¢",
+  pound: "£",
+  curren: "¤",
+  yen: "¥",
+  brvbar: "¦",
+  sect: "§",
+  uml: "¨",
+  copy: "©",
+  COPY: "©",
+  ordf: "ª",
+  laquo: "«",
+  not: "¬",
+  shy: "­",
+  reg: "®",
+  REG: "®",
+  macr: "¯",
+  deg: "°",
+  plusmn: "±",
+  sup2: "²",
+  sup3: "³",
+  acute: "´",
+  micro: "µ",
+  para: "¶",
+  middot: "·",
+  cedil: "¸",
+  sup1: "¹",
+  ordm: "º",
+  raquo: "»",
+  frac14: "¼",
+  frac12: "½",
+  half: "½",
+  frac34: "¾",
+  iquest: "¿",
+  times: "×",
+  div: "÷",
+  divide: "÷"
+};
+var LATIN_ACCENTS = {
+  Agrave: "À",
+  agrave: "à",
+  Aacute: "Á",
+  aacute: "á",
+  Acirc: "Â",
+  acirc: "â",
+  Atilde: "Ã",
+  atilde: "ã",
+  Auml: "Ä",
+  auml: "ä",
+  Aring: "Å",
+  aring: "å",
+  AElig: "Æ",
+  aelig: "æ",
+  Ccedil: "Ç",
+  ccedil: "ç",
+  Egrave: "È",
+  egrave: "è",
+  Eacute: "É",
+  eacute: "é",
+  Ecirc: "Ê",
+  ecirc: "ê",
+  Euml: "Ë",
+  euml: "ë",
+  Igrave: "Ì",
+  igrave: "ì",
+  Iacute: "Í",
+  iacute: "í",
+  Icirc: "Î",
+  icirc: "î",
+  Iuml: "Ï",
+  iuml: "ï",
+  ETH: "Ð",
+  eth: "ð",
+  Ntilde: "Ñ",
+  ntilde: "ñ",
+  Ograve: "Ò",
+  ograve: "ò",
+  Oacute: "Ó",
+  oacute: "ó",
+  Ocirc: "Ô",
+  ocirc: "ô",
+  Otilde: "Õ",
+  otilde: "õ",
+  Ouml: "Ö",
+  ouml: "ö",
+  Oslash: "Ø",
+  oslash: "ø",
+  Ugrave: "Ù",
+  ugrave: "ù",
+  Uacute: "Ú",
+  uacute: "ú",
+  Ucirc: "Û",
+  ucirc: "û",
+  Uuml: "Ü",
+  uuml: "ü",
+  Yacute: "Ý",
+  yacute: "ý",
+  THORN: "Þ",
+  thorn: "þ",
+  szlig: "ß",
+  yuml: "ÿ",
+  Yuml: "Ÿ"
+};
+var LATIN_EXTENDED = {
+  Amacr: "Ā",
+  amacr: "ā",
+  Abreve: "Ă",
+  abreve: "ă",
+  Aogon: "Ą",
+  aogon: "ą",
+  Cacute: "Ć",
+  cacute: "ć",
+  Ccirc: "Ĉ",
+  ccirc: "ĉ",
+  Cdot: "Ċ",
+  cdot: "ċ",
+  Ccaron: "Č",
+  ccaron: "č",
+  Dcaron: "Ď",
+  dcaron: "ď",
+  Dstrok: "Đ",
+  dstrok: "đ",
+  Emacr: "Ē",
+  emacr: "ē",
+  Ecaron: "Ě",
+  ecaron: "ě",
+  Edot: "Ė",
+  edot: "ė",
+  Eogon: "Ę",
+  eogon: "ę",
+  Gcirc: "Ĝ",
+  gcirc: "ĝ",
+  Gbreve: "Ğ",
+  gbreve: "ğ",
+  Gdot: "Ġ",
+  gdot: "ġ",
+  Gcedil: "Ģ",
+  Hcirc: "Ĥ",
+  hcirc: "ĥ",
+  Hstrok: "Ħ",
+  hstrok: "ħ",
+  Itilde: "Ĩ",
+  itilde: "ĩ",
+  Imacr: "Ī",
+  imacr: "ī",
+  Iogon: "Į",
+  iogon: "į",
+  Idot: "İ",
+  IJlig: "Ĳ",
+  ijlig: "ĳ",
+  Jcirc: "Ĵ",
+  jcirc: "ĵ",
+  Kcedil: "Ķ",
+  kcedil: "ķ",
+  kgreen: "ĸ",
+  Lacute: "Ĺ",
+  lacute: "ĺ",
+  Lcedil: "Ļ",
+  lcedil: "ļ",
+  Lcaron: "Ľ",
+  lcaron: "ľ",
+  Lmidot: "Ŀ",
+  lmidot: "ŀ",
+  Lstrok: "Ł",
+  lstrok: "ł",
+  Nacute: "Ń",
+  nacute: "ń",
+  Ncaron: "Ň",
+  ncaron: "ň",
+  Ncedil: "Ņ",
+  ncedil: "ņ",
+  ENG: "Ŋ",
+  eng: "ŋ",
+  Omacr: "Ō",
+  omacr: "ō",
+  Odblac: "Ő",
+  odblac: "ő",
+  OElig: "Œ",
+  oelig: "œ",
+  Racute: "Ŕ",
+  racute: "ŕ",
+  Rcaron: "Ř",
+  rcaron: "ř",
+  Rcedil: "Ŗ",
+  rcedil: "ŗ",
+  Sacute: "Ś",
+  sacute: "ś",
+  Scirc: "Ŝ",
+  scirc: "ŝ",
+  Scedil: "Ş",
+  scedil: "ş",
+  Scaron: "Š",
+  scaron: "š",
+  Tcedil: "Ţ",
+  tcedil: "ţ",
+  Tcaron: "Ť",
+  tcaron: "ť",
+  Tstrok: "Ŧ",
+  tstrok: "ŧ",
+  Utilde: "Ũ",
+  utilde: "ũ",
+  Umacr: "Ū",
+  umacr: "ū",
+  Ubreve: "Ŭ",
+  ubreve: "ŭ",
+  Uring: "Ů",
+  uring: "ů",
+  Udblac: "Ű",
+  udblac: "ű",
+  Uogon: "Ų",
+  uogon: "ų",
+  Wcirc: "Ŵ",
+  wcirc: "ŵ",
+  Ycirc: "Ŷ",
+  ycirc: "ŷ",
+  Zacute: "Ź",
+  zacute: "ź",
+  Zdot: "Ż",
+  zdot: "ż",
+  Zcaron: "Ž",
+  zcaron: "ž"
+};
+var GREEK = {
+  Alpha: "Α",
+  alpha: "α",
+  Beta: "Β",
+  beta: "β",
+  Gamma: "Γ",
+  gamma: "γ",
+  Delta: "Δ",
+  delta: "δ",
+  Epsilon: "Ε",
+  epsilon: "ε",
+  epsiv: "ϵ",
+  varepsilon: "ϵ",
+  Zeta: "Ζ",
+  zeta: "ζ",
+  Eta: "Η",
+  eta: "η",
+  Theta: "Θ",
+  theta: "θ",
+  thetasym: "ϑ",
+  vartheta: "ϑ",
+  Iota: "Ι",
+  iota: "ι",
+  Kappa: "Κ",
+  kappa: "κ",
+  kappav: "ϰ",
+  varkappa: "ϰ",
+  Lambda: "Λ",
+  lambda: "λ",
+  Mu: "Μ",
+  mu: "μ",
+  Nu: "Ν",
+  nu: "ν",
+  Xi: "Ξ",
+  xi: "ξ",
+  Omicron: "Ο",
+  omicron: "ο",
+  Pi: "Π",
+  pi: "π",
+  piv: "ϖ",
+  varpi: "ϖ",
+  Rho: "Ρ",
+  rho: "ρ",
+  rhov: "ϱ",
+  varrho: "ϱ",
+  Sigma: "Σ",
+  sigma: "σ",
+  sigmaf: "ς",
+  sigmav: "ς",
+  varsigma: "ς",
+  Tau: "Τ",
+  tau: "τ",
+  Upsilon: "Υ",
+  upsilon: "υ",
+  upsi: "υ",
+  Upsi: "ϒ",
+  upsih: "ϒ",
+  Phi: "Φ",
+  phi: "φ",
+  phiv: "ϕ",
+  varphi: "ϕ",
+  Chi: "Χ",
+  chi: "χ",
+  Psi: "Ψ",
+  psi: "ψ",
+  Omega: "Ω",
+  omega: "ω",
+  ohm: "Ω",
+  Gammad: "Ϝ",
+  gammad: "ϝ",
+  digamma: "ϝ"
+};
+var CYRILLIC = {
+  Afr: "\uD835\uDD04",
+  afr: "\uD835\uDD1E",
+  Acy: "А",
+  acy: "а",
+  Bcy: "Б",
+  bcy: "б",
+  Vcy: "В",
+  vcy: "в",
+  Gcy: "Г",
+  gcy: "г",
+  Dcy: "Д",
+  dcy: "д",
+  IEcy: "Е",
+  iecy: "е",
+  IOcy: "Ё",
+  iocy: "ё",
+  ZHcy: "Ж",
+  zhcy: "ж",
+  Zcy: "З",
+  zcy: "з",
+  Icy: "И",
+  icy: "и",
+  Jcy: "Й",
+  jcy: "й",
+  Kcy: "К",
+  kcy: "к",
+  Lcy: "Л",
+  lcy: "л",
+  Mcy: "М",
+  mcy: "м",
+  Ncy: "Н",
+  ncy: "н",
+  Ocy: "О",
+  ocy: "о",
+  Pcy: "П",
+  pcy: "п",
+  Rcy: "Р",
+  rcy: "р",
+  Scy: "С",
+  scy: "с",
+  Tcy: "Т",
+  tcy: "т",
+  Ucy: "У",
+  ucy: "у",
+  Fcy: "Ф",
+  fcy: "ф",
+  KHcy: "Х",
+  khcy: "х",
+  TScy: "Ц",
+  tscy: "ц",
+  CHcy: "Ч",
+  chcy: "ч",
+  SHcy: "Ш",
+  shcy: "ш",
+  SHCHcy: "Щ",
+  shchcy: "щ",
+  HARDcy: "Ъ",
+  hardcy: "ъ",
+  Ycy: "Ы",
+  ycy: "ы",
+  SOFTcy: "Ь",
+  softcy: "ь",
+  Ecy: "Э",
+  ecy: "э",
+  YUcy: "Ю",
+  yucy: "ю",
+  YAcy: "Я",
+  yacy: "я",
+  DJcy: "Ђ",
+  djcy: "ђ",
+  GJcy: "Ѓ",
+  gjcy: "ѓ",
+  Jukcy: "Є",
+  jukcy: "є",
+  DScy: "Ѕ",
+  dscy: "ѕ",
+  Iukcy: "І",
+  iukcy: "і",
+  YIcy: "Ї",
+  yicy: "ї",
+  Jsercy: "Ј",
+  jsercy: "ј",
+  LJcy: "Љ",
+  ljcy: "љ",
+  NJcy: "Њ",
+  njcy: "њ",
+  TSHcy: "Ћ",
+  tshcy: "ћ",
+  KJcy: "Ќ",
+  kjcy: "ќ",
+  Ubrcy: "Ў",
+  ubrcy: "ў",
+  DZcy: "Џ",
+  dzcy: "џ"
+};
+var MATH = {
+  plus: "+",
+  minus: "−",
+  mnplus: "∓",
+  mp: "∓",
+  pm: "±",
+  times: "×",
+  div: "÷",
+  divide: "÷",
+  sdot: "⋅",
+  star: "☆",
+  starf: "★",
+  bigstar: "★",
+  lowast: "∗",
+  ast: "*",
+  midast: "*",
+  compfn: "∘",
+  smallcircle: "∘",
+  bullet: "•",
+  bull: "•",
+  nbsp: " ",
+  hellip: "…",
+  mldr: "…",
+  prime: "′",
+  Prime: "″",
+  tprime: "‴",
+  bprime: "‵",
+  backprime: "‵",
+  minus: "−",
+  minusd: "∸",
+  dotminus: "∸",
+  plusdo: "∔",
+  dotplus: "∔",
+  plusmn: "±",
+  minusplus: "∓",
+  mnplus: "∓",
+  mp: "∓",
+  setminus: "∖",
+  smallsetminus: "∖",
+  Backslash: "∖",
+  setmn: "∖",
+  ssetmn: "∖",
+  lowbar: "_",
+  verbar: "|",
+  vert: "|",
+  VerticalLine: "|",
+  colon: ":",
+  Colon: "∷",
+  Proportion: "∷",
+  ratio: "∶",
+  equals: "=",
+  ne: "≠",
+  nequiv: "≢",
+  equiv: "≡",
+  Congruent: "≡",
+  sim: "∼",
+  thicksim: "∼",
+  thksim: "∼",
+  sime: "≃",
+  simeq: "≃",
+  TildeEqual: "≃",
+  asymp: "≈",
+  approx: "≈",
+  thickapprox: "≈",
+  thkap: "≈",
+  TildeTilde: "≈",
+  ncong: "≇",
+  cong: "≅",
+  TildeFullEqual: "≅",
+  asympeq: "≍",
+  CupCap: "≍",
+  bump: "≎",
+  Bumpeq: "≎",
+  HumpDownHump: "≎",
+  bumpe: "≏",
+  bumpeq: "≏",
+  HumpEqual: "≏",
+  dotminus: "∸",
+  minusd: "∸",
+  plusdo: "∔",
+  dotplus: "∔",
+  le: "≤",
+  LessEqual: "≤",
+  ge: "≥",
+  GreaterEqual: "≥",
+  lesseqgtr: "⋚",
+  lesseqqgtr: "⪋",
+  greater: ">",
+  less: "<"
+};
+var MATH_ADVANCED = {
+  alefsym: "ℵ",
+  aleph: "ℵ",
+  beth: "ℶ",
+  gimel: "ℷ",
+  daleth: "ℸ",
+  forall: "∀",
+  ForAll: "∀",
+  part: "∂",
+  PartialD: "∂",
+  exist: "∃",
+  Exists: "∃",
+  nexist: "∄",
+  nexists: "∄",
+  empty: "∅",
+  emptyset: "∅",
+  emptyv: "∅",
+  varnothing: "∅",
+  nabla: "∇",
+  Del: "∇",
+  isin: "∈",
+  isinv: "∈",
+  in: "∈",
+  Element: "∈",
+  notin: "∉",
+  notinva: "∉",
+  ni: "∋",
+  niv: "∋",
+  SuchThat: "∋",
+  ReverseElement: "∋",
+  notni: "∌",
+  notniva: "∌",
+  prod: "∏",
+  Product: "∏",
+  coprod: "∐",
+  Coproduct: "∐",
+  sum: "∑",
+  Sum: "∑",
+  minus: "−",
+  mp: "∓",
+  plusdo: "∔",
+  dotplus: "∔",
+  setminus: "∖",
+  lowast: "∗",
+  radic: "√",
+  Sqrt: "√",
+  prop: "∝",
+  propto: "∝",
+  Proportional: "∝",
+  varpropto: "∝",
+  infin: "∞",
+  infintie: "⧝",
+  ang: "∠",
+  angle: "∠",
+  angmsd: "∡",
+  measuredangle: "∡",
+  angsph: "∢",
+  mid: "∣",
+  VerticalBar: "∣",
+  nmid: "∤",
+  nsmid: "∤",
+  npar: "∦",
+  parallel: "∥",
+  spar: "∥",
+  nparallel: "∦",
+  nspar: "∦",
+  and: "∧",
+  wedge: "∧",
+  or: "∨",
+  vee: "∨",
+  cap: "∩",
+  cup: "∪",
+  int: "∫",
+  Integral: "∫",
+  conint: "∮",
+  ContourIntegral: "∮",
+  Conint: "∯",
+  DoubleContourIntegral: "∯",
+  Cconint: "∰",
+  there4: "∴",
+  therefore: "∴",
+  Therefore: "∴",
+  becaus: "∵",
+  because: "∵",
+  Because: "∵",
+  ratio: "∶",
+  Proportion: "∷",
+  minusd: "∸",
+  dotminus: "∸",
+  mDDot: "∺",
+  homtht: "∻",
+  sim: "∼",
+  bsimg: "∽",
+  backsim: "∽",
+  ac: "∾",
+  mstpos: "∾",
+  acd: "∿",
+  VerticalTilde: "≀",
+  wr: "≀",
+  wreath: "≀",
+  nsime: "≄",
+  nsimeq: "≄",
+  nsimeq: "≄",
+  ncong: "≇",
+  simne: "≆",
+  ncongdot: "⩭̸",
+  ngsim: "≵",
+  nsim: "≁",
+  napprox: "≉",
+  nap: "≉",
+  ngeq: "≱",
+  nge: "≱",
+  nleq: "≰",
+  nle: "≰",
+  ngtr: "≯",
+  ngt: "≯",
+  nless: "≮",
+  nlt: "≮",
+  nprec: "⊀",
+  npr: "⊀",
+  nsucc: "⊁",
+  nsc: "⊁"
+};
+var ARROWS = {
+  larr: "←",
+  leftarrow: "←",
+  LeftArrow: "←",
+  uarr: "↑",
+  uparrow: "↑",
+  UpArrow: "↑",
+  rarr: "→",
+  rightarrow: "→",
+  RightArrow: "→",
+  darr: "↓",
+  downarrow: "↓",
+  DownArrow: "↓",
+  harr: "↔",
+  leftrightarrow: "↔",
+  LeftRightArrow: "↔",
+  varr: "↕",
+  updownarrow: "↕",
+  UpDownArrow: "↕",
+  nwarr: "↖",
+  nwarrow: "↖",
+  UpperLeftArrow: "↖",
+  nearr: "↗",
+  nearrow: "↗",
+  UpperRightArrow: "↗",
+  searr: "↘",
+  searrow: "↘",
+  LowerRightArrow: "↘",
+  swarr: "↙",
+  swarrow: "↙",
+  LowerLeftArrow: "↙",
+  lArr: "⇐",
+  Leftarrow: "⇐",
+  uArr: "⇑",
+  Uparrow: "⇑",
+  rArr: "⇒",
+  Rightarrow: "⇒",
+  dArr: "⇓",
+  Downarrow: "⇓",
+  hArr: "⇔",
+  Leftrightarrow: "⇔",
+  iff: "⇔",
+  vArr: "⇕",
+  Updownarrow: "⇕",
+  lAarr: "⇚",
+  Lleftarrow: "⇚",
+  rAarr: "⇛",
+  Rrightarrow: "⇛",
+  lrarr: "⇆",
+  leftrightarrows: "⇆",
+  rlarr: "⇄",
+  rightleftarrows: "⇄",
+  lrhar: "⇋",
+  leftrightharpoons: "⇋",
+  ReverseEquilibrium: "⇋",
+  rlhar: "⇌",
+  rightleftharpoons: "⇌",
+  Equilibrium: "⇌",
+  udarr: "⇅",
+  UpArrowDownArrow: "⇅",
+  duarr: "⇵",
+  DownArrowUpArrow: "⇵",
+  llarr: "⇇",
+  leftleftarrows: "⇇",
+  rrarr: "⇉",
+  rightrightarrows: "⇉",
+  ddarr: "⇊",
+  downdownarrows: "⇊",
+  har: "↽",
+  lhard: "↽",
+  leftharpoondown: "↽",
+  lharu: "↼",
+  leftharpoonup: "↼",
+  rhard: "⇁",
+  rightharpoondown: "⇁",
+  rharu: "⇀",
+  rightharpoonup: "⇀",
+  lsh: "↰",
+  Lsh: "↰",
+  rsh: "↱",
+  Rsh: "↱",
+  ldsh: "↲",
+  rdsh: "↳",
+  hookleftarrow: "↩",
+  hookrightarrow: "↪",
+  mapstoleft: "↤",
+  mapstoup: "↥",
+  map: "↦",
+  mapsto: "↦",
+  mapstodown: "↧",
+  crarr: "↵",
+  nwarrow: "↖",
+  nearrow: "↗",
+  searrow: "↘",
+  swarrow: "↙",
+  nleftarrow: "↚",
+  nleftrightarrow: "↮",
+  nrightarrow: "↛",
+  nrarr: "↛",
+  larrtl: "↢",
+  rarrtl: "↣",
+  leftarrowtail: "↢",
+  rightarrowtail: "↣",
+  twoheadleftarrow: "↞",
+  twoheadrightarrow: "↠",
+  Larr: "↞",
+  Rarr: "↠",
+  larrhk: "↩",
+  rarrhk: "↪",
+  larrlp: "↫",
+  looparrowleft: "↫",
+  rarrlp: "↬",
+  looparrowright: "↬",
+  harrw: "↭",
+  leftrightsquigarrow: "↭",
+  nrarrw: "↝̸",
+  rarrw: "↝",
+  rightsquigarrow: "↝",
+  larrbfs: "⤟",
+  rarrbfs: "⤠",
+  nvHarr: "⤄",
+  nvlArr: "⤂",
+  nvrArr: "⤃",
+  larrfs: "⤝",
+  rarrfs: "⤞",
+  Map: "⤅",
+  larrsim: "⥳",
+  rarrsim: "⥴",
+  harrcir: "⥈",
+  Uarrocir: "⥉",
+  lurdshar: "⥊",
+  ldrdhar: "⥧",
+  ldrushar: "⥋",
+  rdldhar: "⥩",
+  lrhard: "⥭",
+  rlhar: "⇌",
+  uharr: "↾",
+  uharl: "↿",
+  dharr: "⇂",
+  dharl: "⇃",
+  Uarr: "↟",
+  Darr: "↡",
+  zigrarr: "⇝",
+  nwArr: "⇖",
+  neArr: "⇗",
+  seArr: "⇘",
+  swArr: "⇙",
+  nharr: "↮",
+  nhArr: "⇎",
+  nlarr: "↚",
+  nlArr: "⇍",
+  nrarr: "↛",
+  nrArr: "⇏",
+  larrb: "⇤",
+  LeftArrowBar: "⇤",
+  rarrb: "⇥",
+  RightArrowBar: "⇥"
+};
+var SHAPES = {
+  square: "□",
+  Square: "□",
+  squ: "□",
+  squf: "▪",
+  squarf: "▪",
+  blacksquar: "▪",
+  blacksquare: "▪",
+  FilledVerySmallSquare: "▪",
+  blk34: "▓",
+  blk12: "▒",
+  blk14: "░",
+  block: "█",
+  srect: "▭",
+  rect: "▭",
+  sdot: "⋅",
+  sdotb: "⊡",
+  dotsquare: "⊡",
+  triangle: "▵",
+  tri: "▵",
+  trine: "▵",
+  utri: "▵",
+  triangledown: "▿",
+  dtri: "▿",
+  tridown: "▿",
+  triangleleft: "◃",
+  ltri: "◃",
+  triangleright: "▹",
+  rtri: "▹",
+  blacktriangle: "▴",
+  utrif: "▴",
+  blacktriangledown: "▾",
+  dtrif: "▾",
+  blacktriangleleft: "◂",
+  ltrif: "◂",
+  blacktriangleright: "▸",
+  rtrif: "▸",
+  loz: "◊",
+  lozenge: "◊",
+  blacklozenge: "⧫",
+  lozf: "⧫",
+  bigcirc: "◯",
+  xcirc: "◯",
+  circ: "ˆ",
+  Circle: "○",
+  cir: "○",
+  o: "○",
+  bullet: "•",
+  bull: "•",
+  hellip: "…",
+  mldr: "…",
+  nldr: "‥",
+  boxh: "─",
+  HorizontalLine: "─",
+  boxv: "│",
+  boxdr: "┌",
+  boxdl: "┐",
+  boxur: "└",
+  boxul: "┘",
+  boxvr: "├",
+  boxvl: "┤",
+  boxhd: "┬",
+  boxhu: "┴",
+  boxvh: "┼",
+  boxH: "═",
+  boxV: "║",
+  boxdR: "╒",
+  boxDr: "╓",
+  boxDR: "╔",
+  boxDl: "╕",
+  boxdL: "╖",
+  boxDL: "╗",
+  boxuR: "╘",
+  boxUr: "╙",
+  boxUR: "╚",
+  boxUl: "╜",
+  boxuL: "╛",
+  boxUL: "╝",
+  boxvR: "╞",
+  boxVr: "╟",
+  boxVR: "╠",
+  boxVl: "╢",
+  boxvL: "╡",
+  boxVL: "╣",
+  boxHd: "╤",
+  boxhD: "╥",
+  boxHD: "╦",
+  boxHu: "╧",
+  boxhU: "╨",
+  boxHU: "╩",
+  boxvH: "╪",
+  boxVh: "╫",
+  boxVH: "╬"
+};
+var PUNCTUATION = {
+  excl: "!",
+  iexcl: "¡",
+  brvbar: "¦",
+  sect: "§",
+  uml: "¨",
+  copy: "©",
+  ordf: "ª",
+  laquo: "«",
+  not: "¬",
+  shy: "­",
+  reg: "®",
+  macr: "¯",
+  deg: "°",
+  plusmn: "±",
+  sup2: "²",
+  sup3: "³",
+  acute: "´",
+  micro: "µ",
+  para: "¶",
+  middot: "·",
+  cedil: "¸",
+  sup1: "¹",
+  ordm: "º",
+  raquo: "»",
+  frac14: "¼",
+  frac12: "½",
+  frac34: "¾",
+  iquest: "¿",
+  nbsp: " ",
+  comma: ",",
+  period: ".",
+  colon: ":",
+  semi: ";",
+  vert: "|",
+  Verbar: "‖",
+  verbar: "|",
+  dblac: "˝",
+  circ: "ˆ",
+  caron: "ˇ",
+  breve: "˘",
+  dot: "˙",
+  ring: "˚",
+  ogon: "˛",
+  tilde: "˜",
+  DiacriticalGrave: "`",
+  DiacriticalAcute: "´",
+  DiacriticalTilde: "˜",
+  DiacriticalDot: "˙",
+  DiacriticalDoubleAcute: "˝",
+  grave: "`",
+  acute: "´"
+};
+var CURRENCY = {
+  cent: "¢",
+  pound: "£",
+  curren: "¤",
+  yen: "¥",
+  euro: "€",
+  dollar: "$",
+  euro: "€",
+  fnof: "ƒ",
+  inr: "₹",
+  af: "؋",
+  birr: "ብር",
+  peso: "₱",
+  rub: "₽",
+  won: "₩",
+  yuan: "¥",
+  cedil: "¸"
+};
+var FRACTIONS = {
+  frac12: "½",
+  half: "½",
+  frac13: "⅓",
+  frac14: "¼",
+  frac15: "⅕",
+  frac16: "⅙",
+  frac18: "⅛",
+  frac23: "⅔",
+  frac25: "⅖",
+  frac34: "¾",
+  frac35: "⅗",
+  frac38: "⅜",
+  frac45: "⅘",
+  frac56: "⅚",
+  frac58: "⅝",
+  frac78: "⅞",
+  frasl: "⁄"
+};
+var MISC_SYMBOLS = {
+  trade: "™",
+  TRADE: "™",
+  telrec: "⌕",
+  target: "⌖",
+  ulcorn: "⌜",
+  ulcorner: "⌜",
+  urcorn: "⌝",
+  urcorner: "⌝",
+  dlcorn: "⌞",
+  llcorner: "⌞",
+  drcorn: "⌟",
+  lrcorner: "⌟",
+  intercal: "⊺",
+  intcal: "⊺",
+  oplus: "⊕",
+  CirclePlus: "⊕",
+  ominus: "⊖",
+  CircleMinus: "⊖",
+  otimes: "⊗",
+  CircleTimes: "⊗",
+  osol: "⊘",
+  odot: "⊙",
+  CircleDot: "⊙",
+  oast: "⊛",
+  circledast: "⊛",
+  odash: "⊝",
+  circleddash: "⊝",
+  ocirc: "⊚",
+  circledcirc: "⊚",
+  boxplus: "⊞",
+  plusb: "⊞",
+  boxminus: "⊟",
+  minusb: "⊟",
+  boxtimes: "⊠",
+  timesb: "⊠",
+  boxdot: "⊡",
+  sdotb: "⊡",
+  veebar: "⊻",
+  vee: "∨",
+  barvee: "⊽",
+  and: "∧",
+  wedge: "∧",
+  Cap: "⋒",
+  Cup: "⋓",
+  Fork: "⋔",
+  pitchfork: "⋔",
+  epar: "⋕",
+  ltlarr: "⥶",
+  nvap: "≍⃒",
+  nvsim: "∼⃒",
+  nvge: "≥⃒",
+  nvle: "≤⃒",
+  nvlt: "<⃒",
+  nvgt: ">⃒",
+  nvltrie: "⊴⃒",
+  nvrtrie: "⊵⃒",
+  Vdash: "⊩",
+  dashv: "⊣",
+  vDash: "⊨",
+  Vdash: "⊩",
+  Vvdash: "⊪",
+  nvdash: "⊬",
+  nvDash: "⊭",
+  nVdash: "⊮",
+  nVDash: "⊯"
+};
+var ALL_ENTITIES = {
+  ...BASIC_LATIN,
+  ...LATIN_ACCENTS,
+  ...LATIN_EXTENDED,
+  ...GREEK,
+  ...CYRILLIC,
+  ...MATH,
+  ...MATH_ADVANCED,
+  ...ARROWS,
+  ...SHAPES,
+  ...PUNCTUATION,
+  ...CURRENCY,
+  ...FRACTIONS,
+  ...MISC_SYMBOLS
+};
+var XML = {
+  amp: "&",
+  apos: "'",
+  gt: ">",
+  lt: "<",
+  quot: '"'
+};
+var COMMON_HTML = {
+  nbsp: " ",
+  copy: "©",
+  reg: "®",
+  trade: "™",
+  mdash: "—",
+  ndash: "–",
+  hellip: "…",
+  laquo: "«",
+  raquo: "»",
+  lsquo: "‘",
+  rsquo: "’",
+  ldquo: "“",
+  rdquo: "”",
+  bull: "•",
+  para: "¶",
+  sect: "§",
+  deg: "°",
+  frac12: "½",
+  frac14: "¼",
+  frac34: "¾"
+};
+
+// node_modules/@nodable/entities/src/EntityDecoder.js
+var SPECIAL_CHARS = new Set("!?\\\\/[]$%{}^&*()<>|+");
+function validateEntityName(name) {
+  if (name[0] === "#") {
+    throw new Error(`[EntityReplacer] Invalid character '#' in entity name: "${name}"`);
+  }
+  for (const ch of name) {
+    if (SPECIAL_CHARS.has(ch)) {
+      throw new Error(`[EntityReplacer] Invalid character '${ch}' in entity name: "${name}"`);
+    }
+  }
+  return name;
+}
+function mergeEntityMaps(...maps) {
+  const out = Object.create(null);
+  for (const map of maps) {
+    if (!map)
+      continue;
+    for (const key of Object.keys(map)) {
+      const raw = map[key];
+      if (typeof raw === "string") {
+        out[key] = raw;
+      } else if (raw && typeof raw === "object" && raw.val !== undefined) {
+        const val = raw.val;
+        if (typeof val === "string") {
+          out[key] = val;
+        }
+      }
+    }
+  }
+  return out;
+}
+var LIMIT_TIER_EXTERNAL = "external";
+var LIMIT_TIER_BASE = "base";
+var LIMIT_TIER_ALL = "all";
+function parseLimitTiers(raw) {
+  if (!raw || raw === LIMIT_TIER_EXTERNAL)
+    return new Set([LIMIT_TIER_EXTERNAL]);
+  if (raw === LIMIT_TIER_ALL)
+    return new Set([LIMIT_TIER_ALL]);
+  if (raw === LIMIT_TIER_BASE)
+    return new Set([LIMIT_TIER_BASE]);
+  if (Array.isArray(raw))
+    return new Set(raw);
+  return new Set([LIMIT_TIER_EXTERNAL]);
+}
+var NCR_LEVEL = Object.freeze({ allow: 0, leave: 1, remove: 2, throw: 3 });
+var XML10_ALLOWED_C0 = new Set([9, 10, 13]);
+function parseNCRConfig(ncr) {
+  if (!ncr) {
+    return { xmlVersion: 1, onLevel: NCR_LEVEL.allow, nullLevel: NCR_LEVEL.remove };
+  }
+  const xmlVersion = ncr.xmlVersion === 1.1 ? 1.1 : 1;
+  const onLevel = NCR_LEVEL[ncr.onNCR] ?? NCR_LEVEL.allow;
+  const nullLevel = NCR_LEVEL[ncr.nullNCR] ?? NCR_LEVEL.remove;
+  const clampedNull = Math.max(nullLevel, NCR_LEVEL.remove);
+  return { xmlVersion, onLevel, nullLevel: clampedNull };
+}
+
+class EntityDecoder {
+  constructor(options = {}) {
+    this._limit = options.limit || {};
+    this._maxTotalExpansions = this._limit.maxTotalExpansions || 0;
+    this._maxExpandedLength = this._limit.maxExpandedLength || 0;
+    this._postCheck = typeof options.postCheck === "function" ? options.postCheck : (r) => r;
+    this._limitTiers = parseLimitTiers(this._limit.applyLimitsTo ?? LIMIT_TIER_EXTERNAL);
+    this._numericAllowed = options.numericAllowed ?? true;
+    this._baseMap = mergeEntityMaps(XML, options.namedEntities || null);
+    this._externalMap = Object.create(null);
+    this._inputMap = Object.create(null);
+    this._totalExpansions = 0;
+    this._expandedLength = 0;
+    this._removeSet = new Set(options.remove && Array.isArray(options.remove) ? options.remove : []);
+    this._leaveSet = new Set(options.leave && Array.isArray(options.leave) ? options.leave : []);
+    const ncrCfg = parseNCRConfig(options.ncr);
+    this._ncrXmlVersion = ncrCfg.xmlVersion;
+    this._ncrOnLevel = ncrCfg.onLevel;
+    this._ncrNullLevel = ncrCfg.nullLevel;
+  }
+  setExternalEntities(map) {
+    if (map) {
+      for (const key of Object.keys(map)) {
+        validateEntityName(key);
+      }
+    }
+    this._externalMap = mergeEntityMaps(map);
+  }
+  addExternalEntity(key, value) {
+    validateEntityName(key);
+    if (typeof value === "string" && value.indexOf("&") === -1) {
+      this._externalMap[key] = value;
+    }
+  }
+  addInputEntities(map) {
+    this._totalExpansions = 0;
+    this._expandedLength = 0;
+    this._inputMap = mergeEntityMaps(map);
+  }
+  reset() {
+    this._inputMap = Object.create(null);
+    this._totalExpansions = 0;
+    this._expandedLength = 0;
+    return this;
+  }
+  setXmlVersion(version2) {
+    this._ncrXmlVersion = version2 === 1.1 ? 1.1 : 1;
+  }
+  decode(str) {
+    if (typeof str !== "string" || str.length === 0)
+      return str;
+    const original = str;
+    const chunks = [];
+    const len = str.length;
+    let last = 0;
+    let i = 0;
+    const limitExpansions = this._maxTotalExpansions > 0;
+    const limitLength = this._maxExpandedLength > 0;
+    const checkLimits = limitExpansions || limitLength;
+    while (i < len) {
+      if (str.charCodeAt(i) !== 38) {
+        i++;
+        continue;
+      }
+      let j = i + 1;
+      while (j < len && str.charCodeAt(j) !== 59 && j - i <= 32)
+        j++;
+      if (j >= len || str.charCodeAt(j) !== 59) {
+        i++;
+        continue;
+      }
+      const token = str.slice(i + 1, j);
+      if (token.length === 0) {
+        i++;
+        continue;
+      }
+      let replacement;
+      let tier;
+      if (this._removeSet.has(token)) {
+        replacement = "";
+        if (tier === undefined) {
+          tier = LIMIT_TIER_EXTERNAL;
+        }
+      } else if (this._leaveSet.has(token)) {
+        i++;
+        continue;
+      } else if (token.charCodeAt(0) === 35) {
+        const ncrResult = this._resolveNCR(token);
+        if (ncrResult === undefined) {
+          i++;
+          continue;
+        }
+        replacement = ncrResult;
+        tier = LIMIT_TIER_BASE;
+      } else {
+        const resolved = this._resolveName(token);
+        replacement = resolved?.value;
+        tier = resolved?.tier;
+      }
+      if (replacement === undefined) {
+        i++;
+        continue;
+      }
+      if (i > last)
+        chunks.push(str.slice(last, i));
+      chunks.push(replacement);
+      last = j + 1;
+      i = last;
+      if (checkLimits && this._tierCounts(tier)) {
+        if (limitExpansions) {
+          this._totalExpansions++;
+          if (this._totalExpansions > this._maxTotalExpansions) {
+            throw new Error(`[EntityReplacer] Entity expansion count limit exceeded: ` + `${this._totalExpansions} > ${this._maxTotalExpansions}`);
+          }
+        }
+        if (limitLength) {
+          const delta = replacement.length - (token.length + 2);
+          if (delta > 0) {
+            this._expandedLength += delta;
+            if (this._expandedLength > this._maxExpandedLength) {
+              throw new Error(`[EntityReplacer] Expanded content length limit exceeded: ` + `${this._expandedLength} > ${this._maxExpandedLength}`);
+            }
+          }
+        }
+      }
+    }
+    if (last < len)
+      chunks.push(str.slice(last));
+    const result = chunks.length === 0 ? str : chunks.join("");
+    return this._postCheck(result, original);
+  }
+  _tierCounts(tier) {
+    if (this._limitTiers.has(LIMIT_TIER_ALL))
+      return true;
+    return this._limitTiers.has(tier);
+  }
+  _resolveName(name) {
+    if (name in this._inputMap)
+      return { value: this._inputMap[name], tier: LIMIT_TIER_EXTERNAL };
+    if (name in this._externalMap)
+      return { value: this._externalMap[name], tier: LIMIT_TIER_EXTERNAL };
+    if (name in this._baseMap)
+      return { value: this._baseMap[name], tier: LIMIT_TIER_BASE };
+    return;
+  }
+  _classifyNCR(cp) {
+    if (cp === 0)
+      return this._ncrNullLevel;
+    if (cp >= 55296 && cp <= 57343)
+      return NCR_LEVEL.remove;
+    if (this._ncrXmlVersion === 1) {
+      if (cp >= 1 && cp <= 31 && !XML10_ALLOWED_C0.has(cp))
+        return NCR_LEVEL.remove;
+    }
+    return -1;
+  }
+  _applyNCRAction(action, token, cp) {
+    switch (action) {
+      case NCR_LEVEL.allow:
+        return String.fromCodePoint(cp);
+      case NCR_LEVEL.remove:
+        return "";
+      case NCR_LEVEL.leave:
+        return;
+      case NCR_LEVEL.throw:
+        throw new Error(`[EntityDecoder] Prohibited numeric character reference ` + `&${token}; (U+${cp.toString(16).toUpperCase().padStart(4, "0")})`);
+      default:
+        return String.fromCodePoint(cp);
+    }
+  }
+  _resolveNCR(token) {
+    const second = token.charCodeAt(1);
+    let cp;
+    if (second === 120 || second === 88) {
+      cp = parseInt(token.slice(2), 16);
+    } else {
+      cp = parseInt(token.slice(1), 10);
+    }
+    if (Number.isNaN(cp) || cp < 0 || cp > 1114111)
+      return;
+    const minimum = this._classifyNCR(cp);
+    if (!this._numericAllowed && minimum < NCR_LEVEL.remove)
+      return;
+    const effective = minimum === -1 ? this._ncrOnLevel : Math.max(this._ncrOnLevel, minimum);
+    return this._applyNCRAction(effective, token, cp);
+  }
+}
 // node_modules/fast-xml-parser/src/xmlparser/OptionsBuilder.js
 var defaultOnDangerousProperty = (name) => {
   if (DANGEROUS_PROPERTY_NAMES.includes(name)) {
@@ -80402,6 +81783,7 @@ var defaultOptions2 = {
   unpairedTags: [],
   processEntities: true,
   htmlEntities: false,
+  entityDecoder: null,
   ignoreDeclaration: false,
   ignorePiTags: false,
   transformTagName: false,
@@ -80427,17 +81809,18 @@ function validatePropertyName(propertyName, optionName) {
     throw new Error(`[SECURITY] Invalid ${optionName}: "${propertyName}" is a reserved JavaScript keyword that could cause prototype pollution`);
   }
 }
-function normalizeProcessEntities(value) {
+function normalizeProcessEntities(value, htmlEntities) {
   if (typeof value === "boolean") {
     return {
       enabled: value,
       maxEntitySize: 1e4,
-      maxExpansionDepth: 10,
-      maxTotalExpansions: 1000,
+      maxExpansionDepth: 1e4,
+      maxTotalExpansions: Infinity,
       maxExpandedLength: 1e5,
-      maxEntityCount: 100,
+      maxEntityCount: 1000,
       allowedTags: null,
-      tagFilter: null
+      tagFilter: null,
+      appliesTo: "all"
     };
   }
   if (typeof value === "object" && value !== null) {
@@ -80449,7 +81832,8 @@ function normalizeProcessEntities(value) {
       maxExpandedLength: Math.max(1, value.maxExpandedLength ?? 1e5),
       maxEntityCount: Math.max(1, value.maxEntityCount ?? 1000),
       allowedTags: value.allowedTags ?? null,
-      tagFilter: value.tagFilter ?? null
+      tagFilter: value.tagFilter ?? null,
+      appliesTo: value.appliesTo ?? "all"
     };
   }
   return normalizeProcessEntities(true);
@@ -80471,7 +81855,7 @@ var buildOptions = function(options) {
   if (built.onDangerousProperty === null) {
     built.onDangerousProperty = defaultOnDangerousProperty;
   }
-  built.processEntities = normalizeProcessEntities(built.processEntities);
+  built.processEntities = normalizeProcessEntities(built.processEntities, built.htmlEntities);
   built.unpairedTagsSet = new Set(built.unpairedTags);
   if (built.stopNodes && Array.isArray(built.stopNodes)) {
     built.stopNodes = built.stopNodes.map((node) => {
@@ -80544,11 +81928,7 @@ class DocTypeReader {
               if (this.options.enabled !== false && this.options.maxEntityCount != null && entityCount >= this.options.maxEntityCount) {
                 throw new Error(`Entity count (${entityCount + 1}) exceeds maximum allowed (${this.options.maxEntityCount})`);
               }
-              const escaped = entityName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-              entities[entityName] = {
-                regx: RegExp(`&${escaped};`, "g"),
-                val
-              };
+              entities[entityName] = val;
               entityCount++;
             }
           } else if (hasBody && hasSeq(xmlData, "!ELEMENT", i)) {
@@ -80600,7 +81980,7 @@ class DocTypeReader {
       i++;
     }
     let entityName = xmlData.substring(startIndex, i);
-    validateEntityName(entityName);
+    validateEntityName2(entityName);
     i = skipWhitespace(xmlData, i);
     if (!this.suppressValidationErr) {
       if (xmlData.substring(i, i + 6).toUpperCase() === "SYSTEM") {
@@ -80624,7 +82004,7 @@ class DocTypeReader {
       i++;
     }
     let notationName = xmlData.substring(startIndex, i);
-    !this.suppressValidationErr && validateEntityName(notationName);
+    !this.suppressValidationErr && validateEntityName2(notationName);
     i = skipWhitespace(xmlData, i);
     const identifierType = xmlData.substring(i, i + 6).toUpperCase();
     if (!this.suppressValidationErr && identifierType !== "SYSTEM" && identifierType !== "PUBLIC") {
@@ -80708,14 +82088,14 @@ class DocTypeReader {
       i++;
     }
     let elementName = xmlData.substring(startIndex, i);
-    validateEntityName(elementName);
+    validateEntityName2(elementName);
     i = skipWhitespace(xmlData, i);
     startIndex = i;
     while (i < xmlData.length && !/\s/.test(xmlData[i])) {
       i++;
     }
     let attributeName = xmlData.substring(startIndex, i);
-    if (!validateEntityName(attributeName)) {
+    if (!validateEntityName2(attributeName)) {
       throw new Error(`Invalid attribute name: "${attributeName}"`);
     }
     i = skipWhitespace(xmlData, i);
@@ -80736,7 +82116,7 @@ class DocTypeReader {
         }
         let notation = xmlData.substring(startIndex2, i);
         notation = notation.trim();
-        if (!validateEntityName(notation)) {
+        if (!validateEntityName2(notation)) {
           throw new Error(`Invalid notation name: "${notation}"`);
         }
         allowedNotations.push(notation);
@@ -80794,7 +82174,7 @@ function hasSeq(data, seq, i) {
   }
   return true;
 }
-function validateEntityName(name) {
+function validateEntityName2(name) {
   if (isName(name))
     return name;
   else
@@ -81480,27 +82860,6 @@ class OrderedObjParser {
     this.options = options;
     this.currentNode = null;
     this.tagsNodeStack = [];
-    this.docTypeEntities = {};
-    this.lastEntities = {
-      apos: { regex: /&(apos|#39|#x27);/g, val: "'" },
-      gt: { regex: /&(gt|#62|#x3E);/g, val: ">" },
-      lt: { regex: /&(lt|#60|#x3C);/g, val: "<" },
-      quot: { regex: /&(quot|#34|#x22);/g, val: '"' }
-    };
-    this.ampEntity = { regex: /&(amp|#38|#x26);/g, val: "&" };
-    this.htmlEntities = {
-      space: { regex: /&(nbsp|#160);/g, val: " " },
-      cent: { regex: /&(cent|#162);/g, val: "¢" },
-      pound: { regex: /&(pound|#163);/g, val: "£" },
-      yen: { regex: /&(yen|#165);/g, val: "¥" },
-      euro: { regex: /&(euro|#8364);/g, val: "€" },
-      copyright: { regex: /&(copy|#169);/g, val: "©" },
-      reg: { regex: /&(reg|#174);/g, val: "®" },
-      inr: { regex: /&(inr|#8377);/g, val: "₹" },
-      num_dec: { regex: /&#([0-9]{1,7});/g, val: (_2, str) => fromCodePoint(str, 10, "&#") },
-      num_hex: { regex: /&#x([0-9a-fA-F]{1,6});/g, val: (_2, str) => fromCodePoint(str, 16, "&#x") }
-    };
-    this.addExternalEntities = addExternalEntities;
     this.parseXml = parseXml;
     this.parseTextData = parseTextData;
     this.resolveNameSpace = resolveNameSpace;
@@ -81513,6 +82872,24 @@ class OrderedObjParser {
     this.ignoreAttributesFn = getIgnoreAttributesFn(this.options.ignoreAttributes);
     this.entityExpansionCount = 0;
     this.currentExpandedLength = 0;
+    let namedEntities = { ...XML };
+    if (this.options.entityDecoder) {
+      this.entityDecoder = this.options.entityDecoder;
+    } else {
+      if (typeof this.options.htmlEntities === "object")
+        namedEntities = this.options.htmlEntities;
+      else if (this.options.htmlEntities === true)
+        namedEntities = { ...COMMON_HTML, ...CURRENCY };
+      this.entityDecoder = new EntityDecoder({
+        namedEntities,
+        numericAllowed: this.options.htmlEntities,
+        limit: {
+          maxTotalExpansions: this.options.processEntities.maxTotalExpansions,
+          maxExpandedLength: this.options.processEntities.maxExpandedLength,
+          applyLimitsTo: this.options.processEntities.appliesTo
+        }
+      });
+    }
     this.matcher = new Matcher;
     this.readonlyMatcher = this.matcher.readOnly();
     this.isCurrentNodeStopNode = false;
@@ -81529,17 +82906,6 @@ class OrderedObjParser {
       }
       this.stopNodeExpressionsSet.seal();
     }
-  }
-}
-function addExternalEntities(externalEntities) {
-  const entKeys = Object.keys(externalEntities);
-  for (let i = 0;i < entKeys.length; i++) {
-    const ent = entKeys[i];
-    const escaped = ent.replace(/[.\-+*:]/g, "\\.");
-    this.lastEntities[ent] = {
-      regex: new RegExp("&" + escaped + ";", "g"),
-      val: externalEntities[ent]
-    };
   }
 }
 function parseTextData(val, tagName, jPath, dontTrim, hasAttributes, isLeafNode, escapeEntities) {
@@ -81584,9 +82950,9 @@ function resolveNameSpace(tagname) {
   return tagname;
 }
 var attrsRegx = new RegExp(`([^\\s=]+)\\s*(=\\s*(['"])([\\s\\S]*?)\\3)?`, "gm");
-function buildAttributesMap(attrStr, jPath, tagName) {
+function buildAttributesMap(attrStr, jPath, tagName, force = false) {
   const options = this.options;
-  if (options.ignoreAttributes !== true && typeof attrStr === "string") {
+  if (force === true || options.ignoreAttributes !== true && typeof attrStr === "string") {
     const matches = getAllMatches(attrStr, attrsRegx);
     const len = matches.length;
     const attrs = {};
@@ -81655,11 +83021,9 @@ var parseXml = function(xmlData) {
   let currentNode = xmlObj;
   let textData = "";
   this.matcher.reset();
+  this.entityDecoder.reset();
   this.entityExpansionCount = 0;
   this.currentExpandedLength = 0;
-  this.docTypeEntitiesKeys = [];
-  this.lastEntitiesKeys = Object.keys(this.lastEntities);
-  this.htmlEntitiesKeys = this.options.htmlEntities ? Object.keys(this.htmlEntities) : [];
   const options = this.options;
   const docTypeReader = new DocTypeReader(options.processEntities);
   const xmlLen = xmlData.length;
@@ -81698,11 +83062,16 @@ var parseXml = function(xmlData) {
         if (!tagData)
           throw new Error("Pi Tag is not closed.");
         textData = this.saveTextToParentTag(textData, currentNode, this.readonlyMatcher);
+        const attsMap = this.buildAttributesMap(tagData.tagExp, this.matcher, tagData.tagName, true);
+        if (attsMap) {
+          const ver = attsMap[this.options.attributeNamePrefix + "version"];
+          this.entityDecoder.setXmlVersion(Number(ver) || 1);
+        }
         if (options.ignoreDeclaration && tagData.tagName === "?xml" || options.ignorePiTags) {} else {
           const childNode = new XmlNode(tagData.tagName);
           childNode.add(options.textNodeName, "");
-          if (tagData.tagName !== tagData.tagExp && tagData.attrExpPresent) {
-            childNode[":@"] = this.buildAttributesMap(tagData.tagExp, this.matcher, tagData.tagName);
+          if (tagData.tagName !== tagData.tagExp && tagData.attrExpPresent && options.ignoreAttributes !== true) {
+            childNode[":@"] = attsMap;
           }
           this.addChild(currentNode, childNode, this.readonlyMatcher, i);
         }
@@ -81717,8 +83086,7 @@ var parseXml = function(xmlData) {
         i = endIndex;
       } else if (c1 === 33 && xmlData.charCodeAt(i + 2) === 68) {
         const result = docTypeReader.readDocType(xmlData, i);
-        this.docTypeEntities = result.entities;
-        this.docTypeEntitiesKeys = Object.keys(this.docTypeEntities) || [];
+        this.entityDecoder.addInputEntities(result.entities);
         i = result.i;
       } else if (c1 === 33 && xmlData.charCodeAt(i + 2) === 91) {
         const closeIndex = findClosingIndex(xmlData, "]]>", i, "CDATA is not closed.") - 2;
@@ -81879,52 +83247,7 @@ function replaceEntitiesValue(val, tagName, jPath) {
       return val;
     }
   }
-  for (const entityName of this.docTypeEntitiesKeys) {
-    const entity = this.docTypeEntities[entityName];
-    const matches = val.match(entity.regx);
-    if (matches) {
-      this.entityExpansionCount += matches.length;
-      if (entityConfig.maxTotalExpansions && this.entityExpansionCount > entityConfig.maxTotalExpansions) {
-        throw new Error(`Entity expansion limit exceeded: ${this.entityExpansionCount} > ${entityConfig.maxTotalExpansions}`);
-      }
-      const lengthBefore = val.length;
-      val = val.replace(entity.regx, entity.val);
-      if (entityConfig.maxExpandedLength) {
-        this.currentExpandedLength += val.length - lengthBefore;
-        if (this.currentExpandedLength > entityConfig.maxExpandedLength) {
-          throw new Error(`Total expanded content size exceeded: ${this.currentExpandedLength} > ${entityConfig.maxExpandedLength}`);
-        }
-      }
-    }
-  }
-  if (val.indexOf("&") === -1)
-    return val;
-  for (const entityName of this.lastEntitiesKeys) {
-    const entity = this.lastEntities[entityName];
-    const matches = val.match(entity.regex);
-    if (matches) {
-      this.entityExpansionCount += matches.length;
-      if (entityConfig.maxTotalExpansions && this.entityExpansionCount > entityConfig.maxTotalExpansions) {
-        throw new Error(`Entity expansion limit exceeded: ${this.entityExpansionCount} > ${entityConfig.maxTotalExpansions}`);
-      }
-    }
-    val = val.replace(entity.regex, entity.val);
-  }
-  if (val.indexOf("&") === -1)
-    return val;
-  for (const entityName of this.htmlEntitiesKeys) {
-    const entity = this.htmlEntities[entityName];
-    const matches = val.match(entity.regex);
-    if (matches) {
-      this.entityExpansionCount += matches.length;
-      if (entityConfig.maxTotalExpansions && this.entityExpansionCount > entityConfig.maxTotalExpansions) {
-        throw new Error(`Entity expansion limit exceeded: ${this.entityExpansionCount} > ${entityConfig.maxTotalExpansions}`);
-      }
-    }
-    val = val.replace(entity.regex, entity.val);
-  }
-  val = val.replace(this.ampEntity.regex, this.ampEntity.val);
-  return val;
+  return this.entityDecoder.decode(val);
 }
 function saveTextToParentTag(textData, parentNode, matcher, isLeafNode) {
   if (textData) {
@@ -82070,14 +83393,6 @@ function parseValue(val, shouldParse, options) {
     } else {
       return "";
     }
-  }
-}
-function fromCodePoint(str, base, prefix) {
-  const codePoint = Number.parseInt(str, base);
-  if (codePoint >= 0 && codePoint <= 1114111) {
-    return String.fromCodePoint(codePoint);
-  } else {
-    return prefix + str + ";";
   }
 }
 function transformTagName(fn, tagName, tagExp, options) {
@@ -82236,7 +83551,7 @@ class XMLParser {
       }
     }
     const orderedObjParser = new OrderedObjParser(this.options);
-    orderedObjParser.addExternalEntities(this.externalEntities);
+    orderedObjParser.entityDecoder.setExternalEntities(this.externalEntities);
     const orderedResult = orderedObjParser.parseXml(xmlData);
     if (this.options.preserveOrder || orderedResult === undefined)
       return orderedResult;
@@ -82320,12 +83635,16 @@ function arrToStr(arr, options, indentation, matcher, stopNodeExpressions) {
       if (isPreviousElementTag) {
         xmlStr += indentation;
       }
-      xmlStr += `<![CDATA[${tagObj[tagName][0][options.textNodeName]}]]>`;
+      const val = tagObj[tagName][0][options.textNodeName];
+      const safeVal = String(val).replace(/\]\]>/g, "]]]]><![CDATA[>");
+      xmlStr += `<![CDATA[${safeVal}]]>`;
       isPreviousElementTag = false;
       matcher.pop();
       continue;
     } else if (tagName === options.commentPropName) {
-      xmlStr += indentation + `<!--${tagObj[tagName][0][options.textNodeName]}-->`;
+      const val = tagObj[tagName][0][options.textNodeName];
+      const safeVal = String(val).replace(/--/g, "- -").replace(/-$/, "- ");
+      xmlStr += indentation + `<!--${safeVal}-->`;
       isPreviousElementTag = true;
       matcher.pop();
       continue;
@@ -82898,9 +84217,11 @@ Builder.prototype.checkStopNode = function(matcher) {
 };
 Builder.prototype.buildTextValNode = function(val, key, attrStr, level, matcher) {
   if (this.options.cdataPropName !== false && key === this.options.cdataPropName) {
-    return this.indentate(level) + `<![CDATA[${val}]]>` + this.newLine;
+    const safeVal = String(val).replace(/\]\]>/g, "]]]]><![CDATA[>");
+    return this.indentate(level) + `<![CDATA[${safeVal}]]>` + this.newLine;
   } else if (this.options.commentPropName !== false && key === this.options.commentPropName) {
-    return this.indentate(level) + `<!--${val}-->` + this.newLine;
+    const safeVal = String(val).replace(/--/g, "- -").replace(/-$/, "- ");
+    return this.indentate(level) + `<!--${safeVal}-->` + this.newLine;
   } else if (key[0] === "?") {
     return this.indentate(level) + "<" + key + attrStr + "?" + this.tagEndChar;
   } else {
@@ -121043,5 +122364,5 @@ async function index() {
 }
 await index();
 
-//# debugId=50D13DA35489AA4E64756E2164756E21
+//# debugId=3F9883A6699D2F2A64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
