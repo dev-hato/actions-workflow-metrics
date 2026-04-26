@@ -82856,7 +82856,7 @@ function extractNamespace(rawTagName) {
 }
 
 class OrderedObjParser {
-  constructor(options) {
+  constructor(options, externalEntities) {
     this.options = options;
     this.currentNode = null;
     this.tagsNodeStack = [];
@@ -82881,7 +82881,7 @@ class OrderedObjParser {
       else if (this.options.htmlEntities === true)
         namedEntities = { ...COMMON_HTML, ...CURRENCY };
       this.entityDecoder = new EntityDecoder({
-        namedEntities,
+        namedEntities: { ...namedEntities, ...externalEntities },
         numericAllowed: this.options.htmlEntities,
         limit: {
           maxTotalExpansions: this.options.processEntities.maxTotalExpansions,
@@ -83006,7 +83006,7 @@ function buildAttributesMap(attrStr, jPath, tagName, force = false) {
     }
     if (!hasAttrs)
       return;
-    if (options.attributesGroupName) {
+    if (options.attributesGroupName && !options.preserveOrder) {
       const attrCollection = {};
       attrCollection[options.attributesGroupName] = attrs;
       return attrCollection;
@@ -83267,10 +83267,11 @@ function isItStopNode() {
 }
 function tagExpWithClosingIndex(xmlData, i, closingChar = ">") {
   let attrBoundary = 0;
-  const chars = [];
   const len = xmlData.length;
   const closeCode0 = closingChar.charCodeAt(0);
   const closeCode1 = closingChar.length > 1 ? closingChar.charCodeAt(1) : -1;
+  let result = "";
+  let segmentStart = i;
   for (let index = i;index < len; index++) {
     const code = xmlData.charCodeAt(index);
     if (attrBoundary) {
@@ -83281,16 +83282,17 @@ function tagExpWithClosingIndex(xmlData, i, closingChar = ">") {
     } else if (code === closeCode0) {
       if (closeCode1 !== -1) {
         if (xmlData.charCodeAt(index + 1) === closeCode1) {
-          return { data: String.fromCharCode(...chars), index };
+          result += xmlData.substring(segmentStart, index);
+          return { data: result, index };
         }
       } else {
-        return { data: String.fromCharCode(...chars), index };
+        result += xmlData.substring(segmentStart, index);
+        return { data: result, index };
       }
-    } else if (code === 9) {
-      chars.push(32);
-      continue;
+    } else if (code === 9 && !attrBoundary) {
+      result += xmlData.substring(segmentStart, index) + " ";
+      segmentStart = index + 1;
     }
-    chars.push(code);
   }
 }
 function findClosingIndex(xmlData, str, i, errMsg) {
@@ -83550,8 +83552,7 @@ class XMLParser {
         throw Error(`${result.err.msg}:${result.err.line}:${result.err.col}`);
       }
     }
-    const orderedObjParser = new OrderedObjParser(this.options);
-    orderedObjParser.entityDecoder.setExternalEntities(this.externalEntities);
+    const orderedObjParser = new OrderedObjParser(this.options, this.externalEntities);
     const orderedResult = orderedObjParser.parseXml(xmlData);
     if (this.options.preserveOrder || orderedResult === undefined)
       return orderedResult;
@@ -122364,5 +122365,5 @@ async function index() {
 }
 await index();
 
-//# debugId=3F9883A6699D2F2A64756E2164756E21
+//# debugId=2A573E6ED0C6AF7664756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
