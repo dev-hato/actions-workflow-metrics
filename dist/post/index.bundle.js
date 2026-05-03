@@ -45323,6 +45323,7 @@ var require_headers2 = __commonJS((exports) => {
       uid,
       gid,
       size,
+      byteOffset: 0,
       mtime: new Date(1000 * mtime),
       type,
       linkname,
@@ -45499,6 +45500,7 @@ var require_extract = __commonJS((exports, module) => {
   var b4a = require_b4a();
   var headers = require_headers2();
   var EMPTY = b4a.alloc(0);
+  var MAX_HEADER_SIZE = 4 * 1024 * 1024;
 
   class BufferList {
     constructor() {
@@ -45512,7 +45514,7 @@ var require_extract = __commonJS((exports, module) => {
       this.queue.push(buffer2);
     }
     shiftFirst(size) {
-      return this._buffered === 0 ? null : this._next(size);
+      return this.buffered === 0 ? null : this._next(size);
     }
     shift(size) {
       if (size > this.buffered)
@@ -45621,6 +45623,7 @@ var require_extract = __commonJS((exports, module) => {
       }
       if (!this._header)
         return true;
+      this._header.byteOffset = this._buffer.shifted;
       switch (this._header.type) {
         case "gnu-long-path":
         case "gnu-long-link-path":
@@ -45628,10 +45631,18 @@ var require_extract = __commonJS((exports, module) => {
         case "pax-header":
           this._longHeader = true;
           this._missing = this._header.size;
+          if (this._missing > MAX_HEADER_SIZE) {
+            this._continueWrite(new Error("Header exceeds max size"));
+            return false;
+          }
           return true;
       }
       this._locked = true;
       this._applyLongHeaders();
+      if (!(this._header.size >= 0)) {
+        this._continueWrite(new Error("Invalid header"));
+        return false;
+      }
       if (this._header.size === 0 || this._header.type === "directory") {
         this.emit("entry", this._header, this._createStream(), this._unlockBound);
         return true;
@@ -122365,5 +122376,5 @@ async function index() {
 }
 await index();
 
-//# debugId=2A573E6ED0C6AF7664756E2164756E21
+//# debugId=32A901B209D5457464756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
