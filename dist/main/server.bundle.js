@@ -17291,7 +17291,7 @@ var require_undici = __commonJS((exports, module) => {
 var require_package = __commonJS((exports, module) => {
   module.exports = {
     name: "systeminformation",
-    version: "5.31.5",
+    version: "5.31.6",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -18101,6 +18101,20 @@ var require_util9 = __commonJS((exports) => {
       }
     }
     return !notPolluted;
+  }
+  function sanitizeString(str, strict) {
+    if (typeof strict === "undefined") {
+      strict = false;
+    }
+    let result2 = "";
+    const s = isPrototypePolluted() ? "---" : sanitizeShellString(str, strict);
+    const l = mathMin(s.length, 2000);
+    for (let i = 0;i <= l; i++) {
+      if (s[i] !== undefined) {
+        result2 = result2 + s[i];
+      }
+    }
+    return result2;
   }
   function hex2bin(hex) {
     return ("00000000" + parseInt(hex, 16).toString(2)).substr(-8);
@@ -19925,6 +19939,12 @@ var require_util9 = __commonJS((exports) => {
   function cleanString(str) {
     return str.replace(/To Be Filled By O.E.M./g, "");
   }
+  function grep(str, pattern) {
+    const result2 = str.split(`
+`).filter((line) => line.includes(pattern)).join(`
+`);
+    return result2;
+  }
   function noop() {}
   exports.toInt = toInt;
   exports.splitByNumber = splitByNumber;
@@ -19955,6 +19975,7 @@ var require_util9 = __commonJS((exports) => {
   exports.isRaspbian = isRaspbian;
   exports.sanitizeShellString = sanitizeShellString;
   exports.isPrototypePolluted = isPrototypePolluted;
+  exports.sanitizeString = sanitizeString;
   exports.decodePiCpuinfo = decodePiCpuinfo;
   exports.getRpiGpu = getRpiGpu;
   exports.promiseAll = promiseAll;
@@ -19979,6 +20000,7 @@ var require_util9 = __commonJS((exports) => {
   exports.getAppleModel = getAppleModel;
   exports.checkWebsite = checkWebsite;
   exports.cleanString = cleanString;
+  exports.grep = grep;
   exports.getPowershell = getPowershell;
 });
 
@@ -19989,6 +20011,7 @@ var require_osinfo = __commonJS((exports) => {
   var util = require_util9();
   var exec = __require("child_process").exec;
   var execSync = __require("child_process").execSync;
+  var execFile = __require("child_process").execFile;
   var _platform = process.platform;
   var _linux = _platform === "linux" || _platform === "android";
   var _darwin = _platform === "darwin";
@@ -20779,12 +20802,18 @@ var require_osinfo = __commonJS((exports) => {
                     const postgresql = stdout.toString().split(`
 `)[0].split(" ") || [];
                     appsObj.versions.postgresql = postgresql.length ? postgresql[postgresql.length - 1] : "";
+                    if (appsObj.versions.postgresql.includes("(") && postgresql.length >= 2 && !postgresql[postgresql.length - 2].includes("(")) {
+                      appsObj.versions.postgresql = postgresql[postgresql.length - 2];
+                    }
                   } else {
                     exec("pg_config --version", (error3, stdout2) => {
                       if (!error3) {
                         const postgresql = stdout2.toString().split(`
 `)[0].split(" ") || [];
                         appsObj.versions.postgresql = postgresql.length ? postgresql[postgresql.length - 1] : "";
+                        if (appsObj.versions.postgresql.includes("(") && postgresql.length >= 2 && !postgresql[postgresql.length - 2].includes("(")) {
+                          appsObj.versions.postgresql = postgresql[postgresql.length - 2];
+                        }
                       }
                     });
                   }
@@ -27606,6 +27635,7 @@ var require_network = __commonJS((exports) => {
   var os4 = __require("os");
   var exec = __require("child_process").exec;
   var execSync = __require("child_process").execSync;
+  var execFileSync = __require("child_process").execFileSync;
   var fs2 = __require("fs");
   var util = require_util9();
   var _platform = process.platform;
@@ -27985,18 +28015,11 @@ Profile on interface`);
       try {
         const SSID = getWindowsWirelessIfaceSSID(iface);
         if (SSID !== "Unknown") {
-          let ifaceSanitized = "";
-          const s = util.isPrototypePolluted() ? "---" : util.sanitizeShellString(SSID);
-          const l = util.mathMin(s.length, 32);
-          for (let i = 0;i <= l; i++) {
-            if (s[i] !== undefined) {
-              ifaceSanitized = ifaceSanitized + s[i];
-            }
-          }
+          const ifaceSanitized = util.sanitizeString(SSID);
           const profiles = execSync(`netsh wlan show profiles "${ifaceSanitized}"`, util.execOptsWin).split(`\r
 `);
-          i8021xState = (profiles.find((l2) => l2.indexOf("802.1X") >= 0) || "").trim();
-          i8021xProtocol = (profiles.find((l2) => l2.indexOf("EAP") >= 0) || "").trim();
+          i8021xState = (profiles.find((l) => l.indexOf("802.1X") >= 0) || "").trim();
+          i8021xProtocol = (profiles.find((l) => l.indexOf("EAP") >= 0) || "").trim();
         }
         if (i8021xState.includes(":") && i8021xProtocol.includes(":")) {
           i8021x.state = i8021xState.split(":").pop();
@@ -28098,13 +28121,14 @@ Profile on interface`);
     }
   }
   function getLinuxIfaceConnectionName(interfaceName) {
-    const cmd = `nmcli device status 2>/dev/null | grep ${interfaceName}`;
     try {
-      const result2 = execSync(cmd, util.execOptsLinux).toString();
+      const output = execFileSync("nmcli", ["device", "status"], { ...util.execOptsLinux, stdio: ["ignore", "pipe", "ignore"] }).toString();
+      const result2 = util.grep(output, interfaceName);
       const resultFormat = result2.replace(/\s+/g, " ").trim();
       const connectionNameLines = resultFormat.split(" ").slice(3);
       const connectionName = connectionNameLines.join(" ");
-      return connectionName !== "--" ? connectionName : "";
+      const connectionNameSanitized = util.sanitizeString(connectionName, false);
+      return connectionNameSanitized !== "--" ? connectionNameSanitized : "";
     } catch {
       return "";
     }
@@ -28174,9 +28198,9 @@ Profile on interface`);
   function getLinuxIfaceDHCPstatus(iface, connectionName, DHCPNics) {
     let result2 = false;
     if (connectionName) {
-      const cmd = `nmcli connection show "${connectionName}" 2>/dev/null | grep ipv4.method;`;
       try {
-        const lines = execSync(cmd, util.execOptsLinux).toString();
+        const output = execFileSync("nmcli", ["connection", "show", connectionName], { ...util.execOptsLinux, stdio: ["ignore", "pipe", "ignore"] }).toString();
+        const lines = util.grep(output, "ipv4.method");
         const resultFormat = lines.replace(/\s+/g, " ").trim();
         const dhcStatus = resultFormat.split(" ").slice(1).toString();
         switch (dhcStatus) {
@@ -28197,10 +28221,9 @@ Profile on interface`);
   }
   function getDarwinIfaceDHCPstatus(iface) {
     let result2 = false;
-    const cmd = `ipconfig getpacket "${iface}" 2>/dev/null | grep lease_time;`;
     try {
-      const lines = execSync(cmd).toString().split(`
-`);
+      const output = execFileSync("ipconfig", ["getpacket", iface], { ...util.execOptsLinux, stdio: ["ignore", "pipe", "ignore"] }).toString();
+      const lines = util.grep(output, "lease_time");
       if (lines.length && lines[0].startsWith("lease_time")) {
         result2 = true;
       }
@@ -28211,9 +28234,9 @@ Profile on interface`);
   }
   function getLinuxIfaceDNSsuffix(connectionName) {
     if (connectionName) {
-      const cmd = `nmcli connection show "${connectionName}" 2>/dev/null | grep ipv4.dns-search;`;
       try {
-        const result2 = execSync(cmd, util.execOptsLinux).toString();
+        const output = execFileSync("nmcli", ["connection", "show", connectionName], { ...util.execOptsLinux, stdio: ["ignore", "pipe", "ignore"] }).toString();
+        const result2 = util.grep(output, "ipv4.dns-search");
         const resultFormat = result2.replace(/\s+/g, " ").trim();
         const dnsSuffix = resultFormat.split(" ").slice(1).toString();
         return dnsSuffix === "--" ? "Not defined" : dnsSuffix;
@@ -28226,9 +28249,9 @@ Profile on interface`);
   }
   function getLinuxIfaceIEEE8021xAuth(connectionName) {
     if (connectionName) {
-      const cmd = `nmcli connection show "${connectionName}" 2>/dev/null | grep 802-1x.eap;`;
       try {
-        const result2 = execSync(cmd, util.execOptsLinux).toString();
+        const output = execFileSync("nmcli", ["connection", "show", connectionName], { ...util.execOptsLinux, stdio: ["ignore", "pipe", "ignore"] }).toString();
+        const result2 = util.grep(output, "802-1x.eap");
         const resultFormat = result2.replace(/\s+/g, " ").trim();
         const authenticationProtocol = resultFormat.split(" ").slice(1).toString();
         return authenticationProtocol === "--" ? "" : authenticationProtocol;
@@ -28355,14 +28378,7 @@ Profile on interface`);
                 nic.ip6 = ip6link;
                 nic.ip6subnet = ip6linksubnet;
               }
-              let ifaceSanitized = "";
-              const s = util.isPrototypePolluted() ? "---" : util.sanitizeShellString(nic.iface);
-              const l = util.mathMin(s.length, 2000);
-              for (let i = 0;i <= l; i++) {
-                if (s[i] !== undefined) {
-                  ifaceSanitized = ifaceSanitized + s[i];
-                }
-              }
+              const ifaceSanitized = util.sanitizeString(nic.iface);
               result2.push({
                 iface: nic.iface,
                 ifaceName: nic.iface,
@@ -28472,14 +28488,7 @@ Profile on interface`);
                   ip6subnet = ip6linksubnet;
                 }
                 const iface = dev.split(":")[0].trim();
-                let ifaceSanitized = "";
-                const s = util.isPrototypePolluted() ? "---" : util.sanitizeShellString(iface);
-                const l = util.mathMin(s.length, 2000);
-                for (let i = 0;i <= l; i++) {
-                  if (s[i] !== undefined) {
-                    ifaceSanitized = ifaceSanitized + s[i];
-                  }
-                }
+                const ifaceSanitized = util.sanitizeString(iface);
                 const cmd = `echo -n "addr_assign_type: "; cat /sys/class/net/${ifaceSanitized}/addr_assign_type 2>/dev/null; echo;
             echo -n "address: "; cat /sys/class/net/${ifaceSanitized}/address 2>/dev/null; echo;
             echo -n "addr_len: "; cat /sys/class/net/${ifaceSanitized}/addr_len 2>/dev/null; echo;
@@ -28606,14 +28615,7 @@ Profile on interface`);
               nics8021xInfo = getWindowsWiredProfilesInformation();
               dnsSuffixes = getWindowsDNSsuffixes();
               for (let dev in ifaces) {
-                let ifaceSanitized = "";
-                const s = util.isPrototypePolluted() ? "---" : util.sanitizeShellString(dev);
-                const l = util.mathMin(s.length, 2000);
-                for (let i = 0;i <= l; i++) {
-                  if (s[i] !== undefined) {
-                    ifaceSanitized = ifaceSanitized + s[i];
-                  }
-                }
+                const ifaceSanitized = util.sanitizeString(dev);
                 let iface = dev;
                 let ip4 = "";
                 let ip4subnet = "";
@@ -28848,14 +28850,7 @@ Profile on interface`);
     }
     return new Promise((resolve) => {
       process.nextTick(() => {
-        let ifaceSanitized = "";
-        const s = util.isPrototypePolluted() ? "---" : util.sanitizeShellString(iface);
-        const l = util.mathMin(s.length, 2000);
-        for (let i = 0;i <= l; i++) {
-          if (s[i] !== undefined) {
-            ifaceSanitized = ifaceSanitized + s[i];
-          }
-        }
+        const ifaceSanitized = util.sanitizeString(iface);
         let result2 = {
           iface: ifaceSanitized,
           operstate: "unknown",
@@ -29825,14 +29820,7 @@ Interface `);
                 }
               });
               if (iface) {
-                let ifaceSanitized = "";
-                const s = util.isPrototypePolluted() ? "---" : util.sanitizeShellString(iface, true);
-                const l = util.mathMin(s.length, 2000);
-                for (let i = 0;i <= l; i++) {
-                  if (s[i] !== undefined) {
-                    ifaceSanitized = ifaceSanitized + s[i];
-                  }
-                }
+                const ifaceSanitized = util.sanitizeString(iface, true);
                 const res = getWifiNetworkListIw(ifaceSanitized);
                 if (res === -1) {
                   setTimeout(() => {
@@ -29966,26 +29954,12 @@ Interface `);
           const ifaces = ifaceListLinux();
           const networkList = getWifiNetworkListNmi();
           ifaces.forEach((ifaceDetail) => {
-            let ifaceSanitized = "";
-            const s = util.isPrototypePolluted() ? "---" : util.sanitizeShellString(ifaceDetail.iface, true);
-            const ll = util.mathMin(s.length, 2000);
-            for (let i = 0;i <= ll; i++) {
-              if (s[i] !== undefined) {
-                ifaceSanitized = ifaceSanitized + s[i];
-              }
-            }
+            const ifaceSanitized = util.sanitizeString(ifaceDetail.iface, true);
             const nmiDetails = nmiDeviceLinux(ifaceSanitized);
             const wpaDetails = wpaConnectionLinux(ifaceSanitized);
             const ssid = nmiDetails.ssid || wpaDetails.ssid;
             const network = networkList.filter((nw) => nw.ssid === ssid);
-            let ssidSanitized = "";
-            const t = util.isPrototypePolluted() ? "---" : util.sanitizeShellString(ssid, true);
-            const l = util.mathMin(t.length, 32);
-            for (let i = 0;i <= l; i++) {
-              if (t[i] !== undefined) {
-                ssidSanitized = ssidSanitized + t[i];
-              }
-            }
+            const ssidSanitized = util.sanitizeString(ssid, true);
             const nmiConnection = nmiConnectionLinux(ssidSanitized);
             const channel = network && network.length && network[0].channel ? network[0].channel : wpaDetails.channel ? wpaDetails.channel : null;
             const bssid = network && network.length && network[0].bssid ? network[0].bssid : wpaDetails.bssid ? wpaDetails.bssid : null;
@@ -30133,7 +30107,8 @@ Interface `);
         if (_linux) {
           const ifaces = ifaceListLinux();
           ifaces.forEach((ifaceDetail) => {
-            const nmiDetails = nmiDeviceLinux(ifaceDetail.iface);
+            const ifaceSanitized = util.sanitizeString(ifaceDetail.iface, true);
+            const nmiDetails = nmiDeviceLinux(ifaceSanitized);
             result2.push({
               id: ifaceDetail.id,
               iface: ifaceDetail.iface,
@@ -36701,5 +36676,5 @@ async function server() {
 }
 await server();
 
-//# debugId=C553C2B1E835C03464756E2164756E21
+//# debugId=9C8036D8D8FBFE5E64756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
