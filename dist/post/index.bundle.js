@@ -13053,7 +13053,7 @@ var require_fetch = __commonJS((exports, module) => {
       request.cache = "no-store";
     }
     const newConnection = forceNewConnection ? "yes" : "no";
-    if (request.mode === "websocket") {} else {}
+    if (request.mode === "websocket") {}
     let requestBody = null;
     if (request.body == null && fetchParams.processRequestEndOfBody) {
       queueMicrotask(() => fetchParams.processRequestEndOfBody());
@@ -69040,7 +69040,7 @@ var require_fetch2 = __commonJS((exports, module) => {
       request2.cache = "no-store";
     }
     const newConnection = forceNewConnection ? "yes" : "no";
-    if (request2.mode === "websocket") {} else {}
+    if (request2.mode === "websocket") {}
     let requestBody = null;
     if (request2.body == null && fetchParams.processRequestEndOfBody) {
       queueMicrotask(() => fetchParams.processRequestEndOfBody());
@@ -120098,7 +120098,7 @@ function finalize(ctx, schema) {
     result.$schema = "http://json-schema.org/draft-07/schema#";
   } else if (ctx.target === "draft-04") {
     result.$schema = "http://json-schema.org/draft-04/schema#";
-  } else if (ctx.target === "openapi-3.0") {} else {}
+  } else if (ctx.target === "openapi-3.0") {}
   if (ctx.external?.uri) {
     const id = ctx.external.registry.get(schema)?.id;
     if (!id)
@@ -120342,7 +120342,7 @@ var literalProcessor = (schema, ctx, json, _params) => {
     if (val === undefined) {
       if (ctx.unrepresentable === "throw") {
         throw new Error("Literal `undefined` cannot be represented in JSON Schema");
-      } else {}
+      }
     } else if (typeof val === "bigint") {
       if (ctx.unrepresentable === "throw") {
         throw new Error("BigInt literals cannot be represented in JSON Schema");
@@ -123315,5 +123315,5 @@ async function index() {
 }
 await index();
 
-//# debugId=443264EDBC68DF0A64756E2164756E21
+//# debugId=D6CF627545D938F264756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

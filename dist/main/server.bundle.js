@@ -13053,7 +13053,7 @@ var require_fetch = __commonJS((exports, module) => {
       request.cache = "no-store";
     }
     const newConnection = forceNewConnection ? "yes" : "no";
-    if (request.mode === "websocket") {} else {}
+    if (request.mode === "websocket") {}
     let requestBody = null;
     if (request.body == null && fetchParams.processRequestEndOfBody) {
       queueMicrotask(() => fetchParams.processRequestEndOfBody());
@@ -36676,5 +36676,5 @@ async function server() {
 }
 await server();
 
-//# debugId=9C8036D8D8FBFE5E64756E2164756E21
+//# debugId=16AD684AECA71CE364756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
