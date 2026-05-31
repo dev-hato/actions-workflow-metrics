@@ -5446,23 +5446,54 @@ var require_client_h1 = __commonJS((exports, module) => {
           currentBufferRef = null;
         }
         const offset = llhttp.llhttp_get_error_pos(this.ptr) - currentBufferPtr;
-        if (ret === constants.ERROR.PAUSED_UPGRADE) {
-          this.onUpgrade(data.slice(offset));
-        } else if (ret === constants.ERROR.PAUSED) {
-          this.paused = true;
-          socket.unshift(data.slice(offset));
-        } else if (ret !== constants.ERROR.OK) {
-          const ptr = llhttp.llhttp_get_error_reason(this.ptr);
-          let message = "";
-          if (ptr) {
-            const len = new Uint8Array(llhttp.memory.buffer, ptr).indexOf(0);
-            message = "Response does not match the HTTP/1.1 protocol (" + Buffer.from(llhttp.memory.buffer, ptr, len).toString() + ")";
+        if (ret !== constants.ERROR.OK) {
+          const body = data.subarray(offset);
+          if (ret === constants.ERROR.PAUSED_UPGRADE) {
+            this.onUpgrade(body);
+          } else if (ret === constants.ERROR.PAUSED) {
+            this.paused = true;
+            socket.unshift(body);
+          } else {
+            throw this.createError(ret, body);
           }
-          throw new HTTPParserError(message, constants.ERROR[ret], data.slice(offset));
         }
       } catch (err) {
         util.destroy(socket, err);
       }
+    }
+    finish() {
+      assert(currentParser === null);
+      assert(this.ptr != null);
+      assert(!this.paused);
+      const { llhttp } = this;
+      let ret;
+      try {
+        currentParser = this;
+        ret = llhttp.llhttp_finish(this.ptr);
+      } finally {
+        currentParser = null;
+      }
+      if (ret === constants.ERROR.OK) {
+        return null;
+      }
+      if (ret === constants.ERROR.PAUSED || ret === constants.ERROR.PAUSED_UPGRADE) {
+        this.paused = true;
+        return null;
+      }
+      return this.createError(ret, EMPTY_BUF);
+    }
+    createError(ret, data) {
+      const { llhttp, contentLength, bytesRead } = this;
+      if (contentLength && bytesRead !== parseInt(contentLength, 10)) {
+        return new ResponseContentLengthMismatchError;
+      }
+      const ptr = llhttp.llhttp_get_error_reason(this.ptr);
+      let message = "";
+      if (ptr) {
+        const len = new Uint8Array(llhttp.memory.buffer, ptr).indexOf(0);
+        message = "Response does not match the HTTP/1.1 protocol (" + Buffer.from(llhttp.memory.buffer, ptr, len).toString() + ")";
+      }
+      return new HTTPParserError(message, constants.ERROR[ret], data);
     }
     destroy() {
       assert(this.ptr != null);
@@ -5731,7 +5762,11 @@ var require_client_h1 = __commonJS((exports, module) => {
       assert(err.code !== "ERR_TLS_CERT_ALTNAME_INVALID");
       const parser = this[kParser];
       if (err.code === "ECONNRESET" && parser.statusCode && !parser.shouldKeepAlive) {
-        parser.onMessageComplete();
+        const parserErr = parser.finish();
+        if (parserErr) {
+          this[kError] = parserErr;
+          this[kClient][kOnError](parserErr);
+        }
         return;
       }
       this[kError] = err;
@@ -5746,7 +5781,10 @@ var require_client_h1 = __commonJS((exports, module) => {
     addListener(socket, "end", function() {
       const parser = this[kParser];
       if (parser.statusCode && !parser.shouldKeepAlive) {
-        parser.onMessageComplete();
+        const parserErr = parser.finish();
+        if (parserErr) {
+          util.destroy(this, parserErr);
+        }
         return;
       }
       util.destroy(this, new SocketError("other side closed", util.getSocketInfo(this)));
@@ -5756,7 +5794,7 @@ var require_client_h1 = __commonJS((exports, module) => {
       const parser = this[kParser];
       if (parser) {
         if (!this[kError] && parser.statusCode && !parser.shouldKeepAlive) {
-          parser.onMessageComplete();
+          this[kError] = parser.finish() || this[kError];
         }
         this[kParser].destroy();
         this[kParser] = null;
@@ -17291,7 +17329,7 @@ var require_undici = __commonJS((exports, module) => {
 var require_package = __commonJS((exports, module) => {
   module.exports = {
     name: "systeminformation",
-    version: "5.31.6",
+    version: "5.31.7",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -27636,6 +27674,7 @@ var require_network = __commonJS((exports) => {
   var exec = __require("child_process").exec;
   var execSync = __require("child_process").execSync;
   var execFileSync = __require("child_process").execFileSync;
+  var readFileSync = __require("fs").readFileSync;
   var fs2 = __require("fs");
   var util = require_util9();
   var _platform = process.platform;
@@ -28136,9 +28175,9 @@ Profile on interface`);
   function checkLinuxDCHPInterfaces(file) {
     let result2 = [];
     try {
-      const cmd = `cat ${file} 2> /dev/null | grep 'iface\\|source'`;
-      const lines = execSync(cmd, util.execOptsLinux).toString().split(`
-`);
+      const content = readFileSync(file, { encoding: "utf8" });
+      const lines = content.split(`
+`).filter((l) => /iface|source/.test(l));
       lines.forEach((line) => {
         const parts = line.replace(/\s+/g, " ").trim().split(" ");
         if (parts.length >= 4) {
@@ -36676,5 +36715,5 @@ async function server() {
 }
 await server();
 
-//# debugId=16AD684AECA71CE364756E2164756E21
+//# debugId=41E7AC3DD5F70F5764756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
