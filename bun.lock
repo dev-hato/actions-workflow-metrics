@@ -27,7 +27,7 @@
         "textlint-rule-ja-hiragana-fukushi": "1.3.0",
         "textlint-rule-ja-hiragana-hojodoushi": "1.1.0",
         "textlint-rule-ja-hiragana-keishikimeishi": "1.1.0",
-        "textlint-rule-no-dead-link": "6.2.2",
+        "textlint-rule-no-dead-link": "6.2.3",
         "textlint-rule-no-mixed-zenkaku-and-hankaku-alphabet": "1.0.1",
         "textlint-rule-prefer-tari-tari": "1.0.3",
         "textlint-rule-preset-ja-spacing": "3.0.0",
@@ -1098,7 +1098,7 @@
 
     "textlint-rule-max-ten": ["textlint-rule-max-ten@5.0.0", "", { "dependencies": { "kuromojin": "^3.0.0", "sentence-splitter": "^5.0.0", "textlint-rule-helper": "^2.3.1", "textlint-util-to-string": "^3.3.4" } }, "sha512-EWOvbEa3Ukxz0+GAUEJ91DYFSC3IkyJ10dBcsU6VlL33k1BvTRoFr3m26w6upnXJffXQUI70Etn39I++2duyhA=="],
 
-    "textlint-rule-no-dead-link": ["textlint-rule-no-dead-link@6.2.2", "", { "dependencies": { "minimatch": "^10.0.3", "p-memoize": "^8.0.0", "p-queue": "^8.1.0", "textlint-rule-helper": "^2.3.1" }, "peerDependencies": { "textlint": ">= 12.2.0" }, "optionalPeers": ["textlint"] }, "sha512-Xy3v2HglY4u73O5j8er+JKUUMuXC4NGIpQL1nKzWNgEFEx3azuhkwWgYginQ2idxPGM8cSCHe27sSEDV6GgQsQ=="],
+    "textlint-rule-no-dead-link": ["textlint-rule-no-dead-link@6.2.3", "", { "dependencies": { "minimatch": "^10.0.3", "p-memoize": "^8.0.0", "p-queue": "^8.1.0", "textlint-rule-helper": "^2.3.1" }, "peerDependencies": { "textlint": ">= 12.2.0" }, "optionalPeers": ["textlint"] }, "sha512-gctG7VnpMY6OZUdo8pk6SEV/yP0xPMtI3QWg1/+G7KtpYgujM8WalTz+TAvbJGbHTTfkhbZXbuIoFeTGM+/1hg=="],
 
     "textlint-rule-no-double-negative-ja": ["textlint-rule-no-double-negative-ja@2.0.1", "", { "dependencies": { "kuromojin": "^3.0.0" } }, "sha512-LRofmNt+nd2mp+AHmG0ltk9AlbzKbWPE+EToYQ1zORCd8N8suE1YxNEplz9OeQ59ea9ITtudDIWoqeHaZnbDsg=="],
 
