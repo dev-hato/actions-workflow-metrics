@@ -16,7 +16,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./
-      - uses: dev-hato/github-actions-cache-cleaner@a53a04fa36da1ebf0ef0af2c010ae1fa8fac3148 # v0.0.86
+      - uses: dev-hato/github-actions-cache-cleaner@ab09b5fead36bf617b5ee9268213c93a01ebcf07 # v0.0.87
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 concurrency:
