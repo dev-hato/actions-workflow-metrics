@@ -81865,6 +81865,11 @@ var COMMON_HTML = {
 };
 
 // node_modules/@nodable/entities/src/EntityDecoder.js
+var ENTITY_ACTION = Object.freeze({
+  ALLOW: "allow",
+  BLOCK: "block",
+  THROW: "throw"
+});
 var SPECIAL_CHARS = new Set("!?\\\\/[]$%{}^&*()<>|+");
 function validateEntityName(name) {
   if (name[0] === "#") {
@@ -81942,6 +81947,19 @@ class EntityDecoder {
     this._ncrXmlVersion = ncrCfg.xmlVersion;
     this._ncrOnLevel = ncrCfg.onLevel;
     this._ncrNullLevel = ncrCfg.nullLevel;
+    this._onExternalEntity = typeof options.onExternalEntity === "function" ? options.onExternalEntity : null;
+    this._onInputEntity = typeof options.onInputEntity === "function" ? options.onInputEntity : null;
+  }
+  _applyRegistrationHook(hook, name, value, context3) {
+    if (!hook)
+      return true;
+    const action = hook(name, value);
+    if (action === ENTITY_ACTION.BLOCK)
+      return false;
+    if (action === ENTITY_ACTION.THROW) {
+      throw new Error(`[EntityDecoder] Registration of ${context3} entity "&${name};" was rejected by hook`);
+    }
+    return true;
   }
   setExternalEntities(map) {
     if (map) {
@@ -81949,18 +81967,42 @@ class EntityDecoder {
         validateEntityName(key);
       }
     }
-    this._externalMap = mergeEntityMaps(map);
+    if (!this._onExternalEntity) {
+      this._externalMap = mergeEntityMaps(map);
+      return;
+    }
+    const flat = mergeEntityMaps(map);
+    const filtered = Object.create(null);
+    for (const [name, value] of Object.entries(flat)) {
+      if (this._applyRegistrationHook(this._onExternalEntity, name, value, "external")) {
+        filtered[name] = value;
+      }
+    }
+    this._externalMap = filtered;
   }
   addExternalEntity(key, value) {
     validateEntityName(key);
     if (typeof value === "string" && value.indexOf("&") === -1) {
-      this._externalMap[key] = value;
+      if (this._applyRegistrationHook(this._onExternalEntity, key, value, "external")) {
+        this._externalMap[key] = value;
+      }
     }
   }
   addInputEntities(map) {
     this._totalExpansions = 0;
     this._expandedLength = 0;
-    this._inputMap = mergeEntityMaps(map);
+    if (!this._onInputEntity) {
+      this._inputMap = mergeEntityMaps(map);
+      return;
+    }
+    const flat = mergeEntityMaps(map);
+    const filtered = Object.create(null);
+    for (const [name, value] of Object.entries(flat)) {
+      if (this._applyRegistrationHook(this._onInputEntity, name, value, "input")) {
+        filtered[name] = value;
+      }
+    }
+    this._inputMap = filtered;
   }
   reset() {
     this._inputMap = Object.create(null);
@@ -82573,6 +82615,171 @@ function validateEntityName2(name, xmlVersion) {
     throw new Error(`Invalid entity name ${name}`);
 }
 
+// node_modules/anynum/digitTable.js
+var SCRIPT_ZEROS = [
+  48,
+  1632,
+  1776,
+  2406,
+  2534,
+  2662,
+  2790,
+  2918,
+  3046,
+  3174,
+  3302,
+  3430,
+  3558,
+  3664,
+  3792,
+  3872,
+  4160,
+  4240,
+  6112,
+  6160,
+  6470,
+  6608,
+  6784,
+  6800,
+  6992,
+  7088,
+  7232,
+  7248,
+  65296,
+  120782,
+  120792,
+  120802,
+  120812,
+  120822,
+  66720,
+  68912,
+  69734,
+  69872,
+  69942,
+  70096,
+  70384,
+  70736,
+  70864,
+  71248,
+  71360,
+  71472,
+  71904,
+  72016,
+  72688,
+  72784,
+  73040,
+  73120,
+  73552,
+  92768,
+  92864,
+  93008,
+  123200,
+  123632,
+  124144,
+  125264,
+  130032
+];
+var NOT_DIGIT = 255;
+var HIGH_MAP = new Map;
+var LOW_MAX = 65535;
+var LOW_MIN = 1632;
+var TABLE_OFFSET = LOW_MIN;
+var TABLE_SIZE = LOW_MAX - LOW_MIN + 1;
+var TABLE = new Uint8Array(TABLE_SIZE).fill(NOT_DIGIT);
+for (const zero of SCRIPT_ZEROS) {
+  for (let d = 0;d < 10; d++) {
+    const cp = zero + d;
+    if (cp <= LOW_MAX) {
+      TABLE[cp - TABLE_OFFSET] = d;
+    } else {
+      HIGH_MAP.set(cp, d);
+    }
+  }
+}
+
+// node_modules/anynum/anynum.js
+var CHAR_0 = 48;
+var CHAR_9 = 57;
+var CHAR_MINUS = 45;
+var MINUS_SET = new Set([8722, 65293, 65123]);
+function anynum(str) {
+  if (typeof str !== "string")
+    return str;
+  const len = str.length;
+  if (len === 0)
+    return str;
+  let firstHit = -1;
+  for (let i = 0;i < len; i++) {
+    const cc = str.charCodeAt(i);
+    if (cc >= CHAR_0 && cc <= CHAR_9 || cc === CHAR_MINUS)
+      continue;
+    if (cc < TABLE_OFFSET) {
+      if (MINUS_SET.has(cc)) {
+        firstHit = i;
+        break;
+      }
+      continue;
+    }
+    if (cc >= 55296 && cc <= 56319) {
+      if (i + 1 < len) {
+        const low = str.charCodeAt(i + 1);
+        if (low >= 56320 && low <= 57343) {
+          const cp = 65536 + (cc - 55296 << 10) + (low - 56320);
+          if (HIGH_MAP.has(cp)) {
+            firstHit = i;
+            break;
+          }
+        }
+      }
+      continue;
+    }
+    if (TABLE[cc - TABLE_OFFSET] !== NOT_DIGIT || MINUS_SET.has(cc)) {
+      firstHit = i;
+      break;
+    }
+  }
+  if (firstHit === -1)
+    return str;
+  const chars = [];
+  if (firstHit > 0)
+    chars.push(str.slice(0, firstHit));
+  for (let i = firstHit;i < len; i++) {
+    const cc = str.charCodeAt(i);
+    if (cc >= CHAR_0 && cc <= CHAR_9 || cc === CHAR_MINUS) {
+      chars.push(str[i]);
+      continue;
+    }
+    if (cc < TABLE_OFFSET) {
+      chars.push(MINUS_SET.has(cc) ? "-" : str[i]);
+      continue;
+    }
+    if (cc >= 55296 && cc <= 56319) {
+      if (i + 1 < len) {
+        const low = str.charCodeAt(i + 1);
+        if (low >= 56320 && low <= 57343) {
+          const cp = 65536 + (cc - 55296 << 10) + (low - 56320);
+          const d2 = HIGH_MAP.get(cp);
+          if (d2 !== undefined) {
+            chars.push(String.fromCharCode(d2 + 48));
+            i++;
+            continue;
+          }
+        }
+      }
+      chars.push(str[i]);
+      continue;
+    }
+    if (MINUS_SET.has(cc)) {
+      chars.push("-");
+      continue;
+    }
+    const d = TABLE[cc - TABLE_OFFSET];
+    chars.push(d !== NOT_DIGIT ? String.fromCharCode(d + 48) : str[i]);
+  }
+  return chars.join("");
+}
+var anynum_default = anynum;
+
 // node_modules/strnum/strnum.js
 var hexRegex = /^[-+]?0x[a-fA-F0-9]+$/;
 var binRegex = /^0b[01]+$/;
@@ -82585,7 +82792,8 @@ var consider = {
   leadingZeros: true,
   decimalPoint: ".",
   eNotation: true,
-  infinity: "original"
+  infinity: "original",
+  unicode: false
 };
 function toNumber(str, options = {}) {
   options = Object.assign({}, consider, options);
@@ -82598,7 +82806,12 @@ function toNumber(str, options = {}) {
     return str;
   else if (trimmedStr === "0")
     return 0;
-  else if (options.hex && hexRegex.test(trimmedStr)) {
+  if (options.unicode) {
+    trimmedStr = anynum_default(trimmedStr);
+    if (trimmedStr === "0")
+      return 0;
+  }
+  if (options.hex && hexRegex.test(trimmedStr)) {
     return parse_int(trimmedStr, 16);
   } else if (options.binary && binRegex.test(trimmedStr)) {
     return parse_int(trimmedStr, 2);
@@ -126746,5 +126959,5 @@ async function index() {
 }
 await index();
 
-//# debugId=60B26A07184DF02964756E2164756E21
+//# debugId=86C0C07A17B97AAA64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
