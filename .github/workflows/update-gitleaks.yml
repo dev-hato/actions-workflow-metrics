@@ -1,5 +1,6 @@
 ---
 name: update-gitleaks
+# jscpd:ignore-start
 on:
   pull_request:
     types:
@@ -14,7 +15,6 @@ permissions:
   contents: write
   pull-requests: write
 jobs:
-  # jscpd:ignore-start
   update-gitleaks:
     runs-on: ubuntu-latest
     steps:
@@ -27,7 +27,7 @@ jobs:
       - uses: dev-hato/actions-update-gitleaks@75b35bedf9c05d8faa714b41088944a5324c9f7a # v0.0.108
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # jscpd:ignore-end
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
+  # jscpd:ignore-end

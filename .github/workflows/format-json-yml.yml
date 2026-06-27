@@ -1,5 +1,6 @@
 ---
 name: format-json-yml
+# jscpd:ignore-start
 on:
   pull_request:
     types:
@@ -14,7 +15,6 @@ permissions:
   contents: write
   pull-requests: write
 jobs:
-  # jscpd:ignore-start
   format-json-yml:
     runs-on: ubuntu-latest
     steps:
@@ -27,7 +27,7 @@ jobs:
       - uses: dev-hato/actions-format-json-yml@251638e8f9b506b75637531801c20baec9077ec5 # v0.0.103
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # jscpd:ignore-end
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
+  # jscpd:ignore-end
