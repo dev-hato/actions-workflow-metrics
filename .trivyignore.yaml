@@ -4,5 +4,4 @@ secrets:
       - dist/post/index.bundle.js
       - dist/post/index.bundle.js.map
     statement: >
-      Well-known Azure Storage Emulator (devstoreaccount1) test key
-      bundled from @azure SDK dependencies. Not a real secret.
+      Well-known Azure Storage Emulator (devstoreaccount1) test key bundled from @azure SDK dependencies. Not a real secret.
