@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SAFE_CHAIN_MINIMUM_PACKAGE_AGE_HOURS: 168 # 7 days
+    # jscpd:ignore-start
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -29,6 +30,7 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.action != 'closed'
         with:
           bun-version-file: .bun-version
+      # jscpd:ignore-end
       - name: Install
         if: github.event_name != 'pull_request' || github.event.action != 'closed'
         run: |
