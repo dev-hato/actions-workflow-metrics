@@ -81,7 +81,7 @@ bun test --coverage                 # Show coverage
 
 Entry points: `src/main/index.ts`, `src/main/server.ts`, `src/post/index.ts` → bundled to `dist/`
 
-**Critical**: dist/ directory must be committed. All dependencies are bundled into dist files.
+**Critical**: `dist/` directory must be committed. All dependencies are bundled into dist files.
 
 ## Writing Tests
 
