@@ -117,9 +117,8 @@ export async function getMetricsData(
     return {
       ...metricsData,
       steps: (jobs.find(isCurrentRunnerJob)?.steps ?? [])
-        .map(
-          (s: GitHubJobStep): z.TypeOf<typeof stepSchema> =>
-            filterMetricsByStep(s, metricsData),
+        .map((s: GitHubJobStep): z.TypeOf<typeof stepSchema> =>
+          filterMetricsByStep(s, metricsData),
         )
         .filter(hasMetricsData),
     };

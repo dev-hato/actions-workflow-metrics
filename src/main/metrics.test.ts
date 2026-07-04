@@ -10,19 +10,17 @@ import type {
 
 // Mock systeminformation
 mock.module("systeminformation", () => ({
-  currentLoad: mock(
-    async (): Promise<Systeminformation.CurrentLoadData> =>
-      Promise.resolve({
-        currentLoadUser: 25.5,
-        currentLoadSystem: 10.3,
-      } as Systeminformation.CurrentLoadData),
+  currentLoad: mock(async (): Promise<Systeminformation.CurrentLoadData> =>
+    Promise.resolve({
+      currentLoadUser: 25.5,
+      currentLoadSystem: 10.3,
+    } as Systeminformation.CurrentLoadData),
   ),
-  mem: mock(
-    async (): Promise<Systeminformation.MemData> =>
-      Promise.resolve({
-        active: 4096 * 1024 * 1024, // 4096 MB in bytes
-        available: 8192 * 1024 * 1024, // 8192 MB in bytes
-      } as Systeminformation.MemData),
+  mem: mock(async (): Promise<Systeminformation.MemData> =>
+    Promise.resolve({
+      active: 4096 * 1024 * 1024, // 4096 MB in bytes
+      available: 8192 * 1024 * 1024, // 8192 MB in bytes
+    } as Systeminformation.MemData),
   ),
 }));
 
@@ -35,8 +33,8 @@ describe("Metrics", () => {
     const result: string = metrics.get();
 
     expect(typeof result).toBe("string");
-    expect(
-      (): z.TypeOf<typeof metricsDataSchema> => JSON.parse(result),
+    expect((): z.TypeOf<typeof metricsDataSchema> =>
+      JSON.parse(result),
     ).not.toThrow();
   });
 
