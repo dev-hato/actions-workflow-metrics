@@ -28,9 +28,9 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.action != 'closed'
         with:
           bun-version-file: .bun-version
+      # jscpd:ignore-end
       - if: github.event_name != 'pull_request' || github.event.action != 'closed'
         uses: flatt-security/setup-takumi-guard-npm@9a5d797c2085b6326d3a2985c08e3a114b9b88c1 # v1.1.1
-      # jscpd:ignore-end
       - if: github.event_name != 'pull_request' || github.event.action != 'closed'
         run: bun install
       - run: bun run build
