@@ -17403,7 +17403,7 @@ var require_undici = __commonJS((exports, module) => {
 var require_package = __commonJS((exports, module) => {
   module.exports = {
     name: "systeminformation",
-    version: "5.31.7",
+    version: "5.31.13",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -18513,7 +18513,7 @@ var require_util9 = __commonJS((exports) => {
     });
   }
   function promisify(nodeStyleFunction) {
-    return () => {
+    return function() {
       const args = Array.prototype.slice.call(arguments);
       return new Promise((resolve, reject) => {
         args.push((err, data) => {
@@ -18528,7 +18528,7 @@ var require_util9 = __commonJS((exports) => {
     };
   }
   function promisifySave(nodeStyleFunction) {
-    return () => {
+    return function() {
       const args = Array.prototype.slice.call(arguments);
       return new Promise((resolve) => {
         args.push((err, data) => {
@@ -18757,9 +18757,25 @@ var require_util9 = __commonJS((exports) => {
   function getAppleModel(key) {
     const appleModelIds = [
       {
-        key: "Mac17,7",
+        key: "Mac17,9",
+        name: "MacBook Pro",
+        size: "14-inch",
+        processor: "M5 Pro",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,8",
         name: "MacBook Pro",
         size: "16-inch",
+        processor: "M5 Pro",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,7",
+        name: "MacBook Pro",
+        size: "14-inch",
         processor: "M5 Max",
         year: "2026",
         additional: ""
@@ -18767,7 +18783,7 @@ var require_util9 = __commonJS((exports) => {
       {
         key: "Mac17,6",
         name: "MacBook Pro",
-        size: "14-inch",
+        size: "16-inch",
         processor: "M5 Max",
         year: "2026",
         additional: ""
@@ -23062,7 +23078,7 @@ var require_cpu = __commonJS((exports) => {
                 try {
                   const clusters = execSync("ioreg -c IOPlatformDevice -d 3 -r | grep cluster-type").toString().split(`
 `);
-                  const efficiencyCores = clusters.filter((line) => line.indexOf('"E"') >= 0).length;
+                  const efficiencyCores = clusters.filter((line) => line.indexOf('"E"') >= 0).length + clusters.filter((line) => line.indexOf('"M"') >= 0).length;
                   const performanceCores = clusters.filter((line) => line.indexOf('"P"') >= 0).length;
                   result2.efficiencyCores = efficiencyCores;
                   result2.performanceCores = performanceCores;
@@ -23428,6 +23444,7 @@ var require_cpu = __commonJS((exports) => {
           chipset: null
         };
         if (_linux) {
+          let cpuThermal = null;
           try {
             const cmd2 = 'cat /sys/class/thermal/thermal_zone*/type  2>/dev/null; echo "-----"; cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null;';
             const parts = execSync(cmd2, util.execOptsLinux).toString().split(`-----
@@ -23444,6 +23461,9 @@ var require_cpu = __commonJS((exports) => {
                 }
                 if (line.startsWith("pch") && lines2[i]) {
                   result2.chipset = Math.round(parseInt(lines2[i], 10) / 100) / 10;
+                }
+                if (cpuThermal === null && line.indexOf("cpu") !== -1 && lines2[i]) {
+                  cpuThermal = Math.round(parseInt(lines2[i], 10) / 100) / 10;
                 }
               }
             }
@@ -23494,29 +23514,40 @@ var require_cpu = __commonJS((exports) => {
                 resolve(result2);
                 return;
               }
+              if (cpuThermal !== null) {
+                result2.main = cpuThermal;
+                result2.max = cpuThermal;
+                if (callback) {
+                  callback(result2);
+                }
+                resolve(result2);
+                return;
+              }
               exec("sensors", (error3, stdout2) => {
                 if (!error3) {
                   const lines2 = stdout2.toString().split(`
 `);
                   let tdieTemp = null;
+                  let cpuThermalTemp = null;
                   let newSectionStarts = true;
                   let section = "";
                   lines2.forEach((line) => {
                     if (line.trim() === "") {
                       newSectionStarts = true;
                     } else if (newSectionStarts) {
-                      if (line.trim().toLowerCase().startsWith("acpi")) {
+                      const s = line.trim().toLowerCase();
+                      if (s.startsWith("acpi"))
                         section = "acpi";
-                      }
-                      if (line.trim().toLowerCase().startsWith("pch")) {
+                      else if (s.startsWith("pch"))
                         section = "pch";
-                      }
-                      if (line.trim().toLowerCase().startsWith("core")) {
+                      else if (s.startsWith("coretemp") || s.startsWith("core"))
                         section = "core";
-                      }
-                      if (line.trim().toLowerCase().startsWith("k10temp")) {
+                      else if (s.startsWith("k10temp"))
                         section = "coreAMD";
-                      }
+                      else if (s.startsWith("cpu_thermal") || s.startsWith("cpu-thermal") || s.startsWith("soc_thermal") || s.startsWith("cpu"))
+                        section = "cpuThermal";
+                      else
+                        section = "other";
                       newSectionStarts = false;
                     }
                     const regex = /[+-]([^°]*)/g;
@@ -23531,7 +23562,7 @@ var require_cpu = __commonJS((exports) => {
                         result2.chipset = parseFloat(temps);
                       }
                     }
-                    if (firstPart.indexOf("PHYSICAL") !== -1 || firstPart.indexOf("PACKAGE") !== -1 || section === "coreAMD" && firstPart.indexOf("TDIE") !== -1 || firstPart.indexOf("TEMP") !== -1) {
+                    if (firstPart.indexOf("PHYSICAL") !== -1 || firstPart.indexOf("PACKAGE") !== -1 || section === "coreAMD" && firstPart.indexOf("TDIE") !== -1) {
                       result2.main = parseFloat(temps);
                     }
                     if (firstPart.indexOf("CORE ") !== -1) {
@@ -23540,13 +23571,19 @@ var require_cpu = __commonJS((exports) => {
                     if (firstPart.indexOf("TDIE") !== -1 && tdieTemp === null) {
                       tdieTemp = parseFloat(temps);
                     }
+                    if (section === "cpuThermal" && firstPart.indexOf("TEMP") !== -1 && cpuThermalTemp === null) {
+                      cpuThermalTemp = parseFloat(temps);
+                    }
                   });
                   if (result2.cores.length > 0) {
                     result2.main = Math.round(result2.cores.reduce((a, b) => a + b, 0) / result2.cores.length);
                     const maxtmp = Math.max.apply(Math, result2.cores);
                     result2.max = maxtmp > result2.main ? maxtmp : result2.main;
                   } else {
-                    if (result2.main === null && tdieTemp !== null) {
+                    if (result2.main === null && cpuThermalTemp !== null) {
+                      result2.main = cpuThermalTemp;
+                      result2.max = cpuThermalTemp;
+                    } else if (result2.main === null && tdieTemp !== null) {
                       result2.main = tdieTemp;
                       result2.max = tdieTemp;
                     }
@@ -24451,11 +24488,15 @@ var require_memory = __commonJS((exports) => {
             util.noop();
           }
           try {
-            exec('vm_stat 2>/dev/null | egrep "Pages active|Pages inactive"', (error2, stdout) => {
+            exec('vm_stat 2>/dev/null | egrep "Pages active|Pages inactive|Pages speculative|Pages wired down|Pages occupied by compressor|Pages purgeable|File-backed pages|Anonymous pages"', (error2, stdout) => {
               if (!error2) {
                 let lines = stdout.toString().split(`
 `);
-                result2.active = (parseInt(util.getValue(lines, "Pages active"), 10) || 0) * pageSize;
+                const wired = (parseInt(util.getValue(lines, "Pages wired down"), 10) || 0) * pageSize;
+                const compressed = (parseInt(util.getValue(lines, "Pages occupied by compressor"), 10) || 0) * pageSize;
+                const purgeable = (parseInt(util.getValue(lines, "Pages purgeable"), 10) || 0) * pageSize;
+                const anonymous = (parseInt(util.getValue(lines, "Anonymous pages"), 10) || 0) * pageSize;
+                result2.active = anonymous - purgeable + wired + compressed;
                 result2.reclaimable = (parseInt(util.getValue(lines, "Pages inactive"), 10) || 0) * pageSize;
                 result2.buffcache = result2.used - result2.active;
                 result2.available = result2.free + result2.buffcache;
@@ -25362,9 +25403,20 @@ var require_graphics = __commonJS((exports) => {
               currentController.bus = "Onboard";
             }
             if (parts.length > 1 && parts[0].replace(/ +/g, "").toLowerCase().indexOf("region") !== -1 && parts[1].toLowerCase().indexOf("memory") !== -1) {
-              let memparts = parts[1].split("=");
-              if (memparts.length > 1) {
-                currentController.vram = parseInt(memparts[1]);
+              const sizeMatch = parts[1].match(/size=(\d+)([KMG])?/i);
+              if (sizeMatch) {
+                let vram = parseInt(sizeMatch[1], 10);
+                const unit = (sizeMatch[2] || "").toUpperCase();
+                if (unit === "G") {
+                  vram *= 1024;
+                } else if (unit === "K") {
+                  vram = Math.round(vram / 1024);
+                } else if (unit === "") {
+                  vram = Math.round(vram / 1024 / 1024);
+                }
+                if (currentController.vram === null || vram > currentController.vram) {
+                  currentController.vram = vram;
+                }
               }
             }
           }
@@ -36789,5 +36841,5 @@ async function server() {
 }
 await server();
 
-//# debugId=6957E51C8A3B8E3C64756E2164756E21
+//# debugId=B9BC9D8C6A1C41CE64756E2164756E21
 //# sourceMappingURL=server.bundle.js.map

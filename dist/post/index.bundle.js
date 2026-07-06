@@ -85784,7 +85784,7 @@ Builder.prototype.buildAttributesForStopNode = function(obj) {
       if (val === true && this.options.suppressBooleanAttributes) {
         attrStr += " " + cleanKey;
       } else {
-        attrStr += " " + cleanKey + '="' + val + '"';
+        attrStr += " " + cleanKey + '="' + escapeAttribute(val) + '"';
       }
     }
   } else {
@@ -85797,7 +85797,7 @@ Builder.prototype.buildAttributesForStopNode = function(obj) {
         if (val === true && this.options.suppressBooleanAttributes) {
           attrStr += " " + attr;
         } else {
-          attrStr += " " + attr + '="' + val + '"';
+          attrStr += " " + attr + '="' + escapeAttribute(val) + '"';
         }
       }
     }
@@ -85823,7 +85823,7 @@ Builder.prototype.buildObjectNode = function(val, key, attrStr, level) {
     if ((attrStr || attrStr === "") && val.indexOf("<") === -1) {
       return this.indentate(level) + "<" + key + attrStr + piClosingChar + ">" + val + tagEndExp;
     } else if (this.options.commentPropName !== false && key === this.options.commentPropName && piClosingChar.length === 0) {
-      return this.indentate(level) + `<!--${val}-->` + this.newLine;
+      return this.indentate(level) + `<!--${safeComment(val)}-->` + this.newLine;
     } else {
       return this.indentate(level) + "<" + key + attrStr + piClosingChar + this.tagEndChar + val + this.indentate(level) + tagEndExp;
     }
@@ -90230,8 +90230,8 @@ class UserDelegationKeyCredential {
   }
 }
 // node_modules/@azure/storage-blob/dist/esm/utils/constants.js
-var SDK_VERSION2 = "12.32.0";
-var SERVICE_VERSION = "2026-04-06";
+var SDK_VERSION2 = "12.33.0";
+var SERVICE_VERSION = "2026-06-06";
 var BLOCK_BLOB_MAX_UPLOAD_BLOB_BYTES = 256 * 1024 * 1024;
 var BLOCK_BLOB_MAX_STAGE_BLOCK_BYTES = 4000 * 1024 * 1024;
 var BLOCK_BLOB_MAX_BLOCKS = 50000;
@@ -92113,7 +92113,8 @@ var BlobPropertiesInternal = {
             "Hot",
             "Cool",
             "Archive",
-            "Cold"
+            "Cold",
+            "Smart"
           ]
         }
       },
@@ -92132,7 +92133,33 @@ var BlobPropertiesInternal = {
           allowedValues: [
             "rehydrate-pending-to-hot",
             "rehydrate-pending-to-cool",
-            "rehydrate-pending-to-cold"
+            "rehydrate-pending-to-cold",
+            "rehydrate-pending-to-smart"
+          ]
+        }
+      },
+      smartAccessTier: {
+        serializedName: "SmartAccessTier",
+        xmlName: "SmartAccessTier",
+        type: {
+          name: "Enum",
+          allowedValues: [
+            "P4",
+            "P6",
+            "P10",
+            "P15",
+            "P20",
+            "P30",
+            "P40",
+            "P50",
+            "P60",
+            "P70",
+            "P80",
+            "Hot",
+            "Cool",
+            "Archive",
+            "Cold",
+            "Smart"
           ]
         }
       },
@@ -95276,6 +95303,13 @@ var BlobGetPropertiesHeaders = {
         xmlName: "x-ms-access-tier-change-time",
         type: {
           name: "DateTimeRfc1123"
+        }
+      },
+      smartAccessTier: {
+        serializedName: "x-ms-smart-access-tier",
+        xmlName: "x-ms-smart-access-tier",
+        type: {
+          name: "String"
         }
       },
       versionId: {
@@ -99264,7 +99298,7 @@ var timeoutInSeconds = {
 var version2 = {
   parameterPath: "version",
   mapper: {
-    defaultValue: "2026-04-06",
+    defaultValue: "2026-06-06",
     isConstant: true,
     serializedName: "x-ms-version",
     type: {
@@ -100170,7 +100204,8 @@ var tier = {
         "Hot",
         "Cool",
         "Archive",
-        "Cold"
+        "Cold",
+        "Smart"
       ]
     }
   }
@@ -100408,7 +100443,8 @@ var tier1 = {
         "Hot",
         "Cool",
         "Archive",
-        "Cold"
+        "Cold",
+        "Smart"
       ]
     }
   }
@@ -103556,7 +103592,7 @@ class StorageClient extends ExtendedServiceClient {
     const defaults = {
       requestContentType: "application/json; charset=utf-8"
     };
-    const packageDetails = `azsdk-js-azure-storage-blob/12.32.0`;
+    const packageDetails = `azsdk-js-azure-storage-blob/12.33.0`;
     const userAgentPrefix = options.userAgentOptions && options.userAgentOptions.userAgentPrefix ? `${options.userAgentOptions.userAgentPrefix} ${packageDetails}` : `${packageDetails}`;
     const optionsWithDefaults = {
       ...defaults,
@@ -103568,7 +103604,7 @@ class StorageClient extends ExtendedServiceClient {
     };
     super(optionsWithDefaults);
     this.url = url2;
-    this.version = options.version || "2026-04-06";
+    this.version = options.version || "2026-06-06";
     this.service = new ServiceImpl(this);
     this.container = new ContainerImpl(this);
     this.blob = new BlobImpl(this);
@@ -103595,6 +103631,13 @@ class StorageContextClient extends StorageClient {
 }
 
 // node_modules/@azure/storage-blob/dist/esm/utils/utils.common.js
+var accountNameSuffixes = [
+  "-secondary-ipv6",
+  "-secondary-dualstack",
+  "-ipv6",
+  "-dualstack",
+  "-secondary"
+];
 function escapeURLPath(url2) {
   const urlParsed = new URL(url2);
   let path = urlParsed.pathname;
@@ -103774,6 +103817,13 @@ function getAccountNameFromUrl(url2) {
   try {
     if (parsedUrl.hostname.split(".")[1] === "blob") {
       accountName = parsedUrl.hostname.split(".")[0];
+      for (let i = 0;i < accountNameSuffixes.length; ++i) {
+        const suffix = accountNameSuffixes[i];
+        if (accountName.endsWith(suffix)) {
+          accountName = accountName.substring(0, accountName.length - suffix.length);
+          break;
+        }
+      }
     } else if (isIpEndpointStyle(parsedUrl)) {
       accountName = parsedUrl.pathname.split("/")[1];
     } else {
@@ -104333,6 +104383,7 @@ class SASQueryParameters {
   correlationId;
   requestHeaderKeys;
   requestQueryParameterKeys;
+  directoryDepth;
   get ipRange() {
     if (this.ipRangeInner) {
       return {
@@ -104342,7 +104393,7 @@ class SASQueryParameters {
     }
     return;
   }
-  constructor(version3, signature, permissionsOrOptions, services, resourceTypes, protocol, startsOn, expiresOn2, ipRange, identifier, resource, cacheControl, contentDisposition, contentEncoding, contentLanguage, contentType2, userDelegationKey, preauthorizedAgentObjectId, correlationId, encryptionScope2, delegatedUserObjectId, requestHeaderKeys, requestQueryParameterKeys) {
+  constructor(version3, signature, permissionsOrOptions, services, resourceTypes, protocol, startsOn, expiresOn2, ipRange, identifier, resource, cacheControl, contentDisposition, contentEncoding, contentLanguage, contentType2, userDelegationKey, preauthorizedAgentObjectId, correlationId, encryptionScope2, delegatedUserObjectId, requestHeaderKeys, requestQueryParameterKeys, directoryDepth) {
     this.version = version3;
     this.signature = signature;
     if (permissionsOrOptions !== undefined && typeof permissionsOrOptions !== "string") {
@@ -104364,6 +104415,7 @@ class SASQueryParameters {
       this.contentType = permissionsOrOptions.contentType;
       this.requestHeaderKeys = permissionsOrOptions.requestHeaderKeys;
       this.requestQueryParameterKeys = permissionsOrOptions.requestQueryParameterKeys;
+      this.directoryDepth = permissionsOrOptions.directoryDepth;
       if (permissionsOrOptions.userDelegationKey) {
         this.signedOid = permissionsOrOptions.userDelegationKey.signedObjectId;
         this.signedTenantId = permissionsOrOptions.userDelegationKey.signedTenantId;
@@ -104394,6 +104446,7 @@ class SASQueryParameters {
       this.contentType = contentType2;
       this.requestHeaderKeys = requestHeaderKeys;
       this.requestQueryParameterKeys = requestQueryParameterKeys;
+      this.directoryDepth = directoryDepth;
       if (userDelegationKey) {
         this.signedOid = userDelegationKey.signedObjectId;
         this.signedTenantId = userDelegationKey.signedTenantId;
@@ -104433,6 +104486,7 @@ class SASQueryParameters {
       "rsct",
       "saoid",
       "scid",
+      "sdd",
       "sduoid",
       "skdutid",
       "srh",
@@ -104529,6 +104583,9 @@ class SASQueryParameters {
         case "srq":
           this.tryAppendQueryParameter(queries, param, this.requestQueryParameterKeys);
           break;
+        case "sdd":
+          this.tryAppendQueryParameter(queries, param, this.directoryDepth !== undefined ? this.directoryDepth.toString() : "");
+          break;
       }
     }
     return queries.join("&");
@@ -104574,7 +104631,11 @@ function generateBlobSASQueryParametersInternal(blobSASSignatureValues, sharedKe
   }
   if (version3 >= "2018-11-09") {
     if (sharedKeyCredential !== undefined) {
-      return generateBlobSASQueryParameters20181109(blobSASSignatureValues, sharedKeyCredential);
+      if (version3 >= "2020-02-10") {
+        return generateBlobSASQueryParameters20200210(blobSASSignatureValues, sharedKeyCredential);
+      } else {
+        return generateBlobSASQueryParameters20181109(blobSASSignatureValues, sharedKeyCredential);
+      }
     } else {
       if (version3 >= "2020-02-10") {
         return generateBlobSASQueryParametersUDK20200210(blobSASSignatureValues, userDelegationKeyCredential);
@@ -104679,6 +104740,60 @@ function generateBlobSASQueryParameters20181109(blobSASSignatureValues, sharedKe
     stringToSign
   };
 }
+function generateBlobSASQueryParameters20200210(blobSASSignatureValues, sharedKeyCredential) {
+  blobSASSignatureValues = SASSignatureValuesSanityCheckAndAutofill(blobSASSignatureValues);
+  if (!blobSASSignatureValues.identifier && !(blobSASSignatureValues.permissions && blobSASSignatureValues.expiresOn)) {
+    throw new RangeError("Must provide 'permissions' and 'expiresOn' for Blob SAS generation when 'identifier' is not provided.");
+  }
+  let resource = "c";
+  let timestamp2 = blobSASSignatureValues.snapshotTime;
+  let directoryDepth = undefined;
+  if (blobSASSignatureValues.blobName) {
+    if (blobSASSignatureValues.isDirectory === true) {
+      resource = "d";
+      directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
+    } else {
+      resource = "b";
+      if (blobSASSignatureValues.snapshotTime) {
+        resource = "bs";
+      } else if (blobSASSignatureValues.versionId) {
+        resource = "bv";
+        timestamp2 = blobSASSignatureValues.versionId;
+      }
+    }
+  }
+  let verifiedPermissions;
+  if (blobSASSignatureValues.permissions) {
+    if (blobSASSignatureValues.blobName) {
+      verifiedPermissions = BlobSASPermissions.parse(blobSASSignatureValues.permissions.toString()).toString();
+    } else {
+      verifiedPermissions = ContainerSASPermissions.parse(blobSASSignatureValues.permissions.toString()).toString();
+    }
+  }
+  const stringToSign = [
+    verifiedPermissions ? verifiedPermissions : "",
+    blobSASSignatureValues.startsOn ? truncatedISO8061Date(blobSASSignatureValues.startsOn, false) : "",
+    blobSASSignatureValues.expiresOn ? truncatedISO8061Date(blobSASSignatureValues.expiresOn, false) : "",
+    getCanonicalName(sharedKeyCredential.accountName, blobSASSignatureValues.containerName, blobSASSignatureValues.blobName),
+    blobSASSignatureValues.identifier,
+    blobSASSignatureValues.ipRange ? ipRangeToString(blobSASSignatureValues.ipRange) : "",
+    blobSASSignatureValues.protocol ? blobSASSignatureValues.protocol : "",
+    blobSASSignatureValues.version,
+    resource,
+    timestamp2,
+    blobSASSignatureValues.cacheControl ? blobSASSignatureValues.cacheControl : "",
+    blobSASSignatureValues.contentDisposition ? blobSASSignatureValues.contentDisposition : "",
+    blobSASSignatureValues.contentEncoding ? blobSASSignatureValues.contentEncoding : "",
+    blobSASSignatureValues.contentLanguage ? blobSASSignatureValues.contentLanguage : "",
+    blobSASSignatureValues.contentType ? blobSASSignatureValues.contentType : ""
+  ].join(`
+`);
+  const signature = sharedKeyCredential.computeHMACSHA256(stringToSign);
+  return {
+    sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, undefined, undefined, undefined, undefined, undefined, undefined, undefined, directoryDepth),
+    stringToSign
+  };
+}
 function generateBlobSASQueryParameters20201206(blobSASSignatureValues, sharedKeyCredential) {
   blobSASSignatureValues = SASSignatureValuesSanityCheckAndAutofill(blobSASSignatureValues);
   if (!blobSASSignatureValues.identifier && !(blobSASSignatureValues.permissions && blobSASSignatureValues.expiresOn)) {
@@ -104686,13 +104801,19 @@ function generateBlobSASQueryParameters20201206(blobSASSignatureValues, sharedKe
   }
   let resource = "c";
   let timestamp2 = blobSASSignatureValues.snapshotTime;
+  let directoryDepth = undefined;
   if (blobSASSignatureValues.blobName) {
-    resource = "b";
-    if (blobSASSignatureValues.snapshotTime) {
-      resource = "bs";
-    } else if (blobSASSignatureValues.versionId) {
-      resource = "bv";
-      timestamp2 = blobSASSignatureValues.versionId;
+    if (blobSASSignatureValues.isDirectory === true) {
+      resource = "d";
+      directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
+    } else {
+      resource = "b";
+      if (blobSASSignatureValues.snapshotTime) {
+        resource = "bs";
+      } else if (blobSASSignatureValues.versionId) {
+        resource = "bv";
+        timestamp2 = blobSASSignatureValues.versionId;
+      }
     }
   }
   let verifiedPermissions;
@@ -104724,7 +104845,7 @@ function generateBlobSASQueryParameters20201206(blobSASSignatureValues, sharedKe
 `);
   const signature = sharedKeyCredential.computeHMACSHA256(stringToSign);
   return {
-    sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, undefined, undefined, undefined, blobSASSignatureValues.encryptionScope),
+    sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, undefined, undefined, undefined, blobSASSignatureValues.encryptionScope, undefined, undefined, undefined, directoryDepth),
     stringToSign
   };
 }
@@ -104788,13 +104909,19 @@ function generateBlobSASQueryParametersUDK20200210(blobSASSignatureValues, userD
   }
   let resource = "c";
   let timestamp2 = blobSASSignatureValues.snapshotTime;
+  let directoryDepth = undefined;
   if (blobSASSignatureValues.blobName) {
-    resource = "b";
-    if (blobSASSignatureValues.snapshotTime) {
-      resource = "bs";
-    } else if (blobSASSignatureValues.versionId) {
-      resource = "bv";
-      timestamp2 = blobSASSignatureValues.versionId;
+    if (blobSASSignatureValues.isDirectory === true) {
+      resource = "d";
+      directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
+    } else {
+      resource = "b";
+      if (blobSASSignatureValues.snapshotTime) {
+        resource = "bs";
+      } else if (blobSASSignatureValues.versionId) {
+        resource = "bv";
+        timestamp2 = blobSASSignatureValues.versionId;
+      }
     }
   }
   let verifiedPermissions;
@@ -104833,7 +104960,7 @@ function generateBlobSASQueryParametersUDK20200210(blobSASSignatureValues, userD
 `);
   const signature = userDelegationKeyCredential.computeHMACSHA256(stringToSign);
   return {
-    sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId),
+    sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, undefined, undefined, undefined, undefined, directoryDepth),
     stringToSign
   };
 }
@@ -104844,13 +104971,19 @@ function generateBlobSASQueryParametersUDK20201206(blobSASSignatureValues, userD
   }
   let resource = "c";
   let timestamp2 = blobSASSignatureValues.snapshotTime;
+  let directoryDepth = undefined;
   if (blobSASSignatureValues.blobName) {
-    resource = "b";
-    if (blobSASSignatureValues.snapshotTime) {
-      resource = "bs";
-    } else if (blobSASSignatureValues.versionId) {
-      resource = "bv";
-      timestamp2 = blobSASSignatureValues.versionId;
+    if (blobSASSignatureValues.isDirectory === true) {
+      resource = "d";
+      directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
+    } else {
+      resource = "b";
+      if (blobSASSignatureValues.snapshotTime) {
+        resource = "bs";
+      } else if (blobSASSignatureValues.versionId) {
+        resource = "bv";
+        timestamp2 = blobSASSignatureValues.versionId;
+      }
     }
   }
   let verifiedPermissions;
@@ -104890,7 +105023,7 @@ function generateBlobSASQueryParametersUDK20201206(blobSASSignatureValues, userD
 `);
   const signature = userDelegationKeyCredential.computeHMACSHA256(stringToSign);
   return {
-    sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, blobSASSignatureValues.encryptionScope),
+    sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, blobSASSignatureValues.encryptionScope, undefined, undefined, undefined, directoryDepth),
     stringToSign
   };
 }
@@ -104901,13 +105034,19 @@ function generateBlobSASQueryParametersUDK20250705(blobSASSignatureValues, userD
   }
   let resource = "c";
   let timestamp2 = blobSASSignatureValues.snapshotTime;
+  let directoryDepth = undefined;
   if (blobSASSignatureValues.blobName) {
-    resource = "b";
-    if (blobSASSignatureValues.snapshotTime) {
-      resource = "bs";
-    } else if (blobSASSignatureValues.versionId) {
-      resource = "bv";
-      timestamp2 = blobSASSignatureValues.versionId;
+    if (blobSASSignatureValues.isDirectory === true) {
+      resource = "d";
+      directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
+    } else {
+      resource = "b";
+      if (blobSASSignatureValues.snapshotTime) {
+        resource = "bs";
+      } else if (blobSASSignatureValues.versionId) {
+        resource = "bv";
+        timestamp2 = blobSASSignatureValues.versionId;
+      }
     }
   }
   let verifiedPermissions;
@@ -104949,7 +105088,7 @@ function generateBlobSASQueryParametersUDK20250705(blobSASSignatureValues, userD
 `);
   const signature = userDelegationKeyCredential.computeHMACSHA256(stringToSign);
   return {
-    sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, blobSASSignatureValues.encryptionScope, blobSASSignatureValues.delegatedUserObjectId),
+    sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, blobSASSignatureValues.encryptionScope, blobSASSignatureValues.delegatedUserObjectId, undefined, undefined, directoryDepth),
     stringToSign
   };
 }
@@ -104960,13 +105099,19 @@ function generateBlobSASQueryParametersUDK20260406(blobSASSignatureValues, userD
   }
   let resource = "c";
   let timestamp2 = blobSASSignatureValues.snapshotTime;
+  let directoryDepth = undefined;
   if (blobSASSignatureValues.blobName) {
-    resource = "b";
-    if (blobSASSignatureValues.snapshotTime) {
-      resource = "bs";
-    } else if (blobSASSignatureValues.versionId) {
-      resource = "bv";
-      timestamp2 = blobSASSignatureValues.versionId;
+    if (blobSASSignatureValues.isDirectory === true) {
+      resource = "d";
+      directoryDepth = trimBlobName(blobSASSignatureValues.blobName).split("/").length;
+    } else {
+      resource = "b";
+      if (blobSASSignatureValues.snapshotTime) {
+        resource = "bs";
+      } else if (blobSASSignatureValues.versionId) {
+        resource = "bv";
+        timestamp2 = blobSASSignatureValues.versionId;
+      }
     }
   }
   let verifiedPermissions;
@@ -105010,7 +105155,7 @@ function generateBlobSASQueryParametersUDK20260406(blobSASSignatureValues, userD
 `);
   const signature = userDelegationKeyCredential.computeHMACSHA256(stringToSign);
   return {
-    sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, blobSASSignatureValues.encryptionScope, blobSASSignatureValues.delegatedUserObjectId, getKeysOfRequestHeaders(blobSASSignatureValues.requestHeaders), getKeysOfRequestHeaders(blobSASSignatureValues.requestQueryParameters)),
+    sasQueryParameters: new SASQueryParameters(blobSASSignatureValues.version, signature, verifiedPermissions, undefined, undefined, blobSASSignatureValues.protocol, blobSASSignatureValues.startsOn, blobSASSignatureValues.expiresOn, blobSASSignatureValues.ipRange, blobSASSignatureValues.identifier, resource, blobSASSignatureValues.cacheControl, blobSASSignatureValues.contentDisposition, blobSASSignatureValues.contentEncoding, blobSASSignatureValues.contentLanguage, blobSASSignatureValues.contentType, userDelegationKeyCredential.userDelegationKey, blobSASSignatureValues.preauthorizedAgentObjectId, blobSASSignatureValues.correlationId, blobSASSignatureValues.encryptionScope, blobSASSignatureValues.delegatedUserObjectId, getKeysOfRequestHeaders(blobSASSignatureValues.requestHeaders), getKeysOfRequestHeaders(blobSASSignatureValues.requestQueryParameters), directoryDepth),
     stringToSign
   };
 }
@@ -105098,6 +105243,16 @@ function SASSignatureValuesSanityCheckAndAutofill(blobSASSignatureValues) {
   }
   blobSASSignatureValues.version = version3;
   return blobSASSignatureValues;
+}
+function trimBlobName(blobName) {
+  let internalName = blobName;
+  while (internalName.startsWith("/")) {
+    internalName = internalName.substring(1);
+  }
+  while (internalName.endsWith("/")) {
+    internalName = internalName.substring(0, internalName.length - 1);
+  }
+  return internalName;
 }
 
 // node_modules/@azure/storage-blob/dist/esm/BlobLeaseClient.js
@@ -109253,7 +109408,7 @@ class RequestError extends Error {
 }
 
 // node_modules/@octokit/request/dist-bundle/index.js
-var VERSION2 = "10.0.10";
+var VERSION2 = "10.0.11";
 var defaults_default = {
   headers: {
     "user-agent": `octokit-request.js/${VERSION2} ${getUserAgent()}`
@@ -109391,9 +109546,10 @@ function toErrorMessage(data) {
   if (data instanceof ArrayBuffer) {
     return "Unknown error";
   }
-  if ("message" in data) {
-    const suffix = "documentation_url" in data ? ` - ${data.documentation_url}` : "";
-    return Array.isArray(data.errors) ? `${data.message}: ${data.errors.map((v) => JSON.stringify(v)).join(", ")}${suffix}` : `${data.message}${suffix}`;
+  if (typeof data === "object" && data !== null && "message" in data) {
+    const objectData = data;
+    const suffix = "documentation_url" in objectData ? ` - ${objectData.documentation_url}` : "";
+    return Array.isArray(objectData.errors) ? `${objectData.message}: ${objectData.errors.map((v) => JSON.stringify(v)).join(", ")}${suffix}` : `${objectData.message}${suffix}`;
   }
   return `Unknown error: ${JSON.stringify(data)}`;
 }
@@ -127907,5 +128063,5 @@ async function index() {
 }
 await index();
 
-//# debugId=9713156AD655E92164756E2164756E21
+//# debugId=2E7C28891D327EDB64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
