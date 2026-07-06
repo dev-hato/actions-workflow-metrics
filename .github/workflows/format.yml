@@ -16,8 +16,6 @@ permissions:
 jobs:
   format:
     runs-on: ubuntu-latest
-    env:
-      SAFE_CHAIN_MINIMUM_PACKAGE_AGE_HOURS: 168 # 7 days
     # jscpd:ignore-start
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -30,12 +28,11 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.action != 'closed'
         with:
           bun-version-file: .bun-version
+      - if: github.event_name != 'pull_request' || github.event.action != 'closed'
+        uses: flatt-security/setup-takumi-guard-npm@9a5d797c2085b6326d3a2985c08e3a114b9b88c1 # v1.1.1
       # jscpd:ignore-end
-      - name: Install
-        if: github.event_name != 'pull_request' || github.event.action != 'closed'
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/AikidoSec/safe-chain/main/install-scripts/install-safe-chain.sh | sh -s -- --ci
-          bun install
+      - if: github.event_name != 'pull_request' || github.event.action != 'closed'
+        run: bun install
       - run: bun run build
         if: github.event_name != 'pull_request' || github.event.action != 'closed'
       - uses: dev-hato/actions-diff-pr-management@571be0d9572aaf77cdd315c12d6e73a1112910d7 # v2.2.6
