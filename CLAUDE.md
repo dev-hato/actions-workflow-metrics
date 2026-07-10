@@ -22,36 +22,6 @@ Keep both files synchronized with the same content in the appropriate language.
 **Important**: README.md's description (line 5) must match action.yml's `description` field.
 When updating one, update the other accordingly. Note that action.yml's description should not have a trailing period.
 
-## Setup
-
-### Install pre-commit (Recommended)
-
-Automatically runs gitleaks on commit to prevent sensitive information leakage.
-
-```bash
-# macOS
-brew install pre-commit
-
-# or using pip
-pip install pre-commit
-
-# Install pre-commit hooks
-pre-commit install
-```
-
-## Development Commands
-
-Requires Node.js 24.x and Bun.
-
-```bash
-bun install                         # Install dependencies
-bun run build                       # Type check + bundle to dist/
-bun run fix                         # Auto-format with Prettier
-bun test                            # Run all tests
-bun test src/main/metrics.test.ts   # Run specific test file
-bun test --coverage                 # Show coverage
-```
-
 ## Architecture
 
 ### GitHub Actions Custom Action Flow
@@ -82,43 +52,6 @@ bun test --coverage                 # Show coverage
 Entry points: `src/main/index.ts`, `src/main/server.ts`, `src/post/index.ts` → bundled to `dist/`
 
 **Critical**: `dist/` directory must be committed. All dependencies are bundled into dist files.
-
-## Writing Tests
-
-Uses Bun test runner. Call `mock.restore()` in `beforeEach` for test isolation.
-
-```typescript
-import { describe, expect, it, beforeEach, mock } from "bun:test";
-
-describe("MyTest", () => {
-  beforeEach(() => mock.restore());
-  // tests...
-});
-```
-
-### Mock Patterns
-
-**systeminformation**: Type assertion required for partial objects:
-
-```typescript
-mock.module("systeminformation", () => ({
-  currentLoad: mock(
-    async () =>
-      ({
-        currentLoadUser: 25.5,
-        currentLoadSystem: 10.3,
-      }) as Systeminformation.CurrentLoadData,
-  ),
-}));
-```
-
-**fetch**: Double type assertion required:
-
-```typescript
-globalThis.fetch = mock(
-  async () => ({ ok: true, json: () => Promise.resolve({}) }) as Response,
-) as unknown as typeof fetch;
-```
 
 ## Implementation Notes
 
