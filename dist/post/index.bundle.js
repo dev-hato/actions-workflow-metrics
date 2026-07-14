@@ -22613,17 +22613,19 @@ var require_brace_expansion = __commonJS((exports, module) => {
   }
   function expand(str, max, isTop) {
     var expansions = [];
-    var m = balanced("{", "}", str);
-    if (!m)
-      return [str];
-    var pre = m.pre;
-    var post = m.post.length ? expand(m.post, max, false) : [""];
-    if (/\$$/.test(m.pre)) {
-      for (var k = 0;k < post.length && k < max; k++) {
-        var expansion = pre + "{" + m.body + "}" + post[k];
-        expansions.push(expansion);
+    for (;; ) {
+      const m = balanced("{", "}", str);
+      if (!m)
+        return [str];
+      const pre = m.pre;
+      if (/\$$/.test(m.pre)) {
+        const post2 = m.post.length ? expand(m.post, max, false) : [""];
+        for (let k2 = 0;k2 < post2.length && k2 < max; k2++) {
+          const expansion2 = pre + "{" + m.body + "}" + post2[k2];
+          expansions.push(expansion2);
+        }
+        return expansions;
       }
-    } else {
       var isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
       var isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
       var isSequence = isNumericSequence || isAlphaSequence;
@@ -22631,10 +22633,12 @@ var require_brace_expansion = __commonJS((exports, module) => {
       if (!isSequence && !isOptions) {
         if (m.post.match(/,(?!,).*\}/)) {
           str = m.pre + "{" + m.body + escClose + m.post;
-          return expand(str, max, true);
+          isTop = true;
+          continue;
         }
         return [str];
       }
+      const post = m.post.length ? expand(m.post, max, false) : [""];
       var n;
       if (isSequence) {
         n = m.body.split(/\.\./);
@@ -22697,8 +22701,8 @@ var require_brace_expansion = __commonJS((exports, module) => {
             expansions.push(expansion);
         }
       }
+      return expansions;
     }
-    return expansions;
   }
 });
 
@@ -36040,17 +36044,19 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
   }
   function expand(str, max, isTop) {
     var expansions = [];
-    var m = balanced("{", "}", str);
-    if (!m)
-      return [str];
-    var pre = m.pre;
-    var post = m.post.length ? expand(m.post, max, false) : [""];
-    if (/\$$/.test(m.pre)) {
-      for (var k = 0;k < post.length && k < max; k++) {
-        var expansion = pre + "{" + m.body + "}" + post[k];
-        expansions.push(expansion);
+    for (;; ) {
+      const m = balanced("{", "}", str);
+      if (!m)
+        return [str];
+      const pre = m.pre;
+      if (/\$$/.test(m.pre)) {
+        const post2 = m.post.length ? expand(m.post, max, false) : [""];
+        for (let k2 = 0;k2 < post2.length && k2 < max; k2++) {
+          const expansion2 = pre + "{" + m.body + "}" + post2[k2];
+          expansions.push(expansion2);
+        }
+        return expansions;
       }
-    } else {
       var isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
       var isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
       var isSequence = isNumericSequence || isAlphaSequence;
@@ -36058,10 +36064,12 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
       if (!isSequence && !isOptions) {
         if (m.post.match(/,(?!,).*\}/)) {
           str = m.pre + "{" + m.body + escClose + m.post;
-          return expand(str, max, true);
+          isTop = true;
+          continue;
         }
         return [str];
       }
+      const post = m.post.length ? expand(m.post, max, false) : [""];
       var n;
       if (isSequence) {
         n = m.body.split(/\.\./);
@@ -36124,8 +36132,8 @@ var require_brace_expansion2 = __commonJS((exports, module) => {
             expansions.push(expansion);
         }
       }
+      return expansions;
     }
-    return expansions;
   }
 });
 
@@ -82537,8 +82545,36 @@ var buildRegexes = (startChar, char, flags = "") => {
 };
 var regexes10 = buildRegexes(nameStartChar10, nameChar10);
 var regexes11 = buildRegexes(nameStartChar11, nameChar11, "u");
-var getRegexes = (xmlVersion = "1.0") => xmlVersion === "1.1" ? regexes11 : regexes10;
-var qName = (str, { xmlVersion = "1.0" } = {}) => getRegexes(xmlVersion).qName.test(str);
+var nameStartCharAscii = ":A-Za-z_";
+var nameCharAscii = nameStartCharAscii + "\\-\\.\\d";
+var regexesAscii = buildRegexes(nameStartCharAscii, nameCharAscii);
+var getRegexes = (xmlVersion = "1.0", asciiOnly = false) => {
+  if (asciiOnly)
+    return regexesAscii;
+  return xmlVersion === "1.1" ? regexes11 : regexes10;
+};
+var qName = (str, { xmlVersion = "1.0", asciiOnly = false } = {}) => getRegexes(xmlVersion, asciiOnly).qName.test(str);
+var PRODUCTIONS = ["name", "ncName", "qName", "nmToken", "nmTokens"];
+var createValidator = (production, { xmlVersion = "1.0", asciiOnly = false, maxCacheSize = 2048 } = {}) => {
+  if (!PRODUCTIONS.includes(production)) {
+    throw new TypeError(`Unknown production "${production}". Must be one of: ${PRODUCTIONS.join(", ")}`);
+  }
+  const regex = getRegexes(xmlVersion, asciiOnly)[production];
+  let cache = new Map;
+  const validator = (str) => {
+    const cached = cache.get(str);
+    if (cached !== undefined)
+      return cached;
+    const result = regex.test(str);
+    if (cache.size < maxCacheSize)
+      cache.set(str, result);
+    return result;
+  };
+  validator.reset = () => {
+    cache = new Map;
+  };
+  return validator;
+};
 
 // node_modules/fast-xml-parser/src/xmlparser/DocTypeReader.js
 class DocTypeReader {
@@ -83461,17 +83497,16 @@ class Matcher {
       this.path[this.path.length - 1].values = undefined;
     }
     const currentLevel = this.path.length;
-    if (!this.siblingStacks[currentLevel]) {
-      this.siblingStacks[currentLevel] = new Map;
+    let level = this.siblingStacks[currentLevel];
+    if (!level) {
+      level = { counts: new Map, total: 0 };
+      this.siblingStacks[currentLevel] = level;
     }
-    const siblings = this.siblingStacks[currentLevel];
     const siblingKey = namespace ? `${namespace}:${tagName}` : tagName;
-    const counter = siblings.get(siblingKey) || 0;
-    let position = 0;
-    for (const count of siblings.values()) {
-      position += count;
-    }
-    siblings.set(siblingKey, counter + 1);
+    const counter = level.counts.get(siblingKey) || 0;
+    const position = level.total;
+    level.counts.set(siblingKey, counter + 1);
+    level.total++;
     const node = {
       tag: tagName,
       position,
@@ -83687,14 +83722,14 @@ class Matcher {
   snapshot() {
     return {
       path: this.path.map((node) => ({ ...node })),
-      siblingStacks: this.siblingStacks.map((map) => new Map(map)),
+      siblingStacks: this.siblingStacks.map((level) => level ? { counts: new Map(level.counts), total: level.total } : level),
       keptAttrs: this._keptAttrs.map((entry) => ({ ...entry }))
     };
   }
   restore(snapshot) {
     this._pathStringCache = null;
     this.path = snapshot.path.map((node) => ({ ...node }));
-    this.siblingStacks = snapshot.siblingStacks.map((map) => new Map(map));
+    this.siblingStacks = snapshot.siblingStacks.map((level) => level ? { counts: new Map(level.counts), total: level.total } : level);
     this._keptAttrs = (snapshot.keptAttrs || []).map((entry) => ({ ...entry }));
   }
   readOnly() {
@@ -83791,7 +83826,6 @@ var HTML_PATTERNS = [
   }
 ];
 var html_default = HTML_PATTERNS;
-
 // node_modules/is-unsafe/src/contexts/xml.js
 var XML_PATTERNS = [
   {
@@ -83856,7 +83890,6 @@ var XML_PATTERNS = [
   }
 ];
 var xml_default = XML_PATTERNS;
-
 // node_modules/is-unsafe/src/contexts/svg.js
 var SVG_PATTERNS = [
   {
@@ -84006,27 +84039,6 @@ var SQL_PATTERNS = [
   }
 ];
 var sql_default = SQL_PATTERNS;
-
-// node_modules/is-unsafe/src/contexts/sql-strict.js
-var SQL_STRICT_EXTRA = [
-  {
-    id: "sql-line-comment",
-    description: "SQL line comment: -- followed by whitespace or end of string",
-    pattern: /--(?:\s|$)/
-  },
-  {
-    id: "sql-stacked-query",
-    description: "Stacked queries: semicolon immediately followed by a SQL keyword",
-    pattern: /;\s{0,10}(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC)\b/i
-  },
-  {
-    id: "sql-hex-encoding",
-    description: "Hex-encoded string injection: 0x41414141 style (MySQL)",
-    pattern: /\b0x[0-9a-f]{4,}/i
-  }
-];
-var SQL_STRICT_PATTERNS = [...sql_default, ...SQL_STRICT_EXTRA];
-var sql_strict_default = SQL_STRICT_PATTERNS;
 
 // node_modules/is-unsafe/src/contexts/shell.js
 var SHELL_PATTERNS = [
@@ -84319,8 +84331,38 @@ var LOG_PATTERNS = [
 ];
 var log_default = LOG_PATTERNS;
 
-// node_modules/is-unsafe/src/registry.js
-var CONTEXT_REGISTRY = {
+// node_modules/is-unsafe/src/contexts/sql-strict.js
+var SQL_STRICT_EXTRA = [
+  {
+    id: "sql-line-comment",
+    description: "SQL line comment: -- followed by whitespace or end of string",
+    pattern: /--(?:\s|$)/
+  },
+  {
+    id: "sql-stacked-query",
+    description: "Stacked queries: semicolon immediately followed by a SQL keyword",
+    pattern: /;\s{0,10}(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC)\b/i
+  },
+  {
+    id: "sql-hex-encoding",
+    description: "Hex-encoded string injection: 0x41414141 style (MySQL)",
+    pattern: /\b0x[0-9a-f]{4,}/i
+  }
+];
+var SQL_STRICT_PATTERNS = [...sql_default, ...SQL_STRICT_EXTRA];
+var sql_strict_default = SQL_STRICT_PATTERNS;
+
+// node_modules/is-unsafe/src/index.js
+html_default.label = "HTML";
+xml_default.label = "XML";
+svg_default.label = "SVG";
+sql_default.label = "SQL";
+sql_strict_default.label = "SQL-STRICT";
+shell_default.label = "SHELL";
+redos_default.label = "REDOS";
+nosql_default.label = "NOSQL";
+log_default.label = "LOG";
+var VALID_CONTEXTS = Object.freeze({
   HTML: html_default,
   XML: xml_default,
   SVG: svg_default,
@@ -84330,11 +84372,7 @@ var CONTEXT_REGISTRY = {
   REDOS: redos_default,
   NOSQL: nosql_default,
   LOG: log_default
-};
-var registry_default = CONTEXT_REGISTRY;
-var VALID_CONTEXTS = Object.freeze(Object.fromEntries(Object.keys(CONTEXT_REGISTRY).map((k) => [k, k])));
-
-// node_modules/is-unsafe/src/index.js
+});
 function assertString(value) {
   if (typeof value !== "string") {
     throw new TypeError(`is-unsafe: first argument must be a string, got ${typeof value}`);
@@ -84343,30 +84381,33 @@ function assertString(value) {
 function assertContext(context3) {
   if (context3 instanceof RegExp)
     return;
-  if (typeof context3 === "string") {
-    if (!registry_default[context3]) {
-      throw new TypeError(`is-unsafe: unknown context "${context3}". Valid contexts: ${Object.keys(VALID_CONTEXTS).join(", ")}`);
-    }
-    return;
-  }
   if (Array.isArray(context3)) {
     if (context3.length === 0) {
-      throw new TypeError("is-unsafe: context array must not be empty");
+      throw new TypeError("is-unsafe: context must not be an empty array");
     }
-    for (const c of context3) {
-      if (typeof c !== "string" || !registry_default[c]) {
-        throw new TypeError(`is-unsafe: unknown context "${c}" in array. Valid contexts: ${Object.keys(VALID_CONTEXTS).join(", ")}`);
+    if (Array.isArray(context3[0])) {
+      for (const list of context3) {
+        if (!Array.isArray(list) || list.length === 0) {
+          throw new TypeError("is-unsafe: each context in the array must be a non-empty pattern array (PatternList)");
+        }
       }
     }
     return;
   }
-  throw new TypeError(`is-unsafe: second argument must be a context string, array of context strings, or RegExp. Got: ${typeof context3}`);
+  throw new TypeError(`is-unsafe: second argument must be a PatternList (e.g. HTML), ` + `an array of PatternLists (e.g. [HTML, XML]), or a RegExp. Got: ${typeof context3}`);
 }
-function matchContext(value, contextName) {
-  const patterns = registry_default[contextName];
-  for (const rule of patterns) {
+function normalise(context3) {
+  if (context3 instanceof RegExp)
+    return { lists: null, regex: context3 };
+  if (Array.isArray(context3[0]))
+    return { lists: context3, regex: null };
+  return { lists: [context3], regex: null };
+}
+function matchList(value, list) {
+  const label = list.label ?? "CUSTOM";
+  for (const rule of list) {
     if (rule.pattern.test(value)) {
-      return { context: contextName, id: rule.id, description: rule.description, pattern: rule.pattern };
+      return { context: label, id: rule.id, description: rule.description, pattern: rule.pattern };
     }
   }
   return null;
@@ -84374,14 +84415,11 @@ function matchContext(value, contextName) {
 function isUnsafe(value, context3) {
   assertString(value);
   assertContext(context3);
-  if (context3 instanceof RegExp) {
-    return context3.test(value);
-  }
-  if (typeof context3 === "string") {
-    return matchContext(value, context3) !== null;
-  }
-  for (const c of context3) {
-    if (matchContext(value, c) !== null)
+  const { lists, regex } = normalise(context3);
+  if (regex)
+    return regex.test(value);
+  for (const list of lists) {
+    if (matchList(value, list) !== null)
       return true;
   }
   return false;
@@ -84451,7 +84489,7 @@ class OrderedObjParser {
           maxExpandedLength: this.options.processEntities.maxExpandedLength,
           applyLimitsTo: this.options.processEntities.appliesTo
         },
-        onInputEntity: (name, value) => isUnsafe(value, [VALID_CONTEXTS.HTML, VALID_CONTEXTS.XML]) ? ENTITY_ACTION.BLOCK : ENTITY_ACTION.ALLOW
+        onInputEntity: (name, value) => isUnsafe(value, [html_default, xml_default]) ? ENTITY_ACTION.BLOCK : ENTITY_ACTION.ALLOW
       });
     }
     this.matcher = new Matcher;
@@ -85172,10 +85210,10 @@ function detectXmlVersionFromArray(jArray, options) {
   }
   return "1.0";
 }
-function resolveTagName(name, isAttribute, options, matcher, xmlVersion) {
+function resolveTagName(name, isAttribute, options, matcher, qNameValidator) {
   if (!options.sanitizeName)
     return name;
-  if (qName(name, { xmlVersion }))
+  if (qNameValidator(name))
     return name;
   return options.sanitizeName(name, { isAttribute, matcher: matcher.readOnly() });
 }
@@ -85196,10 +85234,11 @@ function toXml(jArray, options) {
     }
   }
   const xmlVersion = detectXmlVersionFromArray(jArray, options);
+  const qNameValidator = createValidator("qName", { xmlVersion });
   const matcher = new Matcher;
-  return arrToStr(jArray, options, indentation, matcher, stopNodeExpressions, xmlVersion);
+  return arrToStr(jArray, options, indentation, matcher, stopNodeExpressions, qNameValidator);
 }
-function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, xmlVersion) {
+function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, qNameValidator) {
   let xmlStr = "";
   let isPreviousElementTag = false;
   if (options.maxNestedTags && matcher.getDepth() > options.maxNestedTags) {
@@ -85219,7 +85258,7 @@ function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, xmlVe
     if (rawTagName === undefined)
       continue;
     const isSpecialName = rawTagName === options.textNodeName || rawTagName === options.cdataPropName || rawTagName === options.commentPropName || rawTagName[0] === "?";
-    const tagName = isSpecialName ? rawTagName : resolveTagName(rawTagName, false, options, matcher, xmlVersion);
+    const tagName = isSpecialName ? rawTagName : resolveTagName(rawTagName, false, options, matcher, qNameValidator);
     const attrValues = extractAttributeValues(tagObj[":@"], options);
     matcher.push(tagName, attrValues);
     const isStopNode = checkStopNode(matcher, stopNodeExpressions);
@@ -85254,7 +85293,7 @@ function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, xmlVe
       matcher.pop();
       continue;
     } else if (tagName[0] === "?") {
-      const attStr2 = attr_to_str(tagObj[":@"], options, isStopNode, matcher, xmlVersion);
+      const attStr2 = attr_to_str(tagObj[":@"], options, isStopNode, matcher, qNameValidator);
       const tempInd = tagName === "?xml" ? "" : indentation;
       xmlStr += tempInd + `<${tagName}${attStr2}?>`;
       isPreviousElementTag = true;
@@ -85265,13 +85304,13 @@ function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, xmlVe
     if (newIdentation !== "") {
       newIdentation += options.indentBy;
     }
-    const attStr = attr_to_str(tagObj[":@"], options, isStopNode, matcher, xmlVersion);
+    const attStr = attr_to_str(tagObj[":@"], options, isStopNode, matcher, qNameValidator);
     const tagStart = indentation + `<${tagName}${attStr}`;
     let tagValue;
     if (isStopNode) {
       tagValue = getRawContent2(tagObj[rawTagName], options);
     } else {
-      tagValue = arrToStr(tagObj[rawTagName], options, newIdentation, matcher, stopNodeExpressions, xmlVersion);
+      tagValue = arrToStr(tagObj[rawTagName], options, newIdentation, matcher, stopNodeExpressions, qNameValidator);
     }
     if (options.unpairedTags.indexOf(tagName) !== -1) {
       if (options.suppressUnpairedNode)
@@ -85367,14 +85406,14 @@ function propName2(obj) {
       return key;
   }
 }
-function attr_to_str(attrMap, options, isStopNode, matcher, xmlVersion) {
+function attr_to_str(attrMap, options, isStopNode, matcher, qNameValidator) {
   let attrStr = "";
   if (attrMap && !options.ignoreAttributes) {
     for (let attr in attrMap) {
       if (!Object.prototype.hasOwnProperty.call(attrMap, attr))
         continue;
       const cleanAttrName = attr.substr(options.attributeNamePrefix.length);
-      const resolvedAttrName = isStopNode ? cleanAttrName : resolveTagName(cleanAttrName, true, options, matcher, xmlVersion);
+      const resolvedAttrName = isStopNode ? cleanAttrName : resolveTagName(cleanAttrName, true, options, matcher, qNameValidator);
       let attrVal;
       if (isStopNode) {
         attrVal = attrMap[attr];
@@ -85525,10 +85564,10 @@ function detectXmlVersionFromObj(jObj, options) {
   }
   return "1.0";
 }
-function resolveTagName2(name, isAttribute, options, matcher, xmlVersion) {
+function resolveTagName2(name, isAttribute, options, matcher, qNameValidator) {
   if (!options.sanitizeName)
     return name;
-  if (qName(name, { xmlVersion }))
+  if (qNameValidator(name))
     return name;
   return options.sanitizeName(name, { isAttribute, matcher: matcher.readOnly() });
 }
@@ -85543,10 +85582,11 @@ Builder.prototype.build = function(jObj) {
     }
     const matcher = new Matcher;
     const xmlVersion = detectXmlVersionFromObj(jObj, this.options);
-    return this.j2x(jObj, 0, matcher, xmlVersion).val;
+    const qNameValidator = createValidator("qName", { xmlVersion });
+    return this.j2x(jObj, 0, matcher, qNameValidator).val;
   }
 };
-Builder.prototype.j2x = function(jObj, level, matcher, xmlVersion) {
+Builder.prototype.j2x = function(jObj, level, matcher, qNameValidator) {
   let attrStr = "";
   let val = "";
   if (this.options.maxNestedTags && matcher.getDepth() >= this.options.maxNestedTags) {
@@ -85558,7 +85598,7 @@ Builder.prototype.j2x = function(jObj, level, matcher, xmlVersion) {
     if (!Object.prototype.hasOwnProperty.call(jObj, key))
       continue;
     const isSpecialKey = key === this.options.textNodeName || key === this.options.cdataPropName || key === this.options.commentPropName || this.options.attributesGroupName && key === this.options.attributesGroupName || this.isAttribute(key) || key[0] === "?";
-    const resolvedKey = isSpecialKey ? key : resolveTagName2(key, false, this.options, matcher, xmlVersion);
+    const resolvedKey = isSpecialKey ? key : resolveTagName2(key, false, this.options, matcher, qNameValidator);
     if (typeof jObj[key] === "undefined") {
       if (this.isAttribute(key)) {
         val += "";
@@ -85578,7 +85618,7 @@ Builder.prototype.j2x = function(jObj, level, matcher, xmlVersion) {
     } else if (typeof jObj[key] !== "object") {
       const attr = this.isAttribute(key);
       if (attr && !this.ignoreAttributesFn(attr, jPath)) {
-        const resolvedAttr = resolveTagName2(attr, true, this.options, matcher, xmlVersion);
+        const resolvedAttr = resolveTagName2(attr, true, this.options, matcher, qNameValidator);
         attrStr += this.buildAttrPairStr(resolvedAttr, "" + jObj[key], isCurrentStopNode);
       } else if (!attr) {
         if (key === this.options.textNodeName) {
@@ -85614,14 +85654,14 @@ Builder.prototype.j2x = function(jObj, level, matcher, xmlVersion) {
         } else if (typeof item === "object") {
           if (this.options.oneListGroup) {
             matcher.push(resolvedKey);
-            const result = this.j2x(item, level + 1, matcher, xmlVersion);
+            const result = this.j2x(item, level + 1, matcher, qNameValidator);
             matcher.pop();
             listTagVal += result.val;
             if (this.options.attributesGroupName && item.hasOwnProperty(this.options.attributesGroupName)) {
               listTagAttr += result.attrStr;
             }
           } else {
-            listTagVal += this.processTextOrObjNode(item, resolvedKey, level, matcher, xmlVersion);
+            listTagVal += this.processTextOrObjNode(item, resolvedKey, level, matcher, qNameValidator);
           }
         } else {
           if (this.options.oneListGroup) {
@@ -85654,11 +85694,11 @@ Builder.prototype.j2x = function(jObj, level, matcher, xmlVersion) {
         const Ks = Object.keys(jObj[key]);
         const L = Ks.length;
         for (let j = 0;j < L; j++) {
-          const resolvedAttr = resolveTagName2(Ks[j], true, this.options, matcher, xmlVersion);
+          const resolvedAttr = resolveTagName2(Ks[j], true, this.options, matcher, qNameValidator);
           attrStr += this.buildAttrPairStr(resolvedAttr, "" + jObj[key][Ks[j]], isCurrentStopNode);
         }
       } else {
-        val += this.processTextOrObjNode(jObj[key], resolvedKey, level, matcher, xmlVersion);
+        val += this.processTextOrObjNode(jObj[key], resolvedKey, level, matcher, qNameValidator);
       }
     }
   }
@@ -85674,7 +85714,7 @@ Builder.prototype.buildAttrPairStr = function(attrName, val, isStopNode) {
   } else
     return " " + attrName + '="' + escapeAttribute(val) + '"';
 };
-function processTextOrObjNode(object, key, level, matcher, xmlVersion) {
+function processTextOrObjNode(object, key, level, matcher, qNameValidator) {
   const attrValues = this.extractAttributes(object);
   matcher.push(key, attrValues);
   const isStopNode = this.checkStopNode(matcher);
@@ -85684,7 +85724,7 @@ function processTextOrObjNode(object, key, level, matcher, xmlVersion) {
     matcher.pop();
     return this.buildObjectNode(rawContent2, key, attrStr, level);
   }
-  const result = this.j2x(object, level + 1, matcher, xmlVersion);
+  const result = this.j2x(object, level + 1, matcher, qNameValidator);
   matcher.pop();
   if (key[0] === "?") {
     return this.buildTextValNode("", key, result.attrStr, level, matcher);
@@ -109287,37 +109327,224 @@ var noiseValue = /^-?\d+n+$/;
 var originalStringify = JSON.stringify;
 var originalParse = JSON.parse;
 var customFormat = /^-?\d+n$/;
-var bigIntsStringify = /([\[:])?"(-?\d+)n"($|([\\n]|\s)*(\s|[\\n])*[,\}\]])/g;
-var noiseStringify = /([\[:])?("-?\d+n+)n("$|"([\\n]|\s)*(\s|[\\n])*[,\}\]])/g;
-var JSONStringify = (value, replacer, space) => {
-  if ("rawJSON" in JSON) {
-    return originalStringify(value, (key, value2) => {
-      if (typeof value2 === "bigint")
-        return JSON.rawJSON(value2.toString());
-      if (typeof replacer === "function")
-        return replacer(key, value2);
-      if (Array.isArray(replacer) && replacer.includes(key))
-        return value2;
-      return value2;
-    }, space);
+var bigIntsStringify = /([\[:])?"(-?\d+)n"($|\s*[,\}\]])/g;
+var noiseStringify = /([\[:])?("-?\d+n+)n("$|"\s*[,\}\]])/g;
+var isUnstringifiable = (val) => val === undefined || typeof val === "function" || typeof val === "symbol";
+var isRawJSON = (val) => val !== null && typeof val === "object" && val.constructor && val.constructor.name === "RawJSON";
+var stringifyIteratively = (rootValue, replacer, spaceParam) => {
+  let space = "";
+  if (typeof spaceParam === "number") {
+    space = " ".repeat(Math.min(10, Math.max(0, Math.floor(spaceParam))));
+  } else if (typeof spaceParam === "string") {
+    space = spaceParam.slice(0, 10);
   }
-  if (!value)
-    return originalStringify(value, replacer, space);
-  const convertedToCustomJSON = originalStringify(value, (key, value2) => {
-    const isNoise = typeof value2 === "string" && noiseValue.test(value2);
+  const isFunctionReplacer = typeof replacer === "function";
+  const propertyList = Array.isArray(replacer) ? new Set(replacer.map(String)) : null;
+  const prepareVal = (parent, key, val) => {
+    const isObject2 = val !== null && typeof val === "object";
+    const hasToJSON = isObject2 && typeof val.toJSON === "function";
+    if (hasToJSON) {
+      val = val.toJSON(key);
+    }
+    const isNoise = typeof val === "string" && noiseValue.test(val);
     if (isNoise)
-      return value2.toString() + "n";
-    if (typeof value2 === "bigint")
-      return value2.toString() + "n";
-    if (typeof replacer === "function")
-      return replacer(key, value2);
-    if (Array.isArray(replacer) && replacer.includes(key))
-      return value2;
-    return value2;
-  }, space);
-  const processedJSON = convertedToCustomJSON.replace(bigIntsStringify, "$1$2$3");
-  const denoisedJSON = processedJSON.replace(noiseStringify, "$1$2$3");
-  return denoisedJSON;
+      return val + "n";
+    const isBigInt = typeof val === "bigint";
+    if (isBigInt) {
+      const supportsRawJSON = "rawJSON" in JSON;
+      if (supportsRawJSON)
+        return JSON.rawJSON(val.toString());
+      return val.toString() + "n";
+    }
+    if (isFunctionReplacer) {
+      val = replacer.call(parent, key, val);
+    }
+    const isPostReplacerObject = val !== null && typeof val === "object";
+    if (isPostReplacerObject) {
+      const isPrimitiveWrapper = val instanceof Number || val instanceof String || val instanceof Boolean;
+      if (isPrimitiveWrapper) {
+        val = val.valueOf();
+      }
+    }
+    return val;
+  };
+  const rootProcessed = prepareVal({ "": rootValue }, "", rootValue);
+  if (isUnstringifiable(rootProcessed)) {
+    return;
+  }
+  const isRootPrimitive = rootProcessed === null || typeof rootProcessed !== "object";
+  const isRootNativeRawJSON = isRawJSON(rootProcessed);
+  if (isRootPrimitive || isRootNativeRawJSON) {
+    return originalStringify(rootProcessed);
+  }
+  const chunks = [];
+  let level = 0;
+  const stack = [
+    {
+      parent: { "": rootProcessed },
+      key: "",
+      val: rootProcessed,
+      isArray: Array.isArray(rootProcessed),
+      keys: Array.isArray(rootProcessed) ? null : Object.keys(rootProcessed),
+      index: 0,
+      first: true
+    }
+  ];
+  const visited = new WeakSet([rootProcessed]);
+  while (stack.length > 0) {
+    const node = stack[stack.length - 1];
+    if (node.index === 0) {
+      chunks.push(node.isArray ? "[" : "{");
+      level++;
+    }
+    let isDone = false;
+    if (node.isArray) {
+      if (node.index < node.val.length) {
+        if (!node.first)
+          chunks.push(",");
+        if (space)
+          chunks.push(`
+` + space.repeat(level));
+        const childRaw = node.val[node.index];
+        const childVal = prepareVal(node.val, String(node.index), childRaw);
+        if (isUnstringifiable(childVal)) {
+          chunks.push("null");
+          node.first = false;
+          node.index++;
+        } else {
+          const isComplexObject = childVal !== null && typeof childVal === "object";
+          const isNativeRaw = isRawJSON(childVal);
+          if (isComplexObject && !isNativeRaw) {
+            if (visited.has(childVal)) {
+              throw new TypeError("Converting circular structure to JSON");
+            }
+            visited.add(childVal);
+            stack.push({
+              parent: node.val,
+              key: String(node.index),
+              val: childVal,
+              isArray: Array.isArray(childVal),
+              keys: Array.isArray(childVal) ? null : Object.keys(childVal),
+              index: 0,
+              first: true
+            });
+            node.first = false;
+            node.index++;
+          } else {
+            chunks.push(originalStringify(childVal));
+            node.first = false;
+            node.index++;
+          }
+        }
+      } else {
+        isDone = true;
+      }
+    } else {
+      while (node.index < node.keys.length) {
+        const k = node.keys[node.index++];
+        const isFilteredOutByArray = propertyList && !propertyList.has(k);
+        if (isFilteredOutByArray)
+          continue;
+        const childRaw = node.val[k];
+        const childVal = prepareVal(node.val, k, childRaw);
+        if (isUnstringifiable(childVal))
+          continue;
+        if (!node.first)
+          chunks.push(",");
+        if (space) {
+          chunks.push(`
+` + space.repeat(level) + originalStringify(k) + ": ");
+        } else {
+          chunks.push(originalStringify(k) + ":");
+        }
+        const isComplexObject = childVal !== null && typeof childVal === "object";
+        const isNativeRaw = isRawJSON(childVal);
+        if (isComplexObject && !isNativeRaw) {
+          if (visited.has(childVal)) {
+            throw new TypeError("Converting circular structure to JSON");
+          }
+          visited.add(childVal);
+          stack.push({
+            parent: node.val,
+            key: k,
+            val: childVal,
+            isArray: Array.isArray(childVal),
+            keys: Array.isArray(childVal) ? null : Object.keys(childVal),
+            index: 0,
+            first: true
+          });
+          node.first = false;
+          break;
+        } else {
+          chunks.push(originalStringify(childVal));
+          node.first = false;
+        }
+      }
+      const isNodeFullyProcessed = node.index >= node.keys.length && stack[stack.length - 1] === node;
+      if (isNodeFullyProcessed) {
+        isDone = true;
+      }
+    }
+    if (isDone) {
+      level--;
+      if (!node.first && space)
+        chunks.push(`
+` + space.repeat(level));
+      chunks.push(node.isArray ? "]" : "}");
+      visited.delete(node.val);
+      stack.pop();
+    }
+  }
+  return chunks.join("");
+};
+var JSONStringify = (value, replacer, space) => {
+  try {
+    const supportsRawJSON = "rawJSON" in JSON;
+    if (supportsRawJSON) {
+      return originalStringify(value, (key, val) => {
+        if (typeof val === "bigint")
+          return JSON.rawJSON(val.toString());
+        const hasFunctionReplacer = typeof replacer === "function";
+        if (hasFunctionReplacer)
+          return replacer(key, val);
+        const isKeyInArrayReplacer = Array.isArray(replacer) && replacer.includes(key);
+        if (isKeyInArrayReplacer)
+          return val;
+        return val;
+      }, space);
+    }
+    if (!value)
+      return originalStringify(value, replacer, space);
+    const convertedToCustomJSON = originalStringify(value, (key, val) => {
+      const isNoise = typeof val === "string" && noiseValue.test(val);
+      if (isNoise)
+        return val.toString() + "n";
+      if (typeof val === "bigint")
+        return val.toString() + "n";
+      const hasFunctionReplacer = typeof replacer === "function";
+      if (hasFunctionReplacer)
+        return replacer(key, val);
+      const isKeyInArrayReplacer = Array.isArray(replacer) && replacer.includes(key);
+      if (isKeyInArrayReplacer)
+        return val;
+      return val;
+    }, space);
+    const processedJSON = convertedToCustomJSON.replace(bigIntsStringify, "$1$2$3");
+    const denoisedJSON = processedJSON.replace(noiseStringify, "$1$2$3");
+    return denoisedJSON;
+  } catch (error2) {
+    if (error2 instanceof RangeError) {
+      const convertedJSON = stringifyIteratively(value, replacer, space);
+      if (convertedJSON === undefined)
+        return;
+      const supportsRawJSON = "rawJSON" in JSON;
+      if (supportsRawJSON)
+        return convertedJSON;
+      const processedJSON = convertedJSON.replace(bigIntsStringify, "$1$2$3");
+      return processedJSON.replace(noiseStringify, "$1$2$3");
+    }
+    throw error2;
+  }
 };
 var featureCache = new Map;
 var isContextSourceSupported = () => {
@@ -109341,18 +109568,22 @@ var convertMarkedBigIntsReviver = (key, value, context3, userReviver) => {
   const isNoiseValue = typeof value === "string" && noiseValue.test(value);
   if (isNoiseValue)
     return value.slice(0, -1);
-  if (typeof userReviver !== "function")
+  const hasUserReviver = typeof userReviver === "function";
+  if (!hasUserReviver)
     return value;
   return userReviver(key, value, context3);
 };
 var JSONParseV2 = (text, reviver) => {
   return JSON.parse(text, (key, value, context3) => {
-    const isBigNumber = typeof value === "number" && (value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER);
+    const isNumber = typeof value === "number";
+    const isOutOfBounds = value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER;
+    const isBigNumber = isNumber && isOutOfBounds;
     const isInt = context3 && intRegex.test(context3.source);
     const isBigInt = isBigNumber && isInt;
     if (isBigInt)
       return BigInt(context3.source);
-    if (typeof reviver !== "function")
+    const hasCustomReviver = typeof reviver === "function";
+    if (!hasCustomReviver)
       return value;
     return reviver(key, value, context3);
   });
@@ -109361,23 +109592,79 @@ var MAX_INT = Number.MAX_SAFE_INTEGER.toString();
 var MAX_DIGITS = MAX_INT.length;
 var stringsOrLargeNumbers = /"(?:\\.|[^"])*"|-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/g;
 var noiseValueWithQuotes = /^"-?\d+n+"$/;
+var applyReviverIteratively = (parsed, userReviver) => {
+  const rootHolder = { "": parsed };
+  const stack = [{ parent: rootHolder, key: "", visited: false }];
+  while (stack.length > 0) {
+    const node = stack[stack.length - 1];
+    if (!node.visited) {
+      node.visited = true;
+      const value = node.parent[node.key];
+      const isComplexObject = value !== null && typeof value === "object";
+      if (isComplexObject) {
+        const keys = Object.keys(value);
+        for (let i = keys.length - 1;i >= 0; i--) {
+          stack.push({ parent: value, key: keys[i], visited: false });
+        }
+      }
+    } else {
+      const { parent, key } = node;
+      let value = parent[key];
+      if (typeof value === "string") {
+        const isCustomFormatBigInt = customFormat.test(value);
+        if (isCustomFormatBigInt) {
+          value = BigInt(value.slice(0, -1));
+        } else {
+          const isNoise = noiseValue.test(value);
+          if (isNoise)
+            value = value.slice(0, -1);
+        }
+      }
+      const hasUserReviver = typeof userReviver === "function";
+      if (hasUserReviver) {
+        value = userReviver.call(parent, key, value);
+      }
+      const isDeleted = value === undefined;
+      if (isDeleted) {
+        delete parent[key];
+      } else {
+        parent[key] = value;
+      }
+      stack.pop();
+    }
+  }
+  return rootHolder[""];
+};
+var serializeBigInts = (text) => {
+  return text.replace(stringsOrLargeNumbers, (match, digits, fractional, exponential) => {
+    const isString = match[0] === '"';
+    const isNoise = isString && noiseValueWithQuotes.test(match);
+    if (isNoise)
+      return match.substring(0, match.length - 1) + 'n"';
+    const hasFractionalOrExponential = fractional || exponential;
+    const isLessThanMaxSafeInt = digits && (digits.length < MAX_DIGITS || digits.length === MAX_DIGITS && digits <= MAX_INT);
+    const isStandardValue = isString || hasFractionalOrExponential || isLessThanMaxSafeInt;
+    if (isStandardValue)
+      return match;
+    return '"' + match + 'n"';
+  });
+};
 var JSONParse = (text, reviver) => {
   if (!text)
     return originalParse(text, reviver);
-  if (isContextSourceSupported())
-    return JSONParseV2(text, reviver);
-  const serializedData = text.replace(stringsOrLargeNumbers, (text2, digits, fractional, exponential) => {
-    const isString = text2[0] === '"';
-    const isNoise = isString && noiseValueWithQuotes.test(text2);
-    if (isNoise)
-      return text2.substring(0, text2.length - 1) + 'n"';
-    const isFractionalOrExponential = fractional || exponential;
-    const isLessThanMaxSafeInt = digits && (digits.length < MAX_DIGITS || digits.length === MAX_DIGITS && digits <= MAX_INT);
-    if (isString || isFractionalOrExponential || isLessThanMaxSafeInt)
-      return text2;
-    return '"' + text2 + 'n"';
-  });
-  return originalParse(serializedData, (key, value, context3) => convertMarkedBigIntsReviver(key, value, context3, reviver));
+  try {
+    if (isContextSourceSupported())
+      return JSONParseV2(text, reviver);
+    const serializedData = serializeBigInts(text);
+    return originalParse(serializedData, (key, value, context3) => convertMarkedBigIntsReviver(key, value, context3, reviver));
+  } catch (error2) {
+    if (error2 instanceof RangeError) {
+      const serializedData = serializeBigInts(text);
+      const parsed = originalParse(serializedData);
+      return applyReviverIteratively(parsed, reviver);
+    }
+    throw error2;
+  }
 };
 
 // node_modules/@octokit/request-error/dist-src/index.js
@@ -128063,5 +128350,5 @@ async function index() {
 }
 await index();
 
-//# debugId=2E7C28891D327EDB64756E2164756E21
+//# debugId=48642EA3485EB5E164756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

@@ -17403,7 +17403,7 @@ var require_undici = __commonJS((exports, module) => {
 var require_package = __commonJS((exports, module) => {
   module.exports = {
     name: "systeminformation",
-    version: "5.31.13",
+    version: "5.31.16",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -18131,7 +18131,7 @@ var require_util9 = __commonJS((exports) => {
     });
     return uniqueLines.length;
   }
-  function sanitizeShellString(str, strict) {
+  function sanitizeShellString2(str, strict) {
     if (typeof strict === "undefined") {
       strict = false;
     }
@@ -18219,7 +18219,7 @@ var require_util9 = __commonJS((exports) => {
       strict = false;
     }
     let result2 = "";
-    const s = isPrototypePolluted() ? "---" : sanitizeShellString(str, strict);
+    const s = isPrototypePolluted() ? "---" : sanitizeShellString2(str, strict);
     const l = mathMin(s.length, 2000);
     for (let i = 0;i <= l; i++) {
       if (s[i] !== undefined) {
@@ -20101,7 +20101,7 @@ var require_util9 = __commonJS((exports) => {
   exports.noop = noop;
   exports.isRaspberry = isRaspberry;
   exports.isRaspbian = isRaspbian;
-  exports.sanitizeShellString = sanitizeShellString;
+  exports.sanitizeShellString = sanitizeShellString2;
   exports.isPrototypePolluted = isPrototypePolluted;
   exports.sanitizeString = sanitizeString;
   exports.decodePiCpuinfo = decodePiCpuinfo;
@@ -24101,6 +24101,9 @@ var require_cpu = __commonJS((exports) => {
           const cpus = os4.cpus().map((cpu2) => {
             cpu2.times.steal = 0;
             cpu2.times.guest = 0;
+            if (_windows) {
+              cpu2.times.sys = Math.max(0, cpu2.times.sys - cpu2.times.irq);
+            }
             return cpu2;
           });
           let totalUser = 0;
@@ -24304,7 +24307,7 @@ var require_cpu = __commonJS((exports) => {
           for (let i = 0, len = cpus.length;i < len; i++) {
             const cpu2 = cpus[i].times;
             totalUser += cpu2.user;
-            totalSystem += cpu2.sys;
+            totalSystem += _windows ? Math.max(0, cpu2.sys - cpu2.irq) : cpu2.sys;
             totalNice += cpu2.nice;
             totalIrq += cpu2.irq;
             totalIdle += cpu2.idle;
@@ -26208,7 +26211,6 @@ var require_graphics = __commonJS((exports) => {
 var require_filesystem = __commonJS((exports) => {
   var util = require_util9();
   var fs2 = __require("fs");
-  var os4 = __require("os");
   var exec = __require("child_process").exec;
   var execSync = __require("child_process").execSync;
   var execPromiseSave = util.promisifySave(__require("child_process").exec);
@@ -26384,7 +26386,7 @@ var require_filesystem = __commonJS((exports) => {
         }
         if (_windows) {
           try {
-            const driveSanitized = drive ? util.sanitizeShellString(drive, true) : "";
+            const driveSanitized = drive ? util.sanitizeString(drive, true) : "";
             const cmd = `Get-WmiObject Win32_logicaldisk | select Access,Caption,FileSystem,FreeSpace,Size ${driveSanitized ? "| where -property Caption -eq " + driveSanitized : ""} | fl`;
             util.powerShell(cmd).then((stdout, error2) => {
               if (!error2) {
@@ -26640,7 +26642,7 @@ var require_filesystem = __commonJS((exports) => {
     try {
       data.forEach((element) => {
         if (element.type.startsWith("raid")) {
-          const lines = execSync(`mdadm --export --detail /dev/${element.name}`, util.execOptsLinux).toString().split(`
+          const lines = execSync(`mdadm --export --detail /dev/${util.sanitizeString(element.name, true)}`, util.execOptsLinux).toString().split(`
 `);
           const mdData = decodeMdabmData(lines);
           element.label = mdData.label;
@@ -27284,7 +27286,7 @@ var require_filesystem = __commonJS((exports) => {
                 let devices = [];
                 try {
                   const outJSON = JSON.parse(out);
-                  if (outJSON && {}.hasOwnProperty.call(outJSON, "blockdevices")) {
+                  if (outJSON && Object.hasOwn(outJSON, "blockdevices")) {
                     devices = outJSON.blockdevices.filter((item) => {
                       return item.type === "disk" && item.size > 0 && (item.model !== null || item.mountpoint === null && item.label === null && item.fstype === null && item.parttype === null && item.path && item.path.indexOf("/ram") !== 0 && item.path.indexOf("/loop") !== 0 && item["disc-max"] && item["disc-max"] !== 0);
                     });
@@ -27414,17 +27416,20 @@ ${BSDName}|"; smartctl -H ${BSDName} | grep overall;`;
         }
         if (_darwin) {
           let cmdFullSmart = "";
-          exec(`system_profiler SPSerialATADataType SPNVMeDataType ${parseInt(os4.release(), 10) > 24 ? "SPUSBHostDataType" : "SPUSBDataType"} `, { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
+          exec(`system_profiler SPSerialATADataType SPNVMeDataType SPUSBDataType SPStorageDataType`, { maxBuffer: 1024 * 1024 }, (error2, stdout) => {
             if (!error2) {
               const lines = stdout.toString().split(`
 `);
               const linesSATA = [];
               const linesNVMe = [];
+              const linesStorage = [];
               const linesUSB = [];
               let dataType = "SATA";
               lines.forEach((line) => {
                 if (line === "NVMExpress:") {
                   dataType = "NVMe";
+                } else if (line === "Storage:") {
+                  dataType = "Storage";
                 } else if (line === "USB:") {
                   dataType = "USB";
                 } else if (line === "SATA/SATA Express:") {
@@ -27433,6 +27438,8 @@ ${BSDName}|"; smartctl -H ${BSDName} | grep overall;`;
                   linesSATA.push(line);
                 } else if (dataType === "NVMe") {
                   linesNVMe.push(line);
+                } else if (dataType === "Storage") {
+                  linesStorage.push(line);
                 } else if (dataType === "USB") {
                   linesUSB.push(line);
                 }
@@ -27578,6 +27585,71 @@ ${BSDName}|"; diskutil info /dev/${BSDName} | grep SMART;`;
                         serialNum: util.getValue(lines2, "Serial Number", ":", true).trim(),
                         interfaceType: "USB",
                         smartStatus: smartStatusString === "verified" ? "OK" : smartStatusString || "unknown",
+                        temperature: null,
+                        BSDName
+                      });
+                      cmd = cmd + `printf "
+` + BSDName + '|"; diskutil info /dev/' + BSDName + " | grep SMART;";
+                      cmdFullSmart += `${cmdFullSmart ? 'printf ",";' : ""}smartctl -a -j ${BSDName};`;
+                    }
+                  }
+                });
+              } catch {
+                util.noop();
+              }
+              try {
+                const seen = {};
+                result2.forEach((d) => {
+                  const m = (d.BSDName || "").match(/disk\d+/);
+                  if (m) {
+                    seen[m[0]] = true;
+                  }
+                });
+                const devices = linesStorage.join(`
+`).split("      Free:");
+                devices.shift();
+                devices.forEach((device) => {
+                  const lines2 = device.split(`
+`);
+                  const internal = util.getValue(lines2, "Internal", ":", true).trim().toLowerCase();
+                  if (internal !== "no") {
+                    return;
+                  }
+                  const bsdMatch = util.getValue(lines2, "BSD Name", ":", true).trim().match(/disk\d+/);
+                  const BSDName = bsdMatch ? bsdMatch[0] : "";
+                  if (!BSDName || seen[BSDName]) {
+                    return;
+                  }
+                  const sizeStr = util.getValue(lines2, "Capacity", ":", true).trim();
+                  if (sizeStr) {
+                    let sizeValue = 0;
+                    if (sizeStr.indexOf("(") >= 0) {
+                      sizeValue = parseInt(sizeStr.match(/\(([^)]+)\)/)[1].replace(/\./g, "").replace(/,/g, "").replace(/\s/g, ""), 10);
+                    }
+                    if (!sizeValue) {
+                      sizeValue = parseInt(sizeStr, 10);
+                    }
+                    if (sizeValue) {
+                      seen[BSDName] = true;
+                      const protocol = util.getValue(lines2, "Protocol", ":", true).trim();
+                      const model = util.getValue(lines2, "Device Name", ":", true).trim();
+                      result2.push({
+                        device: BSDName,
+                        type: protocol && protocol !== "USB" ? protocol : "USB",
+                        name: model,
+                        vendor: getVendorFromModel(model),
+                        size: sizeValue,
+                        bytesPerSector: null,
+                        totalCylinders: null,
+                        totalHeads: null,
+                        totalSectors: null,
+                        totalTracks: null,
+                        tracksPerCylinder: null,
+                        sectorsPerTrack: null,
+                        firmwareRevision: "",
+                        serialNum: "",
+                        interfaceType: protocol || "USB",
+                        smartStatus: "unknown",
                         temperature: null,
                         BSDName
                       });
@@ -29015,7 +29087,7 @@ Profile on interface`);
     }
     return new Promise((resolve) => {
       process.nextTick(() => {
-        const ifaceSanitized = util.sanitizeString(iface);
+        const ifaceSanitized = util.sanitizeString(iface, true);
         let result2 = {
           iface: ifaceSanitized,
           operstate: "unknown",
@@ -29768,7 +29840,11 @@ Interface `);
     }
   }
   function nmiConnectionLinux(ssid) {
-    const cmd = `nmcli -t --show-secrets connection show ${ssid} 2>/dev/null`;
+    const ssidSanitized = sanitizeShellString(ssid, true);
+    if (!ssidSanitized) {
+      return {};
+    }
+    const cmd = `nmcli -t connection show ${ssidSanitized} 2>/dev/null`;
     try {
       const lines = execSync(cmd, util.execOptsLinux).toString().split(`
 `);
@@ -29789,7 +29865,7 @@ Interface `);
     if (!iface) {
       return {};
     }
-    const cmd = `wpa_cli -i ${iface} status 2>&1`;
+    const cmd = `wpa_cli -i ${util.sanitizeString(iface, true)} status 2>&1`;
     try {
       const lines = execSync(cmd, util.execOptsLinux).toString().split(`
 `);
@@ -29843,7 +29919,7 @@ Interface `);
   function getWifiNetworkListIw(iface) {
     const result2 = [];
     try {
-      let iwlistParts = execSync(`export LC_ALL=C; iwlist ${iface} scan 2>&1; unset LC_ALL`, util.execOptsLinux).toString().split("        Cell ");
+      let iwlistParts = execSync(`export LC_ALL=C; iwlist ${util.sanitizeString(iface, true)} scan 2>&1; unset LC_ALL`, util.execOptsLinux).toString().split("        Cell ");
       if (iwlistParts[0].indexOf("resource busy") >= 0) {
         return -1;
       }
@@ -36841,5 +36917,5 @@ async function server() {
 }
 await server();
 
-//# debugId=B9BC9D8C6A1C41CE64756E2164756E21
+//# debugId=067A96AD3A06ACF764756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
