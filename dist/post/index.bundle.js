@@ -128260,7 +128260,7 @@ function render(metricsData, metricsID) {
           name: "Free"
         },
         {
-          color: "blue",
+          color: "#4da0ff",
           name: "Used"
         }
       ],
@@ -128350,5 +128350,5 @@ async function index() {
 }
 await index();
 
-//# debugId=B9B0E098FEF5686964756E2164756E21
+//# debugId=E9D3BF344715FF3364756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
