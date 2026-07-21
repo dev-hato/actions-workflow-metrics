@@ -150,7 +150,7 @@ describe("Renderer", () => {
       [
         {
           title: "Memory Usage",
-          legends: [{ color: "blue", name: "Used Memory" }],
+          legends: [{ color: "#4da0ff", name: "Used Memory" }],
           data: [
             {
               stepName: undefined,
@@ -175,7 +175,7 @@ describe("Renderer", () => {
     expect(result).not.toContain('y-axis "MB" 0 -->');
 
     // Verify legend is included
-    expect(result).toContain("blue: Used Memory");
+    expect(result).toContain("#4da0ff: Used Memory");
   });
 
   it("should correctly extract colors from metricsInfo", () => {
@@ -186,7 +186,7 @@ describe("Renderer", () => {
           title: "Test",
           legends: [
             { color: "Red", name: "Metric 1" },
-            { color: "blue", name: "Metric 2" },
+            { color: "#4da0ff", name: "Metric 2" },
             { color: "Green", name: "Metric 3" },
           ],
           data: [
@@ -205,11 +205,11 @@ describe("Renderer", () => {
     );
 
     // Verify all colors are included in color palette
-    expect(result).toContain('"plotColorPalette": "Red, blue, Green"');
+    expect(result).toContain('"plotColorPalette": "Red, #4da0ff, Green"');
 
     // Verify each color is included in legend
     expect(result).toContain("Red: Metric 1");
-    expect(result).toContain("blue: Metric 2");
+    expect(result).toContain("#4da0ff: Metric 2");
     expect(result).toContain("Green: Metric 3");
   });
 
@@ -229,7 +229,7 @@ describe("Renderer", () => {
           title: "Stacked Test",
           legends: [
             { color: "Red", name: "Base Metric" },
-            { color: "blue", name: "Stacked Metric" },
+            { color: "#4da0ff", name: "Stacked Metric" },
           ],
           data: [
             {
@@ -251,12 +251,12 @@ describe("Renderer", () => {
     // Verify stacked data is calculated correctly
     // First bar is topmost stack (cumulative): [10+5, 20+10, 30+15] = [15, 30, 45]
     expect(result).toContain("bar [15,30,45]");
-    // Second bar is lower layer (blue Metric only): [5, 10, 15]
+    // Second bar is lower layer (#4da0ff Metric only): [5, 10, 15]
     expect(result).toContain("bar [5,10,15]");
 
     // Verify legends for both metrics are included
     expect(result).toContain("Red: Base Metric");
-    expect(result).toContain("blue: Stacked Metric");
+    expect(result).toContain("#4da0ff: Stacked Metric");
   });
 
   it("should handle three or more metrics in stack", () => {
@@ -326,7 +326,7 @@ describe("Renderer", () => {
       [
         {
           title: "Time Format Test",
-          legends: [{ color: "blue", name: "Test Metric" }],
+          legends: [{ color: "#4da0ff", name: "Test Metric" }],
           data: [
             {
               stepName: undefined,

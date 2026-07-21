@@ -233,7 +233,7 @@ export function render(
             name: "Free",
           },
           {
-            color: "blue",
+            color: "#4da0ff",
             name: "Used",
           },
         ],
