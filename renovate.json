@@ -1,5 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>dev-hato/renovate-config"],
-  "ignoreDeps": ["node-fetch"]
+  "ignoreDeps": ["node-fetch"],
+  "packageRules": [
+    {
+      "description": "Use the FLATT registry for npm packages",
+      "matchDatasources": ["npm"],
+      "registryUrls": ["https://npm.flatt.tech/"]
+    }
+  ]
 }
