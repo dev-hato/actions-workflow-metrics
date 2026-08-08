@@ -47729,7 +47729,7 @@ var require_lib2 = __commonJS((exports) => {
   var lowercaseKeys2 = (obj) => Object.keys(obj).reduce((c, k) => (c[k.toLowerCase()] = obj[k], c), {});
 });
 
-// node_modules/@octokit/request/node_modules/content-type/dist/index.js
+// node_modules/content-type/dist/index.js
 var require_dist5 = __commonJS((exports) => {
   /*!
    * content-type
@@ -128040,5 +128040,5 @@ async function index() {
 }
 await index();
 
-//# debugId=676B414C12B3C87964756E2164756E21
+//# debugId=6A80553A32EADB7264756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
