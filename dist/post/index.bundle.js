@@ -21659,115 +21659,6 @@ var require_browser = __commonJS((exports, module) => {
   };
 });
 
-// node_modules/has-flag/index.js
-var require_has_flag = __commonJS((exports, module) => {
-  module.exports = (flag, argv = process.argv) => {
-    const prefix = flag.startsWith("-") ? "" : flag.length === 1 ? "-" : "--";
-    const position = argv.indexOf(prefix + flag);
-    const terminatorPosition = argv.indexOf("--");
-    return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
-  };
-});
-
-// node_modules/supports-color/index.js
-var require_supports_color = __commonJS((exports, module) => {
-  var os5 = __require("os");
-  var tty = __require("tty");
-  var hasFlag = require_has_flag();
-  var { env } = process;
-  var forceColor;
-  if (hasFlag("no-color") || hasFlag("no-colors") || hasFlag("color=false") || hasFlag("color=never")) {
-    forceColor = 0;
-  } else if (hasFlag("color") || hasFlag("colors") || hasFlag("color=true") || hasFlag("color=always")) {
-    forceColor = 1;
-  }
-  if ("FORCE_COLOR" in env) {
-    if (env.FORCE_COLOR === "true") {
-      forceColor = 1;
-    } else if (env.FORCE_COLOR === "false") {
-      forceColor = 0;
-    } else {
-      forceColor = env.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(env.FORCE_COLOR, 10), 3);
-    }
-  }
-  function translateLevel(level) {
-    if (level === 0) {
-      return false;
-    }
-    return {
-      level,
-      hasBasic: true,
-      has256: level >= 2,
-      has16m: level >= 3
-    };
-  }
-  function supportsColor(haveStream, streamIsTTY) {
-    if (forceColor === 0) {
-      return 0;
-    }
-    if (hasFlag("color=16m") || hasFlag("color=full") || hasFlag("color=truecolor")) {
-      return 3;
-    }
-    if (hasFlag("color=256")) {
-      return 2;
-    }
-    if (haveStream && !streamIsTTY && forceColor === undefined) {
-      return 0;
-    }
-    const min = forceColor || 0;
-    if (env.TERM === "dumb") {
-      return min;
-    }
-    if (process.platform === "win32") {
-      const osRelease = os5.release().split(".");
-      if (Number(osRelease[0]) >= 10 && Number(osRelease[2]) >= 10586) {
-        return Number(osRelease[2]) >= 14931 ? 3 : 2;
-      }
-      return 1;
-    }
-    if ("CI" in env) {
-      if (["TRAVIS", "CIRCLECI", "APPVEYOR", "GITLAB_CI", "GITHUB_ACTIONS", "BUILDKITE"].some((sign) => (sign in env)) || env.CI_NAME === "codeship") {
-        return 1;
-      }
-      return min;
-    }
-    if ("TEAMCITY_VERSION" in env) {
-      return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
-    }
-    if (env.COLORTERM === "truecolor") {
-      return 3;
-    }
-    if ("TERM_PROGRAM" in env) {
-      const version2 = parseInt((env.TERM_PROGRAM_VERSION || "").split(".")[0], 10);
-      switch (env.TERM_PROGRAM) {
-        case "iTerm.app":
-          return version2 >= 3 ? 3 : 2;
-        case "Apple_Terminal":
-          return 2;
-      }
-    }
-    if (/-256(color)?$/i.test(env.TERM)) {
-      return 2;
-    }
-    if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
-      return 1;
-    }
-    if ("COLORTERM" in env) {
-      return 1;
-    }
-    return min;
-  }
-  function getSupportLevel(stream) {
-    const level = supportsColor(stream, stream && stream.isTTY);
-    return translateLevel(level);
-  }
-  module.exports = {
-    supportsColor: getSupportLevel,
-    stdout: translateLevel(supportsColor(true, tty.isatty(1))),
-    stderr: translateLevel(supportsColor(true, tty.isatty(2)))
-  };
-});
-
 // node_modules/debug/src/node.js
 var require_node = __commonJS((exports, module) => {
   var tty = __require("tty");
@@ -21781,7 +21672,7 @@ var require_node = __commonJS((exports, module) => {
   exports.destroy = util2.deprecate(() => {}, "Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.");
   exports.colors = [6, 2, 3, 4, 5, 1];
   try {
-    const supportsColor = require_supports_color();
+    const supportsColor = (()=>{throw new Error("Cannot require module "+"supports-color");})();
     if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
       exports.colors = [
         20,
@@ -22184,17 +22075,17 @@ var require_parse_proxy_response = __commonJS((exports) => {
     return new Promise((resolve2, reject) => {
       let buffersLength = 0;
       const buffers = [];
-      function read2() {
+      function read() {
         const b = socket.read();
         if (b)
           ondata(b);
         else
-          socket.once("readable", read2);
+          socket.once("readable", read);
       }
       function cleanup() {
         socket.removeListener("end", onend);
         socket.removeListener("error", onerror);
-        socket.removeListener("readable", read2);
+        socket.removeListener("readable", read);
       }
       function onend() {
         cleanup();
@@ -22215,7 +22106,7 @@ var require_parse_proxy_response = __commonJS((exports) => {
 `);
         if (endOfHeaders === -1) {
           debug2("have not received end of HTTP headers yet...");
-          read2();
+          read();
           return;
         }
         const headerParts = buffered.slice(0, endOfHeaders).toString("ascii").split(`\r
@@ -22261,7 +22152,7 @@ var require_parse_proxy_response = __commonJS((exports) => {
       }
       socket.on("error", onerror);
       socket.on("end", onend);
-      read2();
+      read();
     });
   }
   exports.parseProxyResponse = parseProxyResponse;
@@ -25705,7 +25596,7 @@ var require_polyfills = __commonJS((exports, module) => {
       }(fs4.rename);
     }
     fs4.read = typeof fs4.read !== "function" ? fs4.read : function(fs$read) {
-      function read2(fd, buffer2, offset, length, position, callback_) {
+      function read(fd, buffer2, offset, length, position, callback_) {
         var callback;
         if (callback_ && typeof callback_ === "function") {
           var eagCounter = 0;
@@ -25720,8 +25611,8 @@ var require_polyfills = __commonJS((exports, module) => {
         return fs$read.call(fs4, fd, buffer2, offset, length, position, callback);
       }
       if (Object.setPrototypeOf)
-        Object.setPrototypeOf(read2, fs$read);
-      return read2;
+        Object.setPrototypeOf(read, fs$read);
+      return read;
     }(fs4.read);
     fs4.readSync = typeof fs4.readSync !== "function" ? fs4.readSync : function(fs$readSync) {
       return function(fd, buffer2, offset, length, position) {
@@ -40014,8 +39905,8 @@ var require_commonjs6 = __commonJS((exports) => {
         return;
       }
       try {
-        const read2 = await this.#fs.promises.readlink(this.fullpath());
-        const linkTarget = (await this.parent.realpath())?.resolve(read2);
+        const read = await this.#fs.promises.readlink(this.fullpath());
+        const linkTarget = (await this.parent.realpath())?.resolve(read);
         if (linkTarget) {
           return this.#linkTarget = linkTarget;
         }
@@ -40036,8 +39927,8 @@ var require_commonjs6 = __commonJS((exports) => {
         return;
       }
       try {
-        const read2 = this.#fs.readlinkSync(this.fullpath());
-        const linkTarget = this.parent.realpathSync()?.resolve(read2);
+        const read = this.#fs.readlinkSync(this.fullpath());
+        const linkTarget = this.parent.realpathSync()?.resolve(read);
         if (linkTarget) {
           return this.#linkTarget = linkTarget;
         }
@@ -63633,7 +63524,7 @@ var require_snapshot_utils = __commonJS((exports, module) => {
 // node_modules/@octokit/action/node_modules/undici/lib/mock/snapshot-recorder.js
 var require_snapshot_recorder = __commonJS((exports, module) => {
   var { writeFile: writeFile2, readFile, mkdir: mkdir2 } = __require("node:fs/promises");
-  var { dirname: dirname2, resolve: resolve2 } = __require("node:path");
+  var { dirname, resolve: resolve2 } = __require("node:path");
   var { setTimeout: setTimeout2, clearTimeout: clearTimeout2 } = __require("node:timers");
   var { InvalidArgumentError, UndiciError } = require_errors4();
   var { hashId, isUrlExcludedFactory, normalizeHeaders, createHeaderFilters } = require_snapshot_utils();
@@ -63828,7 +63719,7 @@ var require_snapshot_recorder = __commonJS((exports, module) => {
         throw new InvalidArgumentError("Snapshot path is required");
       }
       const resolvedPath = resolve2(path4);
-      await mkdir2(dirname2(resolvedPath), { recursive: true });
+      await mkdir2(dirname(resolvedPath), { recursive: true });
       const data = Array.from(this.#snapshots.entries()).map(([hash, snapshot2]) => ({
         hash,
         snapshot: snapshot2
@@ -85957,22 +85848,8 @@ class BufferScheduler {
 import Stream, { Readable as Readable3 } from "node:stream";
 
 // node_modules/@azure/storage-common/dist/esm/crc64.js
-import { createRequire as createRequire2 } from "node:module";
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-var __isNode__ = typeof process === "object" && typeof process.versions === "object" && typeof process.versions.node === "string";
-var require2;
-var __filename2;
-var __dirname2;
-if (__isNode__) {
-  require2 = createRequire2(import.meta.url);
-  __filename2 = fileURLToPath(import.meta.url);
-  __dirname2 = dirname(__filename2);
-}
 var NativeCRC64 = (() => {
   var _scriptDir = typeof document !== "undefined" && document.currentScript ? document.currentScript.src : undefined;
-  if (typeof __filename2 !== "undefined")
-    _scriptDir = _scriptDir || __filename2;
   return function(NativeCRC642) {
     NativeCRC642 = NativeCRC642 || {};
     var Module = typeof NativeCRC642 != "undefined" ? NativeCRC642 : {};
@@ -86022,34 +85899,6 @@ var NativeCRC64 = (() => {
     if (ENVIRONMENT_IS_NODE) {
       if (typeof process == "undefined" || !process.release || process.release.name !== "node")
         throw new Error("not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)");
-      var fs3 = require2("fs");
-      var nodePath = require2("path");
-      if (ENVIRONMENT_IS_WORKER) {
-        scriptDirectory = nodePath.dirname(scriptDirectory) + "/";
-      } else {
-        scriptDirectory = __dirname2 + "/";
-      }
-      read_ = (filename, binary) => {
-        filename = isFileURI(filename) ? new URL(filename) : nodePath.normalize(filename);
-        return fs3.readFileSync(filename, binary ? undefined : "utf8");
-      };
-      readBinary = (filename) => {
-        var ret = read_(filename, true);
-        if (!ret.buffer) {
-          ret = new Uint8Array(ret);
-        }
-        assert(ret.buffer);
-        return ret;
-      };
-      readAsync = (filename, onload, onerror) => {
-        filename = isFileURI(filename) ? new URL(filename) : nodePath.normalize(filename);
-        fs3.readFile(filename, function(err2, data) {
-          if (err2)
-            onerror(err2);
-          else
-            onload(data.buffer);
-        });
-      };
       if (process["argv"].length > 1) {
         thisProgram = process["argv"][1].replace(/\\/g, "/");
       }
@@ -86074,25 +85923,8 @@ var NativeCRC64 = (() => {
         return "[Emscripten Module object]";
       };
     } else if (ENVIRONMENT_IS_SHELL) {
-      if (typeof process == "object" && typeof require2 === "function" || typeof window == "object" || typeof importScripts == "function")
+      if (typeof process == "object" && true || typeof window == "object" || typeof importScripts == "function")
         throw new Error("not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)");
-      if (typeof read != "undefined") {
-        read_ = function shell_read(f) {
-          return read(f);
-        };
-      }
-      readBinary = function readBinary2(f) {
-        let data;
-        if (typeof readbuffer == "function") {
-          return new Uint8Array(readbuffer(f));
-        }
-        data = read(f, "binary");
-        assert(typeof data == "object");
-        return data;
-      };
-      readAsync = function readAsync2(f, onload, onerror) {
-        setTimeout(() => onload(readBinary(f)), 0);
-      };
       if (typeof scriptArgs != "undefined") {
         arguments_ = scriptArgs;
       } else if (typeof arguments != "undefined") {
@@ -86111,53 +85943,8 @@ var NativeCRC64 = (() => {
         console.warn = console.error = typeof printErr != "undefined" ? printErr : print;
       }
     } else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-      if (ENVIRONMENT_IS_WORKER) {
-        scriptDirectory = self.location.href;
-      } else if (typeof document != "undefined" && document.currentScript) {
-        scriptDirectory = document.currentScript.src;
-      }
-      if (_scriptDir) {
-        scriptDirectory = _scriptDir;
-      }
-      if (scriptDirectory.indexOf("blob:") !== 0) {
-        scriptDirectory = scriptDirectory.substr(0, scriptDirectory.replace(/[?#].*/, "").lastIndexOf("/") + 1);
-      } else {
-        scriptDirectory = "";
-      }
       if (!(typeof window == "object" || typeof importScripts == "function"))
         throw new Error("not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)");
-      {
-        read_ = (url) => {
-          var xhr = new XMLHttpRequest;
-          xhr.open("GET", url, false);
-          xhr.send(null);
-          return xhr.responseText;
-        };
-        if (ENVIRONMENT_IS_WORKER) {
-          readBinary = (url) => {
-            var xhr = new XMLHttpRequest;
-            xhr.open("GET", url, false);
-            xhr.responseType = "arraybuffer";
-            xhr.send(null);
-            return new Uint8Array(xhr.response);
-          };
-        }
-        readAsync = (url, onload, onerror) => {
-          var xhr = new XMLHttpRequest;
-          xhr.open("GET", url, true);
-          xhr.responseType = "arraybuffer";
-          xhr.onload = () => {
-            if (xhr.status == 200 || xhr.status == 0 && xhr.response) {
-              onload(xhr.response);
-              return;
-            }
-            onerror();
-          };
-          xhr.onerror = onerror;
-          xhr.send(null);
-        };
-      }
-      setWindowTitle = (title) => document.title = title;
     } else {
       throw new Error("environment detection error");
     }
@@ -89927,6 +89714,9 @@ function storageRequestFailureDetailsParserPolicy() {
     async sendRequest(request, next) {
       try {
         const response = await next(request);
+        if (response.status === 400 && response.bodyAsText?.includes("<Error><Code>InvalidHeaderValue</Code>") && response.bodyAsText.includes("<HeaderName>x-ms-version</HeaderName>")) {
+          response.bodyAsText = response.bodyAsText.replace(/<Message>.*<\/Message>/s, "<Message>The provided service version is not enabled on this storage account. Please see https://learn.microsoft.com/rest/api/storageservices/versioning-for-the-azure-storage-services for additional information.</Message>");
+        }
         return response;
       } catch (err) {
         if (typeof err === "object" && err !== null && err.response && err.response.parsedBody) {
@@ -128040,5 +127830,5 @@ async function index() {
 }
 await index();
 
-//# debugId=6A80553A32EADB7264756E2164756E21
+//# debugId=5EBFC90FBAE4FEC664756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
