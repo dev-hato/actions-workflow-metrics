@@ -47620,147 +47620,6 @@ var require_lib2 = __commonJS((exports) => {
   var lowercaseKeys2 = (obj) => Object.keys(obj).reduce((c, k) => (c[k.toLowerCase()] = obj[k], c), {});
 });
 
-// node_modules/content-type/dist/index.js
-var require_dist5 = __commonJS((exports) => {
-  /*!
-   * content-type
-   * Copyright(c) 2015 Douglas Christopher Wilson
-   * MIT Licensed
-   */
-  Object.defineProperty(exports, "__esModule", { value: true });
-  exports.format = format;
-  exports.parse = parse3;
-  var TEXT_REGEXP = /^[\u0009\u0020-\u007e\u0080-\u00ff]*$/;
-  var TOKEN_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
-  var QUOTE_REGEXP = /[\\"]/g;
-  var TYPE_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
-  var NullObject = /* @__PURE__ */ (() => {
-    const C = function() {};
-    C.prototype = Object.create(null);
-    return C;
-  })();
-  function format(obj) {
-    const { type, parameters } = obj;
-    if (!type || !TYPE_REGEXP.test(type)) {
-      throw new TypeError(`Invalid type: ${type}`);
-    }
-    let result = type;
-    if (parameters) {
-      for (const param of Object.keys(parameters)) {
-        if (!TOKEN_REGEXP.test(param)) {
-          throw new TypeError(`Invalid parameter name: ${param}`);
-        }
-        result += `; ${param}=${qstring(parameters[param])}`;
-      }
-    }
-    return result;
-  }
-  function parse3(header, options) {
-    const stopChar = options?.comma === true ? COMMA : 65536;
-    const len = header.length;
-    let index = skipOWS(header, options?.start ?? 0, len);
-    const valueStart = index;
-    index = skipValue(header, index, len, stopChar);
-    const valueEnd = trailingOWS(header, valueStart, index);
-    const type = header.slice(valueStart, valueEnd).toLowerCase();
-    if (options?.parameters === false) {
-      return { type, index, parameters: new NullObject };
-    }
-    return parseParameters(header, type, index, len, stopChar);
-  }
-  var SP = 32;
-  var HTAB = 9;
-  var SEMI = 59;
-  var EQ = 61;
-  var DQUOTE = 34;
-  var BSLASH = 92;
-  var COMMA = 44;
-  function parseParameters(header, type, index, len, stopChar) {
-    const parameters = new NullObject;
-    parameter:
-      while (index < len) {
-        if (header.charCodeAt(index) === stopChar)
-          break;
-        index = skipOWS(header, index + 1, len);
-        const keyStart = index;
-        while (index < len) {
-          const code = header.charCodeAt(index);
-          if (code === stopChar)
-            break parameter;
-          if (code === SEMI)
-            continue parameter;
-          if (code === EQ) {
-            const keyEnd = trailingOWS(header, keyStart, index);
-            const key = header.slice(keyStart, keyEnd).toLowerCase();
-            index = skipOWS(header, index + 1, len);
-            if (index < len && header.charCodeAt(index) === DQUOTE) {
-              index++;
-              let value = "";
-              while (index < len) {
-                const code2 = header.charCodeAt(index++);
-                if (code2 === DQUOTE) {
-                  index = skipValue(header, index, len, stopChar);
-                  if (parameters[key] === undefined)
-                    parameters[key] = value;
-                  break;
-                }
-                if (code2 === BSLASH && index < len) {
-                  value += header[index++];
-                  continue;
-                }
-                value += String.fromCharCode(code2);
-              }
-              continue parameter;
-            }
-            const valueStart = index;
-            index = skipValue(header, index, len, stopChar);
-            if (parameters[key] === undefined) {
-              const valueEnd = trailingOWS(header, valueStart, index);
-              parameters[key] = header.slice(valueStart, valueEnd);
-            }
-            continue parameter;
-          }
-          index++;
-        }
-      }
-    return { type, index, parameters };
-  }
-  function skipValue(str, index, len, stopChar) {
-    while (index < len) {
-      const code = str.charCodeAt(index);
-      if (code === SEMI || code === stopChar)
-        break;
-      index++;
-    }
-    return index;
-  }
-  function skipOWS(header, index, len) {
-    while (index < len) {
-      const char = header.charCodeAt(index);
-      if (char !== SP && char !== HTAB)
-        break;
-      index++;
-    }
-    return index;
-  }
-  function trailingOWS(header, start, end) {
-    while (end > start) {
-      const char = header.charCodeAt(end - 1);
-      if (char !== SP && char !== HTAB)
-        break;
-      end--;
-    }
-    return end;
-  }
-  function qstring(str) {
-    if (TOKEN_REGEXP.test(str))
-      return str;
-    if (TEXT_REGEXP.test(str))
-      return `"${str.replace(QUOTE_REGEXP, "\\$&")}"`;
-    throw new TypeError(`Invalid parameter value: ${str}`);
-  }
-});
-
 // node_modules/traverse/index.js
 var require_traverse = __commonJS((exports, module) => {
   module.exports = Traverse;
@@ -83475,7 +83334,7 @@ var XML_PATTERNS = [
   {
     id: "xml-namespace-confusion",
     description: "xmlns: attribute injection — can redefine namespaces to confuse parsers",
-    pattern: /\bxmlns\s*(?::\w{1,40})?\s*=/i
+    pattern: /\bxmlns(?::\w{1,40})?\s*=/i
   },
   {
     id: "xml-comment-injection",
@@ -108848,8 +108707,114 @@ function withDefaults(oldDefaults, newDefaults) {
 }
 var endpoint = withDefaults(null, DEFAULTS);
 
-// node_modules/@octokit/request/dist-bundle/index.js
-var import_content_type = __toESM(require_dist5(), 1);
+// node_modules/content-type/dist/index.js
+/*!
+ * content-type
+ * Copyright(c) 2015 Douglas Christopher Wilson
+ * MIT Licensed
+ */
+var NullObject = /* @__PURE__ */ (() => {
+  const C = function() {};
+  C.prototype = Object.create(null);
+  return C;
+})();
+function parse3(header, options) {
+  const stopChar = options?.comma === true ? COMMA : 65536;
+  const len = header.length;
+  let index = skipOWS(header, options?.start ?? 0, len);
+  const valueStart = index;
+  index = skipValue(header, index, len, stopChar);
+  const valueEnd = trailingOWS(header, valueStart, index);
+  const type = header.slice(valueStart, valueEnd).toLowerCase();
+  if (options?.parameters === false) {
+    return { type, index, parameters: new NullObject };
+  }
+  return parseParameters(header, type, index, len, stopChar);
+}
+var SP = 32;
+var HTAB = 9;
+var SEMI = 59;
+var EQ = 61;
+var DQUOTE = 34;
+var BSLASH = 92;
+var COMMA = 44;
+function parseParameters(header, type, index, len, stopChar) {
+  const parameters = new NullObject;
+  parameter:
+    while (index < len) {
+      if (header.charCodeAt(index) === stopChar)
+        break;
+      index = skipOWS(header, index + 1, len);
+      const keyStart = index;
+      while (index < len) {
+        const code = header.charCodeAt(index);
+        if (code === stopChar)
+          break parameter;
+        if (code === SEMI)
+          continue parameter;
+        if (code === EQ) {
+          const keyEnd = trailingOWS(header, keyStart, index);
+          const key = header.slice(keyStart, keyEnd).toLowerCase();
+          index = skipOWS(header, index + 1, len);
+          if (index < len && header.charCodeAt(index) === DQUOTE) {
+            index++;
+            let value = "";
+            while (index < len) {
+              const code2 = header.charCodeAt(index++);
+              if (code2 === DQUOTE) {
+                index = skipValue(header, index, len, stopChar);
+                if (parameters[key] === undefined)
+                  parameters[key] = value;
+                break;
+              }
+              if (code2 === BSLASH && index < len) {
+                value += header[index++];
+                continue;
+              }
+              value += String.fromCharCode(code2);
+            }
+            continue parameter;
+          }
+          const valueStart = index;
+          index = skipValue(header, index, len, stopChar);
+          if (parameters[key] === undefined) {
+            const valueEnd = trailingOWS(header, valueStart, index);
+            parameters[key] = header.slice(valueStart, valueEnd);
+          }
+          continue parameter;
+        }
+        index++;
+      }
+    }
+  return { type, index, parameters };
+}
+function skipValue(str, index, len, stopChar) {
+  while (index < len) {
+    const code = str.charCodeAt(index);
+    if (code === SEMI || code === stopChar)
+      break;
+    index++;
+  }
+  return index;
+}
+function skipOWS(header, index, len) {
+  while (index < len) {
+    const char = header.charCodeAt(index);
+    if (char !== SP && char !== HTAB)
+      break;
+    index++;
+  }
+  return index;
+}
+function trailingOWS(header, start, end) {
+  while (end > start) {
+    const char = header.charCodeAt(end - 1);
+    if (char !== SP && char !== HTAB)
+      break;
+    end--;
+  }
+  return end;
+}
 
 // node_modules/json-with-bigint/json-with-bigint.js
 var intRegex = /^-?\d+$/;
@@ -109120,7 +109085,7 @@ var JSONParseV2 = (text, reviver) => {
 };
 var MAX_INT = Number.MAX_SAFE_INTEGER.toString();
 var MAX_DIGITS = MAX_INT.length;
-var stringsOrLargeNumbers = /"(?:\\.|[^"])*"|-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/g;
+var stringsOrLargeNumbers = /"(?:[^"\\]|\\.)*"|-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/g;
 var noiseValueWithQuotes = /^"-?\d+n+"$/;
 var applyReviverIteratively = (parsed, userReviver) => {
   const rootHolder = { "": parsed };
@@ -109225,7 +109190,7 @@ class RequestError extends Error {
 }
 
 // node_modules/@octokit/request/dist-bundle/index.js
-var VERSION2 = "10.0.13";
+var VERSION2 = "10.0.15";
 var defaults_default = {
   headers: {
     "user-agent": `octokit-request.js/${VERSION2} ${getUserAgent()}`
@@ -109338,7 +109303,7 @@ async function getResponseData(response) {
   if (!contentType2) {
     return response.text().catch(noop);
   }
-  const mimetype = import_content_type.parse(contentType2);
+  const mimetype = parse3(contentType2);
   if (isJSONResponse(mimetype)) {
     let text = "";
     try {
@@ -127883,5 +127848,5 @@ async function index() {
 }
 await index();
 
-//# debugId=D3F0E4A91CFD677064756E2164756E21
+//# debugId=879062D4402B54A364756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
