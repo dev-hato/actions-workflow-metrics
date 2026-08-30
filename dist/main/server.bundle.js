@@ -17485,7 +17485,7 @@ var require_undici = __commonJS(function(exports, module) {
 var require_package = __commonJS(function(exports, module) {
   module.exports = {
     name: "systeminformation",
-    version: "5.33.1",
+    version: "5.33.6",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -17937,9 +17937,12 @@ var require_util9 = __commonJS(function(exports) {
         _psPersistent = true;
         _psChild.stdout.on("data", (data) => {
           _psResult = _psResult + data.toString("utf8");
-          if (data.indexOf(_psCmdSeperator) >= 0) {
-            powerShellProceedResults(_psResult);
-            _psResult = "";
+          let sepIndex = _psResult.indexOf(_psCmdSeperator);
+          while (sepIndex >= 0) {
+            const end = sepIndex + _psCmdSeperator.length;
+            powerShellProceedResults(_psResult.slice(0, end));
+            _psResult = _psResult.slice(end);
+            sepIndex = _psResult.indexOf(_psCmdSeperator);
           }
         });
         _psChild.stderr.on("data", () => {
@@ -21321,6 +21324,7 @@ var require_osinfo = __commonJS(function(exports) {
             result.codename = result.release.startsWith("14.") ? "Sonoma" : result.codename;
             result.codename = result.release.startsWith("15.") ? "Sequoia" : result.codename;
             result.codename = result.release.startsWith("26.") ? "Tahoe" : result.codename;
+            result.codename = result.release.startsWith("27.") ? "Golden Gate" : result.codename;
             result.uefi = true;
             result.codepage = util.getCodepage();
             if (callback) {
@@ -27952,6 +27956,9 @@ ${BSDName}|"; diskutil info /dev/${BSDName} | grep SMART;`;
         }
         if (_windows) {
           try {
+            let hasControlCharacters = function(str) {
+              return /\p{Cc}/u.test(str);
+            };
             const workload = [];
             workload.push(util.powerShell("Get-CimInstance Win32_DiskDrive | select Caption,Size,Status,PNPDeviceId,DeviceId,BytesPerSector,TotalCylinders,TotalHeads,TotalSectors,TotalTracks,TracksPerCylinder,SectorsPerTrack,FirmwareRevision,SerialNumber,InterfaceType | fl"));
             workload.push(util.powerShell("Get-PhysicalDisk | select BusType,MediaType,FriendlyName,Model,SerialNumber,Size | fl"));
@@ -27974,6 +27981,16 @@ ${BSDName}|"; diskutil info /dev/${BSDName} | grep SMART;`;
 `);
                 const size = util.getValue(lines, "Size", ":").trim();
                 const status = util.getValue(lines, "Status", ":").trim().toLowerCase();
+                let serialNum = util.getValue(lines, "SerialNumber", ":").trim();
+                if (hasControlCharacters(serialNum)) {
+                  const instanceId = util.getValue(lines, "PNPDeviceId", ":").trim().split("\\")[2];
+                  if (instanceId) {
+                    const parts = instanceId.split("&");
+                    if (parts.length == 2 && parts[1] === "0") {
+                      serialNum = parts[0];
+                    }
+                  }
+                }
                 if (size) {
                   result.push({
                     device: util.getValue(lines, "DeviceId", ":"),
@@ -27989,7 +28006,7 @@ ${BSDName}|"; diskutil info /dev/${BSDName} | grep SMART;`;
                     tracksPerCylinder: parseInt(util.getValue(lines, "TracksPerCylinder", ":"), 10),
                     sectorsPerTrack: parseInt(util.getValue(lines, "SectorsPerTrack", ":"), 10),
                     firmwareRevision: util.getValue(lines, "FirmwareRevision", ":").trim(),
-                    serialNum: util.getValue(lines, "SerialNumber", ":").trim(),
+                    serialNum,
                     interfaceType: util.getValue(lines, "InterfaceType", ":").trim(),
                     smartStatus: status === "ok" ? "Ok" : status === "degraded" ? "Degraded" : status === "pred fail" ? "Predicted Failure" : "Unknown",
                     temperature: null
@@ -33935,6 +33952,44 @@ var require_audio = __commonJS(function(exports) {
       return result;
     }
   }
+  function parseLinuxAudioAlsa(stdout) {
+    const result = [];
+    const parts = stdout.split("--pcm--");
+    const cards = parts[0] || "";
+    const pcms = parts[1] || "";
+    const lines = cards.split(`
+`);
+    lines.forEach((line, i) => {
+      const card = line.match(/^\s*(\d+)\s+\[(.+?)\s*\]:\s*(\S+)\s+-\s+(.*)$/);
+      if (card) {
+        const index = card[1];
+        const driver = card[3];
+        const name = card[4].trim();
+        const longName = (lines[i + 1] || "").trim();
+        const manufacturer = longName.indexOf(name) > 0 ? longName.substring(0, longName.indexOf(name)).trim() : "";
+        const devices = pcms.split(`
+`).filter((pcm) => pcm.indexOf("/card" + index + "/pcm") >= 0);
+        const out = devices.some((pcm) => pcm.trim().endsWith("p"));
+        const isIn = devices.some((pcm) => pcm.trim().endsWith("c"));
+        const usb = (driver + " " + longName).toLowerCase().indexOf("usb") >= 0;
+        const hdmi = (card[2] + " " + name).toLowerCase().indexOf("hdmi") >= 0;
+        result.push({
+          id: "hw:" + index,
+          name,
+          manufacturer,
+          revision: null,
+          driver,
+          default: null,
+          channel: usb ? "USB" : hdmi ? "HDMI" : "Onboard",
+          type: parseAudioType(name, isIn, out),
+          in: devices.length ? isIn : null,
+          out: devices.length ? out : null,
+          status: "online"
+        });
+      }
+    });
+    return result;
+  }
   function parseWinAudioStatus(n) {
     const num = parseInt(n, 10);
     let status = n;
@@ -34043,10 +34098,23 @@ var require_audio = __commonJS(function(exports) {
                 }
               });
             }
-            if (callback) {
-              callback(result);
+            if (!result.length) {
+              const cmdAlsa = 'cat /proc/asound/cards 2>/dev/null; echo "--pcm--"; ls -d /proc/asound/card*/pcm* 2>/dev/null';
+              exec(cmdAlsa, util.execOptsLinux, (error3, stdout2) => {
+                if (!error3) {
+                  parseLinuxAudioAlsa(stdout2.toString()).forEach((item) => result.push(item));
+                }
+                if (callback) {
+                  callback(result);
+                }
+                resolve(result);
+              });
+            } else {
+              if (callback) {
+                callback(result);
+              }
+              resolve(result);
             }
-            resolve(result);
           });
         }
         if (_darwin) {
@@ -36973,5 +37041,5 @@ async function server() {
 }
 await server();
 
-//# debugId=8F3D3544BA9FAA9D64756E2164756E21
+//# debugId=AA431BAA24F5347264756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
