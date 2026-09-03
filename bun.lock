@@ -138,7 +138,7 @@
 
     "@octokit/graphql": ["@octokit/graphql@9.0.4", "https://npm.flatt.tech/@octokit/graphql/-/graphql-9.0.4.tgz", { "dependencies": { "@octokit/request": "^10.0.13", "@octokit/types": "^17.0.0", "universal-user-agent": "^7.0.0" } }, "sha512-5s15CCiY8XXQ+FG+b1YQcl6Z2FA++nwAz/tg2VUrTmnMncP+2nnGUEYANImdnxsA2Fnq+Mbl7hDjUTw7cFAwcg=="],
 
-    "@octokit/openapi-types": ["@octokit/openapi-types@29.0.0", "", {}, "sha512-ir2ThdvtEl4iF5z2eZO51Gc/z324ipYHnCsrZmY/pZSMd9SJpNs14kTbrWd3Tbj3O+H+iNBhETzXuApkgdJRDw=="],
+    "@octokit/openapi-types": ["@octokit/openapi-types@29.0.0", "https://npm.flatt.tech/@octokit/openapi-types/-/openapi-types-29.0.0.tgz", {}, "sha512-ir2ThdvtEl4iF5z2eZO51Gc/z324ipYHnCsrZmY/pZSMd9SJpNs14kTbrWd3Tbj3O+H+iNBhETzXuApkgdJRDw=="],
 
     "@octokit/plugin-paginate-rest": ["@octokit/plugin-paginate-rest@14.0.0", "https://npm.flatt.tech/@octokit/plugin-paginate-rest/-/plugin-paginate-rest-14.0.0.tgz", { "dependencies": { "@octokit/types": "^16.0.0" }, "peerDependencies": { "@octokit/core": ">=6" } }, "sha512-fNVRE7ufJiAA3XUrha2omTA39M6IXIc6GIZLvlbsm8QOQCYvpq/LkMNGyFlB1d8hTDzsAXa3OKtybdMAYsV/fw=="],
 
