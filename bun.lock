@@ -9,7 +9,7 @@
         "@actions/github": "^9.0.0",
         "@octokit/action": "^8.0.4",
         "systeminformation": "^5.30.2",
-        "zod": "4.5.2",
+        "zod": "4.5.4",
       },
       "devDependencies": {
         "@octokit/openapi-types": "29.0.1",
@@ -1188,7 +1188,7 @@
 
     "zlibjs": ["zlibjs@0.3.1", "https://npm.flatt.tech/zlibjs/-/zlibjs-0.3.1.tgz", {}, "sha512-+J9RrgTKOmlxFSDHo0pI1xM6BLVUv+o0ZT9ANtCxGkjIVCCUdx9alUF8Gm+dGLKbkkkidWIHFDZHDMpfITt4+w=="],
 
-    "zod": ["zod@4.5.2", "https://npm.flatt.tech/zod/-/zod-4.5.2.tgz", {}, "sha512-XkYXCol10+ba/6F/cueWV+TezUeOqXW0hdeJt5CdXjTYeAgAQg5N03RQdJ80mhfFE72+pblvYMW4wy2Qp4Qbrg=="],
+    "zod": ["zod@4.5.4", "", {}, "sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA=="],
 
     "zwitch": ["zwitch@1.0.5", "https://npm.flatt.tech/zwitch/-/zwitch-1.0.5.tgz", {}, "sha512-V50KMwwzqJV0NpZIZFwfOD5/lyny3WlSzRiXgA0G7VUnRlqttta1L6UQIHzd6EuBY/cHGfwTIck7w1yH6Q5zUw=="],
 
