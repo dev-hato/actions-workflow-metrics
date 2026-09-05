@@ -114540,7 +114540,7 @@ function defineBound(proto, key, fn) {
   Object.defineProperty(proto, key, {
     configurable: true,
     get() {
-      return own(this, key, fn.bind(this));
+      return this == null ? fn : own(this, key, fn.bind(this));
     },
     set(value) {
       own(this, key, value);
@@ -115829,7 +115829,7 @@ ${content.join(`
 var version3 = {
   major: 4,
   minor: 5,
-  patch: 1
+  patch: 2
 };
 
 // node_modules/zod/v4/core/schemas.js
@@ -129606,7 +129606,7 @@ var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
     return safeParseAsync2(this, data, params);
   },
   get spa() {
-    return this.safeParseAsync;
+    return this?.safeParseAsync;
   },
   set spa(value) {
     exports_util.own(this, "spa", value);
@@ -129635,11 +129635,8 @@ var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
   async safeDecodeAsync(data, params) {
     return safeDecodeAsync2(this, data, params);
   },
-  get toJSONSchema() {
-    return exports_util.own(this, "toJSONSchema", createToJSONSchemaMethod(this, {}));
-  },
-  set toJSONSchema(value) {
-    exports_util.own(this, "toJSONSchema", value);
+  toJSONSchema(params) {
+    return createToJSONSchemaMethod(this, {})(params);
   },
   get description() {
     return globalRegistry.get(this)?.description;
@@ -132071,5 +132068,5 @@ async function index() {
 }
 await index();
 
-//# debugId=511B70A631945E9464756E2164756E21
+//# debugId=39AEE87B9392B0BD64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
