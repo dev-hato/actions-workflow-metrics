@@ -5890,21 +5890,20 @@ var require_client_h1 = __commonJS(function(exports, module) {
   }
   function clearIdleSocketValidation(socket) {
     if (socket[kIdleSocketValidationTimeout]) {
-      clearTimeout(socket[kIdleSocketValidationTimeout]);
+      clearImmediate(socket[kIdleSocketValidationTimeout]);
       socket[kIdleSocketValidationTimeout] = null;
     }
     socket[kIdleSocketValidation] = 0;
   }
   function scheduleIdleSocketValidation(client, socket) {
     socket[kIdleSocketValidation] = 1;
-    socket[kIdleSocketValidationTimeout] = setTimeout(() => {
+    socket[kIdleSocketValidationTimeout] = setImmediate(() => {
       socket[kIdleSocketValidationTimeout] = null;
       socket[kIdleSocketValidation] = 2;
       if (client[kSocket] === socket && !socket.destroyed) {
         client[kResume]();
       }
-    }, 0);
-    socket[kIdleSocketValidationTimeout].unref?.();
+    });
   }
   function resumeH1(client) {
     const socket = client[kSocket];
@@ -8502,6 +8501,7 @@ var require_retry_handler = __commonJS(function(exports, module) {
       this.end = null;
       this.etag = null;
       this.resume = null;
+      this.headersSent = false;
       this.handler.onConnect((reason) => {
         this.aborted = true;
         if (this.abort) {
@@ -8510,6 +8510,14 @@ var require_retry_handler = __commonJS(function(exports, module) {
           this.reason = reason;
         }
       });
+    }
+    checkpointResponseEnd(headers, resume) {
+      if (this.end == null && this.opts.method !== "HEAD") {
+        const contentLength = headers["content-length"];
+        this.end = contentLength != null ? Number(contentLength) - 1 : null;
+        assert(this.end == null || Number.isFinite(this.end), "invalid content-length");
+      }
+      this.resume = this.end != null ? resume : null;
     }
     onRequestSent() {
       if (this.handler.onRequestSent) {
@@ -8574,6 +8582,8 @@ var require_retry_handler = __commonJS(function(exports, module) {
       this.retryCount += 1;
       if (statusCode >= 300) {
         if (this.retryOpts.statusCodes.includes(statusCode) === false) {
+          this.headersSent = true;
+          this.checkpointResponseEnd(headers, resume);
           return this.handler.onHeaders(statusCode, rawHeaders, resume, statusMessage);
         } else {
           this.abort(new RequestRetryError("Request failed", statusCode, {
@@ -8615,8 +8625,13 @@ var require_retry_handler = __commonJS(function(exports, module) {
           return false;
         }
         const { start, size, end = size - 1 } = contentRange;
-        assert(this.start === start, "content-range mismatch");
-        assert(this.end == null || this.end === end, "content-range mismatch");
+        if (this.start !== start || this.end != null && this.end !== end) {
+          this.abort(new RequestRetryError("Content-Range mismatch", statusCode, {
+            headers,
+            data: { count: this.retryCount }
+          }));
+          return false;
+        }
         this.resume = resume;
         return true;
       }
@@ -8624,6 +8639,7 @@ var require_retry_handler = __commonJS(function(exports, module) {
         if (statusCode === 206) {
           const range = parseRangeHeader(headers["content-range"]);
           if (range == null) {
+            this.headersSent = true;
             return this.handler.onHeaders(statusCode, rawHeaders, resume, statusMessage);
           }
           const contentLengthError = validatePartialResponseContentLength(headers, range, statusCode, this.retryCount);
@@ -8644,6 +8660,7 @@ var require_retry_handler = __commonJS(function(exports, module) {
         assert(Number.isFinite(this.start));
         assert(this.end == null || Number.isFinite(this.end), "invalid content-length");
         this.resume = resume;
+        this.headersSent = true;
         this.etag = headers.etag != null ? headers.etag : null;
         if (this.etag != null && this.etag.startsWith("W/")) {
           this.etag = null;
@@ -8666,7 +8683,7 @@ var require_retry_handler = __commonJS(function(exports, module) {
       return this.handler.onComplete(rawTrailers);
     }
     onError(err) {
-      if (this.aborted || isDisturbed(this.opts.body)) {
+      if (this.aborted || isDisturbed(this.opts.body) || this.headersSent && this.resume == null) {
         return this.handler.onError(err);
       }
       if (this.retryCount - this.retryCountCheckpoint > 0) {
@@ -15935,7 +15952,7 @@ var require_connection = __commonJS(function(exports, module) {
         const secProtocol = response.headersList.get("Sec-WebSocket-Protocol");
         if (secProtocol !== null) {
           const requestProtocols = getDecodeSplit("sec-websocket-protocol", request.headersList);
-          if (!requestProtocols.includes(secProtocol)) {
+          if (requestProtocols === null || !requestProtocols.includes(secProtocol)) {
             failWebsocketConnection(ws, "Protocol was not set in the opening handshake.");
             return;
           }
@@ -16070,6 +16087,7 @@ var require_permessage_deflate = __commonJS(function(exports, module) {
           if (this.#maxPayloadSize > 0 && this.#inflate[kLength] > this.#maxPayloadSize) {
             callback(new MessageSizeExceededError);
             this.#inflate.removeAllListeners();
+            this.#inflate.destroy();
             this.#inflate = null;
             return;
           }
@@ -16899,14 +16917,51 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
   var CR = 13;
   var COLON = 58;
   var SPACE = 32;
+  var DATA = Buffer.from("data");
+  var EVENT = Buffer.from("event");
+  var ID = Buffer.from("id");
+  var RETRY = Buffer.from("retry");
+  function isASCIINumberBytes(buffer, start) {
+    if (start >= buffer.length) {
+      return false;
+    }
+    for (let i = start;i < buffer.length; i++) {
+      if (buffer[i] < 48 || buffer[i] > 57) {
+        return false;
+      }
+    }
+    return true;
+  }
+  function isValidLastEventIdBytes(buffer, start) {
+    for (let i = start;i < buffer.length; i++) {
+      if (buffer[i] === 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+  function isFieldName(line, length, field) {
+    if (length !== field.length) {
+      return false;
+    }
+    for (let i = 0;i < length; i++) {
+      if (line[i] !== field[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   class EventSourceStream extends Transform {
     state = null;
     checkBOM = true;
     crlfCheck = false;
     eventEndCheck = false;
-    buffer = null;
+    chunks = [];
+    chunkIndex = 0;
     pos = 0;
+    lineChunkIndex = 0;
+    linePos = 0;
     event = {
       data: undefined,
       event: undefined,
@@ -16926,63 +16981,30 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
         callback();
         return;
       }
-      if (this.buffer) {
-        this.buffer = Buffer.concat([this.buffer, chunk]);
-      } else {
-        this.buffer = chunk;
-      }
+      this.chunks.push(chunk);
       if (this.checkBOM) {
-        switch (this.buffer.length) {
-          case 1:
-            if (this.buffer[0] === BOM[0]) {
-              callback();
-              return;
-            }
-            this.checkBOM = false;
-            callback();
-            return;
-          case 2:
-            if (this.buffer[0] === BOM[0] && this.buffer[1] === BOM[1]) {
-              callback();
-              return;
-            }
-            this.checkBOM = false;
-            break;
-          case 3:
-            if (this.buffer[0] === BOM[0] && this.buffer[1] === BOM[1] && this.buffer[2] === BOM[2]) {
-              this.buffer = Buffer.alloc(0);
-              this.checkBOM = false;
-              callback();
-              return;
-            }
-            this.checkBOM = false;
-            break;
-          default:
-            if (this.buffer[0] === BOM[0] && this.buffer[1] === BOM[1] && this.buffer[2] === BOM[2]) {
-              this.buffer = this.buffer.subarray(3);
-            }
-            this.checkBOM = false;
-            break;
+        if (this.handleBOM()) {
+          callback();
+          return;
         }
       }
-      while (this.pos < this.buffer.length) {
+      while (this.hasCurrentByte()) {
+        const byte = this.currentByte();
         if (this.eventEndCheck) {
           if (this.crlfCheck) {
-            if (this.buffer[this.pos] === LF) {
-              this.buffer = this.buffer.subarray(this.pos + 1);
-              this.pos = 0;
+            if (byte === LF) {
               this.crlfCheck = false;
+              this.consumeCurrentByte();
               continue;
             }
             this.crlfCheck = false;
           }
-          if (this.buffer[this.pos] === LF || this.buffer[this.pos] === CR) {
-            if (this.buffer[this.pos] === CR) {
+          if (byte === LF || byte === CR) {
+            if (byte === CR) {
               this.crlfCheck = true;
             }
-            this.buffer = this.buffer.subarray(this.pos + 1);
-            this.pos = 0;
-            if (this.event.data !== undefined || this.event.event || this.event.id || this.event.retry) {
+            this.consumeCurrentByte();
+            if (this.hasPendingEvent()) {
               this.processEvent(this.event);
             }
             this.clearEvent();
@@ -16991,17 +17013,16 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
           this.eventEndCheck = false;
           continue;
         }
-        if (this.buffer[this.pos] === LF || this.buffer[this.pos] === CR) {
-          if (this.buffer[this.pos] === CR) {
+        if (byte === LF || byte === CR) {
+          if (byte === CR) {
             this.crlfCheck = true;
           }
-          this.parseLine(this.buffer.subarray(0, this.pos), this.event);
-          this.buffer = this.buffer.subarray(this.pos + 1);
-          this.pos = 0;
+          this.parseLine(this.readLine(), this.event);
+          this.consumeCurrentByte();
           this.eventEndCheck = true;
           continue;
         }
-        this.pos++;
+        this.advanceCursor();
       }
       callback();
     }
@@ -17013,43 +17034,42 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
       if (colonPosition === 0) {
         return;
       }
-      let field = "";
-      let value = "";
+      let fieldLength = line.length;
+      let valueStart = line.length;
       if (colonPosition !== -1) {
-        field = line.subarray(0, colonPosition).toString("utf8");
-        let valueStart = colonPosition + 1;
+        fieldLength = colonPosition;
+        valueStart = colonPosition + 1;
         if (line[valueStart] === SPACE) {
           ++valueStart;
         }
-        value = line.subarray(valueStart).toString("utf8");
-      } else {
-        field = line.toString("utf8");
-        value = "";
       }
-      switch (field) {
-        case "data":
-          if (event[field] === undefined) {
-            event[field] = value;
-          } else {
-            event[field] += `
+      if (isFieldName(line, fieldLength, DATA)) {
+        const value = line.toString("utf8", valueStart);
+        if (event.data === undefined) {
+          event.data = value;
+        } else {
+          event.data += `
 ${value}`;
-          }
-          break;
-        case "retry":
-          if (isASCIINumber(value)) {
-            event[field] = value;
-          }
-          break;
-        case "id":
-          if (isValidLastEventId(value)) {
-            event[field] = value;
-          }
-          break;
-        case "event":
-          if (value.length > 0) {
-            event[field] = value;
-          }
-          break;
+        }
+        return;
+      }
+      if (isFieldName(line, fieldLength, RETRY)) {
+        if (isASCIINumberBytes(line, valueStart)) {
+          event.retry = line.toString("utf8", valueStart);
+        }
+        return;
+      }
+      if (isFieldName(line, fieldLength, ID)) {
+        if (isValidLastEventIdBytes(line, valueStart)) {
+          event.id = line.toString("utf8", valueStart);
+        }
+        return;
+      }
+      if (isFieldName(line, fieldLength, EVENT)) {
+        const value = line.toString("utf8", valueStart);
+        if (value.length > 0) {
+          event.event = value;
+        }
       }
     }
     processEvent(event) {
@@ -17071,12 +17091,120 @@ ${value}`;
       }
     }
     clearEvent() {
-      this.event = {
-        data: undefined,
-        event: undefined,
-        id: undefined,
-        retry: undefined
-      };
+      this.event.data = undefined;
+      this.event.event = undefined;
+      this.event.id = undefined;
+      this.event.retry = undefined;
+    }
+    hasPendingEvent() {
+      return this.event.data !== undefined || this.event.event !== undefined || this.event.id !== undefined || this.event.retry !== undefined;
+    }
+    hasCurrentByte() {
+      return this.chunkIndex < this.chunks.length && this.pos < this.chunks[this.chunkIndex].length;
+    }
+    currentByte() {
+      return this.chunks[this.chunkIndex][this.pos];
+    }
+    consumeCurrentByte() {
+      this.advanceCursor();
+      this.syncLineStartToCursor();
+    }
+    advanceCursor() {
+      this.pos++;
+      while (this.chunkIndex < this.chunks.length && this.pos >= this.chunks[this.chunkIndex].length) {
+        this.chunkIndex++;
+        this.pos = 0;
+      }
+    }
+    syncLineStartToCursor() {
+      this.lineChunkIndex = this.chunkIndex;
+      this.linePos = this.pos;
+      this.dropConsumedChunks();
+    }
+    dropConsumedChunks() {
+      while (this.lineChunkIndex > 0) {
+        this.chunks.shift();
+        this.lineChunkIndex--;
+        this.chunkIndex--;
+      }
+      if (this.chunkIndex === this.chunks.length) {
+        this.chunks.length = 0;
+        this.chunkIndex = 0;
+        this.pos = 0;
+        this.lineChunkIndex = 0;
+        this.linePos = 0;
+      }
+    }
+    readLine() {
+      if (this.lineChunkIndex === this.chunkIndex) {
+        return this.chunks[this.chunkIndex].subarray(this.linePos, this.pos);
+      }
+      const chunks = [];
+      let length = 0;
+      for (let i = this.lineChunkIndex;i <= this.chunkIndex; i++) {
+        const chunk = this.chunks[i];
+        const start = i === this.lineChunkIndex ? this.linePos : 0;
+        const end = i === this.chunkIndex ? this.pos : chunk.length;
+        const slice = chunk.subarray(start, end);
+        length += slice.length;
+        chunks.push(slice);
+      }
+      return Buffer.concat(chunks, length);
+    }
+    peekBufferedByte(offset) {
+      let chunkIndex = this.lineChunkIndex;
+      let pos = this.linePos;
+      while (chunkIndex < this.chunks.length) {
+        const chunk = this.chunks[chunkIndex];
+        const remaining = chunk.length - pos;
+        if (offset < remaining) {
+          return chunk[pos + offset];
+        }
+        offset -= remaining;
+        chunkIndex++;
+        pos = 0;
+      }
+    }
+    discardLeadingBytes(count) {
+      while (count > 0 && this.lineChunkIndex < this.chunks.length) {
+        const chunk = this.chunks[this.lineChunkIndex];
+        const remaining = chunk.length - this.linePos;
+        if (count < remaining) {
+          this.linePos += count;
+          count = 0;
+        } else {
+          count -= remaining;
+          this.lineChunkIndex++;
+          this.linePos = 0;
+        }
+      }
+      this.chunkIndex = this.lineChunkIndex;
+      this.pos = this.linePos;
+      this.dropConsumedChunks();
+    }
+    handleBOM() {
+      const first = this.peekBufferedByte(0);
+      const second = this.peekBufferedByte(1);
+      const third = this.peekBufferedByte(2);
+      if (second === undefined) {
+        if (first === BOM[0]) {
+          return true;
+        }
+        this.checkBOM = false;
+        return true;
+      }
+      if (third === undefined) {
+        if (first === BOM[0] && second === BOM[1]) {
+          return true;
+        }
+        this.checkBOM = false;
+        return false;
+      }
+      if (first === BOM[0] && second === BOM[1] && third === BOM[2]) {
+        this.discardLeadingBytes(3);
+      }
+      this.checkBOM = false;
+      return !this.hasCurrentByte();
     }
   }
   module.exports = {
@@ -17485,7 +17613,7 @@ var require_undici = __commonJS(function(exports, module) {
 var require_package = __commonJS(function(exports, module) {
   module.exports = {
     name: "systeminformation",
-    version: "5.33.6",
+    version: "5.33.8",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -21032,7 +21160,6 @@ var require_osinfo = __commonJS(function(exports) {
   var util = require_util9();
   var exec = __require("child_process").exec;
   var execSync = __require("child_process").execSync;
-  var execFile = __require("child_process").execFile;
   var _platform = process.platform;
   var _linux = _platform === "linux" || _platform === "android";
   var _darwin = _platform === "darwin";
@@ -21775,80 +21902,48 @@ var require_osinfo = __commonJS(function(exports) {
             });
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "postgresql")) {
-            if (_linux) {
-              exec("locate bin/postgres", (error2, stdout) => {
-                if (!error2) {
-                  const safePath = /^[a-zA-Z0-9/_.-]+$/;
-                  const postgresqlBin = stdout.toString().split(`
-`).filter((p) => safePath.test(p.trim())).sort();
-                  if (postgresqlBin.length) {
-                    execFile(postgresqlBin[postgresqlBin.length - 1], ["-V"], (error3, stdout2) => {
-                      if (!error3) {
-                        const postgresql = stdout2.toString().split(`
-`)[0].split(" ") || [];
-                        appsObj.versions.postgresql = postgresql.length ? postgresql[postgresql.length - 1] : "";
+            if (_windows) {
+              util.powerShell("Get-CimInstance Win32_Service | select caption | fl").then((stdout) => {
+                let serviceSections = stdout.split(/\n\s*\n/);
+                serviceSections.forEach((item) => {
+                  if (item.trim() !== "") {
+                    let lines = item.trim().split(`\r
+`);
+                    let srvCaption = util.getValue(lines, "caption", ":", true).toLowerCase();
+                    if (srvCaption.indexOf("postgresql") > -1) {
+                      const parts = srvCaption.split(" server ");
+                      if (parts.length > 1) {
+                        appsObj.versions.postgresql = parts[1];
                       }
-                      functionProcessed();
-                    });
-                  } else {
-                    functionProcessed();
-                  }
-                } else {
-                  exec("psql -V", (error3, stdout2) => {
-                    if (!error3) {
-                      const postgresql = stdout2.toString().split(`
-`)[0].split(" ") || [];
-                      appsObj.versions.postgresql = postgresql.length ? postgresql[postgresql.length - 1] : "";
-                      appsObj.versions.postgresql = appsObj.versions.postgresql.split("-")[0];
                     }
-                    functionProcessed();
-                  });
-                }
+                  }
+                });
+                functionProcessed();
               });
             } else {
-              if (_windows) {
-                util.powerShell("Get-CimInstance Win32_Service | select caption | fl").then((stdout) => {
-                  let serviceSections = stdout.split(/\n\s*\n/);
-                  serviceSections.forEach((item) => {
-                    if (item.trim() !== "") {
-                      let lines = item.trim().split(`\r
-`);
-                      let srvCaption = util.getValue(lines, "caption", ":", true).toLowerCase();
-                      if (srvCaption.indexOf("postgresql") > -1) {
-                        const parts = srvCaption.split(" server ");
-                        if (parts.length > 1) {
-                          appsObj.versions.postgresql = parts[1];
-                        }
-                      }
-                    }
-                  });
-                  functionProcessed();
-                });
-              } else {
-                exec("postgres -V", (error2, stdout) => {
-                  if (!error2) {
-                    const postgresql = stdout.toString().split(`
+              const parsePostgres = (stdout) => {
+                const postgresql = stdout.toString().split(`
 `)[0].split(" ") || [];
-                    appsObj.versions.postgresql = postgresql.length ? postgresql[postgresql.length - 1] : "";
-                    if (appsObj.versions.postgresql.includes("(") && postgresql.length >= 2 && !postgresql[postgresql.length - 2].includes("(")) {
-                      appsObj.versions.postgresql = postgresql[postgresql.length - 2];
-                    }
+                let version = postgresql.length ? postgresql[postgresql.length - 1] : "";
+                if (version.includes("(") && postgresql.length >= 2 && !postgresql[postgresql.length - 2].includes("(")) {
+                  version = postgresql[postgresql.length - 2];
+                }
+                return version.split("-")[0];
+              };
+              const tryPostgres = (cmds) => {
+                if (!cmds.length) {
+                  return functionProcessed();
+                }
+                exec(cmds[0], (error2, stdout) => {
+                  if (!error2 && stdout.toString().trim()) {
+                    appsObj.versions.postgresql = parsePostgres(stdout);
                     functionProcessed();
                   } else {
-                    exec("pg_config --version", (error3, stdout2) => {
-                      if (!error3) {
-                        const postgresql = stdout2.toString().split(`
-`)[0].split(" ") || [];
-                        appsObj.versions.postgresql = postgresql.length ? postgresql[postgresql.length - 1] : "";
-                        if (appsObj.versions.postgresql.includes("(") && postgresql.length >= 2 && !postgresql[postgresql.length - 2].includes("(")) {
-                          appsObj.versions.postgresql = postgresql[postgresql.length - 2];
-                        }
-                      }
-                      functionProcessed();
-                    });
+                    tryPostgres(cmds.slice(1));
                   }
                 });
-              }
+              };
+              tryPostgres(["postgres -V", "pg_config --version", "psql -V"]);
             }
           }
           if ({}.hasOwnProperty.call(appsObj.versions, "perl")) {
@@ -25265,6 +25360,7 @@ var require_graphics = __commonJS(function(exports) {
   var path = __require("path");
   var exec = __require("child_process").exec;
   var execSync = __require("child_process").execSync;
+  var execFileSync = __require("child_process").execFileSync;
   var util = require_util9();
   var _platform = process.platform;
   var _nvidiaSmiPath = "";
@@ -25672,14 +25768,9 @@ var require_graphics = __commonJS(function(exports) {
       options = Object.assign({}, options || util.execOptsWin);
       if (nvidiaSmiExe) {
         const nvidiaSmiOpts = "--query-gpu=driver_version,pci.sub_device_id,name,pci.bus_id,fan.speed,memory.total,memory.used,memory.free,utilization.gpu,utilization.memory,temperature.gpu,temperature.memory,power.draw,power.limit,clocks.gr,clocks.mem --format=csv,noheader,nounits";
-        const cmd = `"${nvidiaSmiExe}" ${nvidiaSmiOpts}`;
-        if (_linux) {
-          options.stdio = ["pipe", "pipe", "ignore"];
-        }
+        options.stdio = ["pipe", "pipe", "ignore"];
         try {
-          const sanitized = cmd + (_linux ? "  2>/dev/null" : "") + (_windows ? "  2> nul" : "");
-          const res = execSync(sanitized, options).toString();
-          return res;
+          return execFileSync(nvidiaSmiExe, nvidiaSmiOpts.split(" "), options).toString();
         } catch {
           util.noop();
         }
@@ -27967,6 +28058,9 @@ ${BSDName}|"; diskutil info /dev/${BSDName} | grep SMART;`;
                 const smartDev = JSON.parse(execSync("smartctl --scan -j").toString());
                 if (smartDev && smartDev.devices && smartDev.devices.length > 0) {
                   smartDev.devices.forEach((dev) => {
+                    if (!/^[\w/.,:\\-]+$/.test(String(dev.name || ""))) {
+                      return;
+                    }
                     workload.push(execPromiseSave(`smartctl -j -a ${dev.name}`, util.execOptsWin));
                   });
                 }
@@ -28423,9 +28517,9 @@ Profile on interface`);
   }
   function getWindowsWirelessIfaceSSID(interfaceName) {
     try {
-      const result = execSync(`netsh wlan show  interface name="${interfaceName}" | findstr "SSID"`, util.execOptsWin);
+      const result = execFileSync("netsh", ["wlan", "show", "interface", `name=${util.sanitizeString(interfaceName)}`], util.execOptsWin).toString();
       const SSID = result.split(`\r
-`).shift();
+`).find((l) => l.includes("SSID")) || "";
       const parseSSID = SSID.split(":").pop().trim();
       return parseSSID;
     } catch {
@@ -28473,7 +28567,7 @@ Profile on interface`);
         const SSID = getWindowsWirelessIfaceSSID(iface);
         if (SSID !== "Unknown") {
           const ifaceSanitized = util.sanitizeString(SSID);
-          const profiles = execSync(`netsh wlan show profiles "${ifaceSanitized}"`, util.execOptsWin).split(`\r
+          const profiles = execFileSync("netsh", ["wlan", "show", "profiles", ifaceSanitized], util.execOptsWin).toString().split(`\r
 `);
           i8021xState = (profiles.find((l) => l.indexOf("802.1X") >= 0) || "").trim();
           i8021xProtocol = (profiles.find((l) => l.indexOf("EAP") >= 0) || "").trim();
@@ -28949,7 +29043,7 @@ Profile on interface`);
                   ip6subnet = ip6linksubnet;
                 }
                 const iface = dev.split(":")[0].trim();
-                const ifaceSanitized = util.sanitizeString(iface);
+                const ifaceSanitized = util.sanitizeString(iface, true);
                 const cmd = `echo -n "addr_assign_type: "; cat /sys/class/net/${ifaceSanitized}/addr_assign_type 2>/dev/null; echo;
             echo -n "address: "; cat /sys/class/net/${ifaceSanitized}/address 2>/dev/null; echo;
             echo -n "addr_len: "; cat /sys/class/net/${ifaceSanitized}/addr_len 2>/dev/null; echo;
@@ -30064,7 +30158,7 @@ Interface `);
     }
   }
   function nmiDeviceLinux(iface) {
-    const cmd = `nmcli -t -f general,wifi-properties,capabilities,ip4,ip6 device show ${iface} 2> /dev/null`;
+    const cmd = `nmcli -t -f general,wifi-properties,capabilities,ip4,ip6 device show ${util.sanitizeString(iface, true)} 2> /dev/null`;
     try {
       const lines = execSync(cmd, util.execOptsLinux).toString().split(`
 `);
@@ -32447,6 +32541,12 @@ var require_internet = __commonJS(function(exports) {
           }
           return resolve(null);
         }
+        if (hostSanitized.startsWith("-")) {
+          if (callback) {
+            callback(null);
+          }
+          return resolve(null);
+        }
         let params;
         if (_linux || _freebsd || _openbsd || _netbsd || _darwin) {
           if (_linux) {
@@ -33905,7 +34005,7 @@ var require_audio = __commonJS(function(exports) {
     if (str.indexOf("mikr") >= 0) {
       result = "Microphone";
     }
-    if (str.indexOf("phone") >= 0) {
+    if (str.indexOf("phone") >= 0 && str.indexOf("headphone") < 0) {
       result = "Phone";
     }
     if (str.indexOf("controll") >= 0) {
@@ -33960,11 +34060,15 @@ var require_audio = __commonJS(function(exports) {
     const lines = cards.split(`
 `);
     lines.forEach((line, i) => {
-      const card = line.match(/^\s*(\d+)\s+\[(.+?)\s*\]:\s*(\S+)\s+-\s+(.*)$/);
-      if (card) {
+      const card = line.match(/^\s*(\d+)\s+\[(.+?)\s*\]:\s*(.*)$/);
+      if (card && card[3].trim()) {
         const index = card[1];
-        const driver = card[3];
-        const name = card[4].trim();
+        const sep = card[3].lastIndexOf(" - ");
+        const name = (sep >= 0 ? card[3].substring(sep + 3) : card[3]).trim();
+        let driver = (sep >= 0 ? card[3].substring(0, sep) : "").trim();
+        if (name && driver.endsWith(name)) {
+          driver = driver.substring(0, driver.length - name.length).trim();
+        }
         const longName = (lines[i + 1] || "").trim();
         const manufacturer = longName.indexOf(name) > 0 ? longName.substring(0, longName.indexOf(name)).trim() : "";
         const devices = pcms.split(`
@@ -37041,5 +37145,5 @@ async function server() {
 }
 await server();
 
-//# debugId=AA431BAA24F5347264756E2164756E21
+//# debugId=589AEEEAA29066CF64756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
