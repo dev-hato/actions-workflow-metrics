@@ -5890,21 +5890,20 @@ var require_client_h1 = __commonJS(function(exports, module) {
   }
   function clearIdleSocketValidation(socket) {
     if (socket[kIdleSocketValidationTimeout]) {
-      clearTimeout(socket[kIdleSocketValidationTimeout]);
+      clearImmediate(socket[kIdleSocketValidationTimeout]);
       socket[kIdleSocketValidationTimeout] = null;
     }
     socket[kIdleSocketValidation] = 0;
   }
   function scheduleIdleSocketValidation(client, socket) {
     socket[kIdleSocketValidation] = 1;
-    socket[kIdleSocketValidationTimeout] = setTimeout(() => {
+    socket[kIdleSocketValidationTimeout] = setImmediate(() => {
       socket[kIdleSocketValidationTimeout] = null;
       socket[kIdleSocketValidation] = 2;
       if (client[kSocket] === socket && !socket.destroyed) {
         client[kResume]();
       }
-    }, 0);
-    socket[kIdleSocketValidationTimeout].unref?.();
+    });
   }
   function resumeH1(client) {
     const socket = client[kSocket];
@@ -8502,6 +8501,7 @@ var require_retry_handler = __commonJS(function(exports, module) {
       this.end = null;
       this.etag = null;
       this.resume = null;
+      this.headersSent = false;
       this.handler.onConnect((reason) => {
         this.aborted = true;
         if (this.abort) {
@@ -8510,6 +8510,14 @@ var require_retry_handler = __commonJS(function(exports, module) {
           this.reason = reason;
         }
       });
+    }
+    checkpointResponseEnd(headers, resume) {
+      if (this.end == null && this.opts.method !== "HEAD") {
+        const contentLength = headers["content-length"];
+        this.end = contentLength != null ? Number(contentLength) - 1 : null;
+        assert(this.end == null || Number.isFinite(this.end), "invalid content-length");
+      }
+      this.resume = this.end != null ? resume : null;
     }
     onRequestSent() {
       if (this.handler.onRequestSent) {
@@ -8574,6 +8582,8 @@ var require_retry_handler = __commonJS(function(exports, module) {
       this.retryCount += 1;
       if (statusCode >= 300) {
         if (this.retryOpts.statusCodes.includes(statusCode) === false) {
+          this.headersSent = true;
+          this.checkpointResponseEnd(headers, resume);
           return this.handler.onHeaders(statusCode, rawHeaders, resume, statusMessage);
         } else {
           this.abort(new RequestRetryError("Request failed", statusCode, {
@@ -8615,8 +8625,13 @@ var require_retry_handler = __commonJS(function(exports, module) {
           return false;
         }
         const { start, size, end = size - 1 } = contentRange;
-        assert(this.start === start, "content-range mismatch");
-        assert(this.end == null || this.end === end, "content-range mismatch");
+        if (this.start !== start || this.end != null && this.end !== end) {
+          this.abort(new RequestRetryError("Content-Range mismatch", statusCode, {
+            headers,
+            data: { count: this.retryCount }
+          }));
+          return false;
+        }
         this.resume = resume;
         return true;
       }
@@ -8624,6 +8639,7 @@ var require_retry_handler = __commonJS(function(exports, module) {
         if (statusCode === 206) {
           const range = parseRangeHeader(headers["content-range"]);
           if (range == null) {
+            this.headersSent = true;
             return this.handler.onHeaders(statusCode, rawHeaders, resume, statusMessage);
           }
           const contentLengthError = validatePartialResponseContentLength(headers, range, statusCode, this.retryCount);
@@ -8644,6 +8660,7 @@ var require_retry_handler = __commonJS(function(exports, module) {
         assert(Number.isFinite(this.start));
         assert(this.end == null || Number.isFinite(this.end), "invalid content-length");
         this.resume = resume;
+        this.headersSent = true;
         this.etag = headers.etag != null ? headers.etag : null;
         if (this.etag != null && this.etag.startsWith("W/")) {
           this.etag = null;
@@ -8666,7 +8683,7 @@ var require_retry_handler = __commonJS(function(exports, module) {
       return this.handler.onComplete(rawTrailers);
     }
     onError(err) {
-      if (this.aborted || isDisturbed(this.opts.body)) {
+      if (this.aborted || isDisturbed(this.opts.body) || this.headersSent && this.resume == null) {
         return this.handler.onError(err);
       }
       if (this.retryCount - this.retryCountCheckpoint > 0) {
@@ -15935,7 +15952,7 @@ var require_connection = __commonJS(function(exports, module) {
         const secProtocol = response.headersList.get("Sec-WebSocket-Protocol");
         if (secProtocol !== null) {
           const requestProtocols = getDecodeSplit("sec-websocket-protocol", request.headersList);
-          if (!requestProtocols.includes(secProtocol)) {
+          if (requestProtocols === null || !requestProtocols.includes(secProtocol)) {
             failWebsocketConnection(ws, "Protocol was not set in the opening handshake.");
             return;
           }
@@ -16070,6 +16087,7 @@ var require_permessage_deflate = __commonJS(function(exports, module) {
           if (this.#maxPayloadSize > 0 && this.#inflate[kLength] > this.#maxPayloadSize) {
             callback(new MessageSizeExceededError);
             this.#inflate.removeAllListeners();
+            this.#inflate.destroy();
             this.#inflate = null;
             return;
           }
@@ -16899,14 +16917,51 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
   var CR = 13;
   var COLON = 58;
   var SPACE = 32;
+  var DATA = Buffer.from("data");
+  var EVENT = Buffer.from("event");
+  var ID = Buffer.from("id");
+  var RETRY = Buffer.from("retry");
+  function isASCIINumberBytes(buffer, start) {
+    if (start >= buffer.length) {
+      return false;
+    }
+    for (let i = start;i < buffer.length; i++) {
+      if (buffer[i] < 48 || buffer[i] > 57) {
+        return false;
+      }
+    }
+    return true;
+  }
+  function isValidLastEventIdBytes(buffer, start) {
+    for (let i = start;i < buffer.length; i++) {
+      if (buffer[i] === 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+  function isFieldName(line, length, field) {
+    if (length !== field.length) {
+      return false;
+    }
+    for (let i = 0;i < length; i++) {
+      if (line[i] !== field[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   class EventSourceStream extends Transform {
     state = null;
     checkBOM = true;
     crlfCheck = false;
     eventEndCheck = false;
-    buffer = null;
+    chunks = [];
+    chunkIndex = 0;
     pos = 0;
+    lineChunkIndex = 0;
+    linePos = 0;
     event = {
       data: undefined,
       event: undefined,
@@ -16926,63 +16981,30 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
         callback();
         return;
       }
-      if (this.buffer) {
-        this.buffer = Buffer.concat([this.buffer, chunk]);
-      } else {
-        this.buffer = chunk;
-      }
+      this.chunks.push(chunk);
       if (this.checkBOM) {
-        switch (this.buffer.length) {
-          case 1:
-            if (this.buffer[0] === BOM[0]) {
-              callback();
-              return;
-            }
-            this.checkBOM = false;
-            callback();
-            return;
-          case 2:
-            if (this.buffer[0] === BOM[0] && this.buffer[1] === BOM[1]) {
-              callback();
-              return;
-            }
-            this.checkBOM = false;
-            break;
-          case 3:
-            if (this.buffer[0] === BOM[0] && this.buffer[1] === BOM[1] && this.buffer[2] === BOM[2]) {
-              this.buffer = Buffer.alloc(0);
-              this.checkBOM = false;
-              callback();
-              return;
-            }
-            this.checkBOM = false;
-            break;
-          default:
-            if (this.buffer[0] === BOM[0] && this.buffer[1] === BOM[1] && this.buffer[2] === BOM[2]) {
-              this.buffer = this.buffer.subarray(3);
-            }
-            this.checkBOM = false;
-            break;
+        if (this.handleBOM()) {
+          callback();
+          return;
         }
       }
-      while (this.pos < this.buffer.length) {
+      while (this.hasCurrentByte()) {
+        const byte = this.currentByte();
         if (this.eventEndCheck) {
           if (this.crlfCheck) {
-            if (this.buffer[this.pos] === LF) {
-              this.buffer = this.buffer.subarray(this.pos + 1);
-              this.pos = 0;
+            if (byte === LF) {
               this.crlfCheck = false;
+              this.consumeCurrentByte();
               continue;
             }
             this.crlfCheck = false;
           }
-          if (this.buffer[this.pos] === LF || this.buffer[this.pos] === CR) {
-            if (this.buffer[this.pos] === CR) {
+          if (byte === LF || byte === CR) {
+            if (byte === CR) {
               this.crlfCheck = true;
             }
-            this.buffer = this.buffer.subarray(this.pos + 1);
-            this.pos = 0;
-            if (this.event.data !== undefined || this.event.event || this.event.id || this.event.retry) {
+            this.consumeCurrentByte();
+            if (this.hasPendingEvent()) {
               this.processEvent(this.event);
             }
             this.clearEvent();
@@ -16991,17 +17013,16 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
           this.eventEndCheck = false;
           continue;
         }
-        if (this.buffer[this.pos] === LF || this.buffer[this.pos] === CR) {
-          if (this.buffer[this.pos] === CR) {
+        if (byte === LF || byte === CR) {
+          if (byte === CR) {
             this.crlfCheck = true;
           }
-          this.parseLine(this.buffer.subarray(0, this.pos), this.event);
-          this.buffer = this.buffer.subarray(this.pos + 1);
-          this.pos = 0;
+          this.parseLine(this.readLine(), this.event);
+          this.consumeCurrentByte();
           this.eventEndCheck = true;
           continue;
         }
-        this.pos++;
+        this.advanceCursor();
       }
       callback();
     }
@@ -17013,43 +17034,42 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
       if (colonPosition === 0) {
         return;
       }
-      let field = "";
-      let value = "";
+      let fieldLength = line.length;
+      let valueStart = line.length;
       if (colonPosition !== -1) {
-        field = line.subarray(0, colonPosition).toString("utf8");
-        let valueStart = colonPosition + 1;
+        fieldLength = colonPosition;
+        valueStart = colonPosition + 1;
         if (line[valueStart] === SPACE) {
           ++valueStart;
         }
-        value = line.subarray(valueStart).toString("utf8");
-      } else {
-        field = line.toString("utf8");
-        value = "";
       }
-      switch (field) {
-        case "data":
-          if (event[field] === undefined) {
-            event[field] = value;
-          } else {
-            event[field] += `
+      if (isFieldName(line, fieldLength, DATA)) {
+        const value = line.toString("utf8", valueStart);
+        if (event.data === undefined) {
+          event.data = value;
+        } else {
+          event.data += `
 ${value}`;
-          }
-          break;
-        case "retry":
-          if (isASCIINumber(value)) {
-            event[field] = value;
-          }
-          break;
-        case "id":
-          if (isValidLastEventId(value)) {
-            event[field] = value;
-          }
-          break;
-        case "event":
-          if (value.length > 0) {
-            event[field] = value;
-          }
-          break;
+        }
+        return;
+      }
+      if (isFieldName(line, fieldLength, RETRY)) {
+        if (isASCIINumberBytes(line, valueStart)) {
+          event.retry = line.toString("utf8", valueStart);
+        }
+        return;
+      }
+      if (isFieldName(line, fieldLength, ID)) {
+        if (isValidLastEventIdBytes(line, valueStart)) {
+          event.id = line.toString("utf8", valueStart);
+        }
+        return;
+      }
+      if (isFieldName(line, fieldLength, EVENT)) {
+        const value = line.toString("utf8", valueStart);
+        if (value.length > 0) {
+          event.event = value;
+        }
       }
     }
     processEvent(event) {
@@ -17071,12 +17091,120 @@ ${value}`;
       }
     }
     clearEvent() {
-      this.event = {
-        data: undefined,
-        event: undefined,
-        id: undefined,
-        retry: undefined
-      };
+      this.event.data = undefined;
+      this.event.event = undefined;
+      this.event.id = undefined;
+      this.event.retry = undefined;
+    }
+    hasPendingEvent() {
+      return this.event.data !== undefined || this.event.event !== undefined || this.event.id !== undefined || this.event.retry !== undefined;
+    }
+    hasCurrentByte() {
+      return this.chunkIndex < this.chunks.length && this.pos < this.chunks[this.chunkIndex].length;
+    }
+    currentByte() {
+      return this.chunks[this.chunkIndex][this.pos];
+    }
+    consumeCurrentByte() {
+      this.advanceCursor();
+      this.syncLineStartToCursor();
+    }
+    advanceCursor() {
+      this.pos++;
+      while (this.chunkIndex < this.chunks.length && this.pos >= this.chunks[this.chunkIndex].length) {
+        this.chunkIndex++;
+        this.pos = 0;
+      }
+    }
+    syncLineStartToCursor() {
+      this.lineChunkIndex = this.chunkIndex;
+      this.linePos = this.pos;
+      this.dropConsumedChunks();
+    }
+    dropConsumedChunks() {
+      while (this.lineChunkIndex > 0) {
+        this.chunks.shift();
+        this.lineChunkIndex--;
+        this.chunkIndex--;
+      }
+      if (this.chunkIndex === this.chunks.length) {
+        this.chunks.length = 0;
+        this.chunkIndex = 0;
+        this.pos = 0;
+        this.lineChunkIndex = 0;
+        this.linePos = 0;
+      }
+    }
+    readLine() {
+      if (this.lineChunkIndex === this.chunkIndex) {
+        return this.chunks[this.chunkIndex].subarray(this.linePos, this.pos);
+      }
+      const chunks = [];
+      let length = 0;
+      for (let i = this.lineChunkIndex;i <= this.chunkIndex; i++) {
+        const chunk = this.chunks[i];
+        const start = i === this.lineChunkIndex ? this.linePos : 0;
+        const end = i === this.chunkIndex ? this.pos : chunk.length;
+        const slice = chunk.subarray(start, end);
+        length += slice.length;
+        chunks.push(slice);
+      }
+      return Buffer.concat(chunks, length);
+    }
+    peekBufferedByte(offset) {
+      let chunkIndex = this.lineChunkIndex;
+      let pos = this.linePos;
+      while (chunkIndex < this.chunks.length) {
+        const chunk = this.chunks[chunkIndex];
+        const remaining = chunk.length - pos;
+        if (offset < remaining) {
+          return chunk[pos + offset];
+        }
+        offset -= remaining;
+        chunkIndex++;
+        pos = 0;
+      }
+    }
+    discardLeadingBytes(count) {
+      while (count > 0 && this.lineChunkIndex < this.chunks.length) {
+        const chunk = this.chunks[this.lineChunkIndex];
+        const remaining = chunk.length - this.linePos;
+        if (count < remaining) {
+          this.linePos += count;
+          count = 0;
+        } else {
+          count -= remaining;
+          this.lineChunkIndex++;
+          this.linePos = 0;
+        }
+      }
+      this.chunkIndex = this.lineChunkIndex;
+      this.pos = this.linePos;
+      this.dropConsumedChunks();
+    }
+    handleBOM() {
+      const first = this.peekBufferedByte(0);
+      const second = this.peekBufferedByte(1);
+      const third = this.peekBufferedByte(2);
+      if (second === undefined) {
+        if (first === BOM[0]) {
+          return true;
+        }
+        this.checkBOM = false;
+        return true;
+      }
+      if (third === undefined) {
+        if (first === BOM[0] && second === BOM[1]) {
+          return true;
+        }
+        this.checkBOM = false;
+        return false;
+      }
+      if (first === BOM[0] && second === BOM[1] && third === BOM[2]) {
+        this.discardLeadingBytes(3);
+      }
+      this.checkBOM = false;
+      return !this.hasCurrentByte();
     }
   }
   module.exports = {
@@ -29325,7 +29453,7 @@ var require_errors2 = __commonJS(function(exports, module) {
     return innerError || outerError;
   }
 
-  class AbortError4 extends Error {
+  class AbortError3 extends Error {
     constructor(message = "The operation was aborted", options = undefined) {
       if (options !== undefined && typeof options !== "object") {
         throw new codes.ERR_INVALID_ARG_TYPE("options", "Object", options);
@@ -29508,7 +29636,7 @@ var require_errors2 = __commonJS(function(exports, module) {
   E("ERR_STREAM_WRITE_AFTER_END", "write after end", Error);
   E("ERR_UNKNOWN_ENCODING", "Unknown encoding: %s", TypeError);
   module.exports = {
-    AbortError: AbortError4,
+    AbortError: AbortError3,
     aggregateTwoErrors: hideStackFrames(aggregateTwoErrors),
     hideStackFrames,
     codes
@@ -30449,7 +30577,7 @@ var require_utils2 = __commonJS(function(exports, module) {
   function isNodeStream(obj) {
     return obj && (obj._readableState || obj._writableState || typeof obj.write === "function" && typeof obj.on === "function" || typeof obj.pipe === "function" && typeof obj.on === "function");
   }
-  function isReadableStream2(obj) {
+  function isReadableStream3(obj) {
     return !!(obj && !isNodeStream(obj) && typeof obj.pipeThrough === "function" && typeof obj.getReader === "function" && typeof obj.cancel === "function");
   }
   function isWritableStream(obj) {
@@ -30459,7 +30587,7 @@ var require_utils2 = __commonJS(function(exports, module) {
     return !!(obj && !isNodeStream(obj) && typeof obj.readable === "object" && typeof obj.writable === "object");
   }
   function isWebStream(obj) {
-    return isReadableStream2(obj) || isWritableStream(obj) || isTransformStream(obj);
+    return isReadableStream3(obj) || isWritableStream(obj) || isTransformStream(obj);
   }
   function isIterable(obj, isAsync) {
     if (obj == null)
@@ -30637,7 +30765,7 @@ var require_utils2 = __commonJS(function(exports, module) {
     isFinished,
     isIterable,
     isReadableNodeStream,
-    isReadableStream: isReadableStream2,
+    isReadableStream: isReadableStream3,
     isReadableEnded,
     isReadableFinished,
     isReadableErrored,
@@ -30659,7 +30787,7 @@ var require_utils2 = __commonJS(function(exports, module) {
 // node_modules/readable-stream/lib/internal/streams/end-of-stream.js
 var require_end_of_stream = __commonJS(function(exports, module) {
   var process5 = require_process();
-  var { AbortError: AbortError4, codes } = require_errors2();
+  var { AbortError: AbortError3, codes } = require_errors2();
   var { ERR_INVALID_ARG_TYPE, ERR_STREAM_PREMATURE_CLOSE } = codes;
   var { kEmptyObject, once } = require_util10();
   var { validateAbortSignal, validateFunction, validateObject, validateBoolean } = require_validators();
@@ -30668,7 +30796,7 @@ var require_end_of_stream = __commonJS(function(exports, module) {
     isClosed,
     isReadable,
     isReadableNodeStream,
-    isReadableStream: isReadableStream2,
+    isReadableStream: isReadableStream3,
     isReadableFinished,
     isReadableErrored,
     isWritable,
@@ -30698,7 +30826,7 @@ var require_end_of_stream = __commonJS(function(exports, module) {
     validateFunction(callback, "callback");
     validateAbortSignal(options.signal, "options.signal");
     callback = once(callback);
-    if (isReadableStream2(stream2) || isWritableStream(stream2)) {
+    if (isReadableStream3(stream2) || isWritableStream(stream2)) {
       return eosWeb(stream2, options, callback);
     }
     if (!isNodeStream(stream2)) {
@@ -30826,7 +30954,7 @@ var require_end_of_stream = __commonJS(function(exports, module) {
       const abort = () => {
         const endCallback = callback;
         cleanup();
-        endCallback.call(stream2, new AbortError4(undefined, {
+        endCallback.call(stream2, new AbortError3(undefined, {
           cause: options.signal.reason
         }));
       };
@@ -30850,7 +30978,7 @@ var require_end_of_stream = __commonJS(function(exports, module) {
     if (options.signal) {
       abort = () => {
         isAborted = true;
-        callback.call(stream2, new AbortError4(undefined, {
+        callback.call(stream2, new AbortError3(undefined, {
           cause: options.signal.reason
         }));
       };
@@ -30907,7 +31035,7 @@ var require_destroy2 = __commonJS(function(exports, module) {
   var {
     aggregateTwoErrors,
     codes: { ERR_MULTIPLE_CALLBACK },
-    AbortError: AbortError4
+    AbortError: AbortError3
   } = require_errors2();
   var { Symbol: Symbol2 } = require_primordials();
   var { kIsDestroyed, isDestroyed, isFinished, isServerRequest } = require_utils2();
@@ -31132,7 +31260,7 @@ var require_destroy2 = __commonJS(function(exports, module) {
       return;
     }
     if (!err && !isFinished(stream2)) {
-      err = new AbortError4;
+      err = new AbortError3;
     }
     if (isServerRequest(stream2)) {
       stream2.socket = null;
@@ -31248,7 +31376,7 @@ var require_legacy = __commonJS(function(exports, module) {
 // node_modules/readable-stream/lib/internal/streams/add-abort-signal.js
 var require_add_abort_signal = __commonJS(function(exports, module) {
   var { SymbolDispose } = require_primordials();
-  var { AbortError: AbortError4, codes } = require_errors2();
+  var { AbortError: AbortError3, codes } = require_errors2();
   var { isNodeStream, isWebStream, kControllerErrorFunction } = require_utils2();
   var eos = require_end_of_stream();
   var { ERR_INVALID_ARG_TYPE } = codes;
@@ -31270,11 +31398,11 @@ var require_add_abort_signal = __commonJS(function(exports, module) {
       return stream2;
     }
     const onAbort = isNodeStream(stream2) ? () => {
-      stream2.destroy(new AbortError4(undefined, {
+      stream2.destroy(new AbortError3(undefined, {
         cause: signal.reason
       }));
     } : () => {
-      stream2[kControllerErrorFunction](new AbortError4(undefined, {
+      stream2[kControllerErrorFunction](new AbortError3(undefined, {
         cause: signal.reason
       }));
     };
@@ -31926,7 +32054,7 @@ var require_readable3 = __commonJS(function(exports, module) {
       ERR_STREAM_PUSH_AFTER_EOF,
       ERR_STREAM_UNSHIFT_AFTER_END_EVENT
     },
-    AbortError: AbortError4
+    AbortError: AbortError3
   } = require_errors2();
   var { validateObject } = require_validators();
   var kPaused = Symbol2("kPaused");
@@ -32051,7 +32179,7 @@ var require_readable3 = __commonJS(function(exports, module) {
   Readable7.prototype[SymbolAsyncDispose] = function() {
     let error2;
     if (!this.destroyed) {
-      error2 = this.readableEnded ? null : new AbortError4;
+      error2 = this.readableEnded ? null : new AbortError3;
       this.destroy(error2);
     }
     return new Promise2((resolve2, reject) => eos(this, (err) => err && err !== error2 ? reject(err) : resolve2(null)));
@@ -33515,12 +33643,12 @@ var require_duplexify = __commonJS(function(exports, module) {
     isReadableNodeStream,
     isWritableNodeStream,
     isDuplexNodeStream,
-    isReadableStream: isReadableStream2,
+    isReadableStream: isReadableStream3,
     isWritableStream
   } = require_utils2();
   var eos = require_end_of_stream();
   var {
-    AbortError: AbortError4,
+    AbortError: AbortError3,
     codes: { ERR_INVALID_ARG_TYPE, ERR_INVALID_RETURN_VALUE }
   } = require_errors2();
   var { destroyer } = require_destroy2();
@@ -33574,7 +33702,7 @@ var require_duplexify = __commonJS(function(exports, module) {
         readable: false
       });
     }
-    if (isReadableStream2(body2)) {
+    if (isReadableStream3(body2)) {
       return _duplexify({
         readable: Readable7.fromWeb(body2)
       });
@@ -33632,7 +33760,7 @@ var require_duplexify = __commonJS(function(exports, module) {
         writable: false
       });
     }
-    if (isReadableStream2(body2 === null || body2 === undefined ? undefined : body2.readable) && isWritableStream(body2 === null || body2 === undefined ? undefined : body2.writable)) {
+    if (isReadableStream3(body2 === null || body2 === undefined ? undefined : body2.readable) && isWritableStream(body2 === null || body2 === undefined ? undefined : body2.writable)) {
       return Duplexify.fromWeb(body2);
     }
     if (typeof (body2 === null || body2 === undefined ? undefined : body2.writable) === "object" || typeof (body2 === null || body2 === undefined ? undefined : body2.readable) === "object") {
@@ -33685,7 +33813,7 @@ var require_duplexify = __commonJS(function(exports, module) {
         if (done)
           return;
         if (signal.aborted)
-          throw new AbortError4(undefined, {
+          throw new AbortError3(undefined, {
             cause: signal.reason
           });
         ({ promise, resolve: resolve2 } = createDeferredPromise());
@@ -33811,7 +33939,7 @@ var require_duplexify = __commonJS(function(exports, module) {
     }
     d._destroy = function(err, callback) {
       if (!err && onclose !== null) {
-        err = new AbortError4;
+        err = new AbortError3;
       }
       onreadable = null;
       ondrain = null;
@@ -34075,7 +34203,7 @@ var require_pipeline = __commonJS(function(exports, module) {
       ERR_STREAM_DESTROYED,
       ERR_STREAM_PREMATURE_CLOSE
     },
-    AbortError: AbortError4
+    AbortError: AbortError3
   } = require_errors2();
   var { validateFunction, validateAbortSignal } = require_validators();
   var {
@@ -34085,7 +34213,7 @@ var require_pipeline = __commonJS(function(exports, module) {
     isNodeStream,
     isTransformStream,
     isWebStream,
-    isReadableStream: isReadableStream2,
+    isReadableStream: isReadableStream3,
     isReadableFinished
   } = require_utils2();
   var AbortController2 = globalThis.AbortController || require_abort_controller().AbortController;
@@ -34222,7 +34350,7 @@ var require_pipeline = __commonJS(function(exports, module) {
     const lastStreamCleanup = [];
     validateAbortSignal(outerSignal, "options.signal");
     function abort() {
-      finishImpl(new AbortError4);
+      finishImpl(new AbortError3);
     }
     addAbortListener = addAbortListener || require_util10().addAbortListener;
     let disposable;
@@ -34340,7 +34468,7 @@ var require_pipeline = __commonJS(function(exports, module) {
             pumpToNode(ret, pt, finish, {
               end
             });
-          } else if (isReadableStream2(ret) || isTransformStream(ret)) {
+          } else if (isReadableStream3(ret) || isTransformStream(ret)) {
             const toRead = ret.readable || ret;
             finishCount++;
             pumpToNode(toRead, pt, finish, {
@@ -34365,7 +34493,7 @@ var require_pipeline = __commonJS(function(exports, module) {
           if (isReadable(stream2) && isLastStream) {
             lastStreamCleanup.push(cleanup);
           }
-        } else if (isTransformStream(ret) || isReadableStream2(ret)) {
+        } else if (isTransformStream(ret) || isReadableStream3(ret)) {
           const toRead = ret.readable || ret;
           finishCount++;
           pumpToNode(toRead, stream2, finish, {
@@ -34386,7 +34514,7 @@ var require_pipeline = __commonJS(function(exports, module) {
           pumpToWeb(makeAsyncIterable2(ret), stream2, finish, {
             end
           });
-        } else if (isReadableStream2(ret) || isIterable(ret)) {
+        } else if (isReadableStream3(ret) || isIterable(ret)) {
           finishCount++;
           pumpToWeb(ret, stream2, finish, {
             end
@@ -34467,10 +34595,10 @@ var require_compose = __commonJS(function(exports, module) {
     isWebStream,
     isTransformStream,
     isWritableStream,
-    isReadableStream: isReadableStream2
+    isReadableStream: isReadableStream3
   } = require_utils2();
   var {
-    AbortError: AbortError4,
+    AbortError: AbortError3,
     codes: { ERR_INVALID_ARG_VALUE, ERR_MISSING_ARGS }
   } = require_errors2();
   var eos = require_end_of_stream();
@@ -34493,7 +34621,7 @@ var require_compose = __commonJS(function(exports, module) {
       if (!isNodeStream(streams[n]) && !isWebStream(streams[n])) {
         continue;
       }
-      if (n < streams.length - 1 && !(isReadable(streams[n]) || isReadableStream2(streams[n]) || isTransformStream(streams[n]))) {
+      if (n < streams.length - 1 && !(isReadable(streams[n]) || isReadableStream3(streams[n]) || isTransformStream(streams[n]))) {
         throw new ERR_INVALID_ARG_VALUE(`streams[${n}]`, orgStreams[n], "must be readable");
       }
       if (n > 0 && !(isWritable(streams[n]) || isWritableStream(streams[n]) || isTransformStream(streams[n]))) {
@@ -34519,7 +34647,7 @@ var require_compose = __commonJS(function(exports, module) {
     const head = streams[0];
     const tail = pipeline(streams, onfinished);
     const writable = !!(isWritable(head) || isWritableStream(head) || isTransformStream(head));
-    const readable = !!(isReadable(tail) || isReadableStream2(tail) || isTransformStream(tail));
+    const readable = !!(isReadable(tail) || isReadableStream3(tail) || isTransformStream(tail));
     d = new Duplex({
       writableObjectMode: !!(head !== null && head !== undefined && head.writableObjectMode),
       readableObjectMode: !!(tail !== null && tail !== undefined && tail.readableObjectMode),
@@ -34624,7 +34752,7 @@ var require_compose = __commonJS(function(exports, module) {
     }
     d._destroy = function(err, callback) {
       if (!err && onclose !== null) {
-        err = new AbortError4;
+        err = new AbortError3;
       }
       onreadable = null;
       ondrain = null;
@@ -34647,7 +34775,7 @@ var require_operators = __commonJS(function(exports, module) {
   var AbortController2 = globalThis.AbortController || require_abort_controller().AbortController;
   var {
     codes: { ERR_INVALID_ARG_VALUE, ERR_INVALID_ARG_TYPE, ERR_MISSING_ARGS, ERR_OUT_OF_RANGE },
-    AbortError: AbortError4
+    AbortError: AbortError3
   } = require_errors2();
   var { validateAbortSignal, validateInteger, validateObject } = require_validators();
   var kWeakHandler = require_primordials().Symbol("kWeak");
@@ -34740,7 +34868,7 @@ var require_operators = __commonJS(function(exports, module) {
               return;
             }
             if (signal.aborted) {
-              throw new AbortError4;
+              throw new AbortError3;
             }
             try {
               val = fn(val, signalOpt);
@@ -34786,7 +34914,7 @@ var require_operators = __commonJS(function(exports, module) {
               return;
             }
             if (signal.aborted) {
-              throw new AbortError4;
+              throw new AbortError3;
             }
             if (val !== kEmpty) {
               yield val;
@@ -34819,7 +34947,7 @@ var require_operators = __commonJS(function(exports, module) {
       for await (const val of this) {
         var _options$signal;
         if (options !== null && options !== undefined && (_options$signal = options.signal) !== null && _options$signal !== undefined && _options$signal.aborted) {
-          throw new AbortError4({
+          throw new AbortError3({
             cause: options.signal.reason
           });
         }
@@ -34890,7 +35018,7 @@ var require_operators = __commonJS(function(exports, module) {
     }
     let hasInitialValue = arguments.length > 1;
     if (options !== null && options !== undefined && (_options$signal2 = options.signal) !== null && _options$signal2 !== undefined && _options$signal2.aborted) {
-      const err = new AbortError4(undefined, {
+      const err = new AbortError3(undefined, {
         cause: options.signal.reason
       });
       this.once("error", () => {});
@@ -34913,7 +35041,7 @@ var require_operators = __commonJS(function(exports, module) {
         var _options$signal3;
         gotAnyItemFromStream = true;
         if (options !== null && options !== undefined && (_options$signal3 = options.signal) !== null && _options$signal3 !== undefined && _options$signal3.aborted) {
-          throw new AbortError4;
+          throw new AbortError3;
         }
         if (!hasInitialValue) {
           initialValue = value;
@@ -34943,7 +35071,7 @@ var require_operators = __commonJS(function(exports, module) {
     for await (const val of this) {
       var _options$signal4;
       if (options !== null && options !== undefined && (_options$signal4 = options.signal) !== null && _options$signal4 !== undefined && _options$signal4.aborted) {
-        throw new AbortError4(undefined, {
+        throw new AbortError3(undefined, {
           cause: options.signal.reason
         });
       }
@@ -34980,12 +35108,12 @@ var require_operators = __commonJS(function(exports, module) {
     return async function* drop2() {
       var _options$signal5;
       if (options !== null && options !== undefined && (_options$signal5 = options.signal) !== null && _options$signal5 !== undefined && _options$signal5.aborted) {
-        throw new AbortError4;
+        throw new AbortError3;
       }
       for await (const val of this) {
         var _options$signal6;
         if (options !== null && options !== undefined && (_options$signal6 = options.signal) !== null && _options$signal6 !== undefined && _options$signal6.aborted) {
-          throw new AbortError4;
+          throw new AbortError3;
         }
         if (number-- <= 0) {
           yield val;
@@ -35004,12 +35132,12 @@ var require_operators = __commonJS(function(exports, module) {
     return async function* take2() {
       var _options$signal7;
       if (options !== null && options !== undefined && (_options$signal7 = options.signal) !== null && _options$signal7 !== undefined && _options$signal7.aborted) {
-        throw new AbortError4;
+        throw new AbortError3;
       }
       for await (const val of this) {
         var _options$signal8;
         if (options !== null && options !== undefined && (_options$signal8 = options.signal) !== null && _options$signal8 !== undefined && _options$signal8.aborted) {
-          throw new AbortError4;
+          throw new AbortError3;
         }
         if (number-- > 0) {
           yield val;
@@ -51125,7 +51253,7 @@ var require_errors4 = __commonJS(function(exports, module) {
   }
   var kAbortError = Symbol.for("undici.error.UND_ERR_ABORT");
 
-  class AbortError4 extends UndiciError {
+  class AbortError3 extends UndiciError {
     constructor(message) {
       super(message);
       this.name = "AbortError";
@@ -51141,7 +51269,7 @@ var require_errors4 = __commonJS(function(exports, module) {
   }
   var kRequestAbortedError = Symbol.for("undici.error.UND_ERR_ABORTED");
 
-  class RequestAbortedError extends AbortError4 {
+  class RequestAbortedError extends AbortError3 {
     constructor(message) {
       super(message);
       this.name = "AbortError";
@@ -51413,7 +51541,7 @@ var require_errors4 = __commonJS(function(exports, module) {
     }
   }
   module.exports = {
-    AbortError: AbortError4,
+    AbortError: AbortError3,
     HTTPParserError,
     UndiciError,
     HeadersTimeoutError,
@@ -57414,21 +57542,20 @@ var require_client_h12 = __commonJS(function(exports, module) {
   }
   function clearIdleSocketValidation(socket) {
     if (socket[kIdleSocketValidationTimeout]) {
-      clearTimeout(socket[kIdleSocketValidationTimeout]);
+      clearImmediate(socket[kIdleSocketValidationTimeout]);
       socket[kIdleSocketValidationTimeout] = null;
     }
     socket[kIdleSocketValidation] = 0;
   }
   function scheduleIdleSocketValidation(client3, socket) {
     socket[kIdleSocketValidation] = 1;
-    socket[kIdleSocketValidationTimeout] = setTimeout(() => {
+    socket[kIdleSocketValidationTimeout] = setImmediate(() => {
       socket[kIdleSocketValidationTimeout] = null;
       socket[kIdleSocketValidation] = 2;
       if (client3[kSocket] === socket && !socket.destroyed) {
         client3[kResume]();
       }
-    }, 0);
-    socket[kIdleSocketValidationTimeout].unref?.();
+    });
   }
   function resumeH1(client3) {
     const socket = client3[kSocket];
@@ -57899,7 +58026,9 @@ var require_client_h22 = __commonJS(function(exports, module) {
     RequestAbortedError,
     SocketError,
     InformationalError,
-    InvalidArgumentError
+    InvalidArgumentError,
+    HeadersTimeoutError,
+    BodyTimeoutError
   } = require_errors4();
   var {
     kUrl,
@@ -57924,6 +58053,7 @@ var require_client_h22 = __commonJS(function(exports, module) {
     kHTTPContext,
     kClosed,
     kBodyTimeout,
+    kHeadersTimeout,
     kEnableConnectProtocol,
     kRemoteSettings,
     kHTTP2Stream,
@@ -58044,7 +58174,7 @@ var require_client_h22 = __commonJS(function(exports, module) {
   function resumeH2(client3) {
     const socket = client3[kSocket];
     if (socket?.destroyed === false) {
-      if (client3[kSize] === 0 || client3[kMaxConcurrentStreams] === 0) {
+      if (client3[kSize] === 0) {
         socket.unref();
         client3[kHTTP2Session].unref();
       } else {
@@ -58109,6 +58239,24 @@ var require_client_h22 = __commonJS(function(exports, module) {
     this.destroy(err);
     util3.destroy(this[kSocket], err);
   }
+  function completeRequest(client3, request2, resetPendingIdx = false) {
+    const queue = client3[kQueue];
+    const runningIdx = client3[kRunningIdx];
+    if (runningIdx < client3[kPendingIdx] && queue[runningIdx] === request2) {
+      queue[runningIdx] = null;
+      client3[kRunningIdx] = runningIdx + 1;
+      return;
+    }
+    const index = queue.indexOf(request2, runningIdx);
+    if (index === -1 || index >= client3[kPendingIdx]) {
+      return;
+    }
+    queue.splice(index, 1);
+    client3[kPendingIdx]--;
+    if (resetPendingIdx && client3[kPendingIdx] < client3[kRunningIdx]) {
+      client3[kPendingIdx] = client3[kRunningIdx];
+    }
+  }
   function onHttp2SessionGoAway(errorCode) {
     const err = this[kError] || new SocketError(`HTTP/2: "GOAWAY" frame received with code ${errorCode}`, util3.getSocketInfo(this[kSocket]));
     const client3 = this[kClient];
@@ -58120,7 +58268,9 @@ var require_client_h22 = __commonJS(function(exports, module) {
     if (client3[kRunningIdx] < client3[kQueue].length) {
       const request2 = client3[kQueue][client3[kRunningIdx]];
       client3[kQueue][client3[kRunningIdx]++] = null;
-      util3.errorRequest(client3, request2, err);
+      if (request2 != null) {
+        util3.errorRequest(client3, request2, err);
+      }
       client3[kPendingIdx] = client3[kRunningIdx];
     }
     assert(client3[kRunning] === 0);
@@ -58143,7 +58293,9 @@ var require_client_h22 = __commonJS(function(exports, module) {
       const requests = client3[kQueue].splice(client3[kRunningIdx]);
       for (let i = 0;i < requests.length; i++) {
         const request2 = requests[i];
-        util3.errorRequest(client3, request2, err);
+        if (request2 != null) {
+          util3.errorRequest(client3, request2, err);
+        }
       }
     }
   }
@@ -58175,7 +58327,8 @@ var require_client_h22 = __commonJS(function(exports, module) {
     return method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE" && method !== "CONNECT";
   }
   function writeH2(client3, request2) {
-    const requestTimeout = request2.bodyTimeout ?? client3[kBodyTimeout];
+    const headersTimeout = request2.headersTimeout ?? client3[kHeadersTimeout];
+    const bodyTimeout = request2.bodyTimeout ?? client3[kBodyTimeout];
     const session = client3[kHTTP2Session];
     const { method, path: path4, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request2;
     let { body: body2 } = request2;
@@ -58223,6 +58376,7 @@ var require_client_h22 = __commonJS(function(exports, module) {
         stream4.removeAllListeners("data");
         stream4.close();
         client3[kOnError](err);
+        completeRequest(client3, request2);
         client3[kResume]();
       }
       util3.destroy(body2, err);
@@ -58257,7 +58411,7 @@ var require_client_h22 = __commonJS(function(exports, module) {
           const { [HTTP2_HEADER_STATUS]: statusCode, ...realHeaders } = headers2;
           request2.onUpgrade(statusCode, parseH2Headers(realHeaders), stream4);
           ++session[kOpenStreams];
-          client3[kQueue][client3[kRunningIdx]++] = null;
+          completeRequest(client3, request2);
         });
         stream4.on("error", () => {
           if (stream4.rstCode === NGHTTP2_REFUSED_STREAM || stream4.rstCode === NGHTTP2_CANCEL) {
@@ -58269,7 +58423,7 @@ var require_client_h22 = __commonJS(function(exports, module) {
           if (session[kOpenStreams] === 0)
             session.unref();
         });
-        stream4.setTimeout(requestTimeout);
+        stream4.setTimeout(headersTimeout);
         return true;
       }
       stream4 = session.request(headers, { endStream: false, signal });
@@ -58278,14 +58432,15 @@ var require_client_h22 = __commonJS(function(exports, module) {
         const { [HTTP2_HEADER_STATUS]: statusCode, ...realHeaders } = headers2;
         request2.onUpgrade(statusCode, parseH2Headers(realHeaders), stream4);
         ++session[kOpenStreams];
-        client3[kQueue][client3[kRunningIdx]++] = null;
+        completeRequest(client3, request2);
       });
+      stream4.on("error", abort);
       stream4.once("close", () => {
         session[kOpenStreams] -= 1;
         if (session[kOpenStreams] === 0)
           session.unref();
       });
-      stream4.setTimeout(requestTimeout);
+      stream4.setTimeout(headersTimeout);
       return true;
     }
     headers[HTTP2_HEADER_PATH] = path4;
@@ -58343,12 +58498,13 @@ var require_client_h22 = __commonJS(function(exports, module) {
       writeBodyH2();
     }
     ++session[kOpenStreams];
-    stream4.setTimeout(requestTimeout);
+    stream4.setTimeout(headersTimeout);
     let responseReceived = false;
     stream4.once("response", (headers2) => {
       const { [HTTP2_HEADER_STATUS]: statusCode, ...realHeaders } = headers2;
       request2.onResponseStarted();
       responseReceived = true;
+      stream4.setTimeout(bodyTimeout);
       if (request2.aborted) {
         stream4.removeAllListeners("data");
         return;
@@ -58371,12 +58527,11 @@ var require_client_h22 = __commonJS(function(exports, module) {
         if (!request2.aborted && !request2.completed) {
           request2.onComplete({});
         }
-        client3[kQueue][client3[kRunningIdx]++] = null;
+        completeRequest(client3, request2);
         client3[kResume]();
       } else {
         abort(new InformationalError("HTTP/2: stream half-closed (remote)"));
-        client3[kQueue][client3[kRunningIdx]++] = null;
-        client3[kPendingIdx] = client3[kRunningIdx];
+        completeRequest(client3, request2, true);
         client3[kResume]();
       }
     });
@@ -58385,6 +58540,9 @@ var require_client_h22 = __commonJS(function(exports, module) {
       session[kOpenStreams] -= 1;
       if (session[kOpenStreams] === 0) {
         session.unref();
+      }
+      if (!request2.aborted && !request2.completed) {
+        abort(new InformationalError("HTTP/2: stream closed before the response was complete"));
       }
     });
     stream4.once("error", function(err) {
@@ -58399,7 +58557,7 @@ var require_client_h22 = __commonJS(function(exports, module) {
       stream4.removeAllListeners("data");
     });
     stream4.on("timeout", () => {
-      const err = new InformationalError(`HTTP/2: "stream timeout after ${requestTimeout}"`);
+      const err = responseReceived ? new BodyTimeoutError(`HTTP/2: "body timeout after ${bodyTimeout}"`) : new HeadersTimeoutError(`HTTP/2: "headers timeout after ${headersTimeout}"`);
       stream4.removeAllListeners("data");
       session[kOpenStreams] -= 1;
       if (session[kOpenStreams] === 0) {
@@ -58827,7 +58985,9 @@ var require_client2 = __commonJS(function(exports, module) {
         const requests = this[kQueue].splice(this[kPendingIdx]);
         for (let i = 0;i < requests.length; i++) {
           const request2 = requests[i];
-          util3.errorRequest(this, request2, err);
+          if (request2 != null) {
+            util3.errorRequest(this, request2, err);
+          }
         }
         const callback = () => {
           if (this[kClosedResolve]) {
@@ -58852,7 +59012,9 @@ var require_client2 = __commonJS(function(exports, module) {
       const requests = client3[kQueue].splice(client3[kRunningIdx]);
       for (let i = 0;i < requests.length; i++) {
         const request2 = requests[i];
-        util3.errorRequest(client3, request2, err);
+        if (request2 != null) {
+          util3.errorRequest(client3, request2, err);
+        }
       }
       assert(client3[kSize] === 0);
     }
@@ -59424,12 +59586,16 @@ var require_balanced_pool2 = __commonJS(function(exports, module) {
   }
 
   class BalancedPool extends PoolBase {
-    constructor(upstreams = [], { factory = defaultFactory, ...opts } = {}) {
+    constructor(upstreams = [], { factory = defaultFactory, connect, tls, ...opts } = {}) {
       if (typeof factory !== "function") {
         throw new InvalidArgumentError("factory must be a function.");
       }
       super(opts);
-      this[kOptions] = { ...util3.deepClone(opts) };
+      if (connect && typeof connect !== "function")
+        connect = { ...connect };
+      if (tls && typeof tls !== "function")
+        tls = { ...tls };
+      this[kOptions] = { ...util3.deepClone(opts), connect, tls };
       this[kOptions].interceptors = opts.interceptors ? { ...opts.interceptors } : undefined;
       this[kIndex] = -1;
       this[kCurrentWeight] = 0;
@@ -60871,8 +61037,13 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
     onResponseStartWithRetry(controller, statusCode, headers, statusMessage, err) {
       if (this.retryOpts.throwOnError) {
         if (this.retryOpts.statusCodes.includes(statusCode) === false) {
-          this.headersSent = true;
-          this.handler.onResponseStart?.(controller, statusCode, headers, statusMessage);
+          if (this.headersSent) {
+            this.handler.onResponseError?.(controller, err);
+          } else {
+            this.headersSent = true;
+            this.checkpointResponseEnd(headers);
+            this.handler.onResponseStart?.(controller, statusCode, headers, statusMessage);
+          }
         } else {
           this.error = err;
         }
@@ -60880,13 +61051,19 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
       }
       if (isDisturbed(this.opts.body)) {
         this.headersSent = true;
+        this.checkpointResponseEnd(headers);
         this.handler.onResponseStart?.(controller, statusCode, headers, statusMessage);
         return;
       }
       function shouldRetry(passedErr) {
         if (passedErr) {
-          this.headersSent = true;
-          this.handler.onResponseStart?.(controller, statusCode, headers, statusMessage);
+          if (this.headersSent) {
+            this.handler.onResponseError?.(controller, passedErr);
+          } else {
+            this.headersSent = true;
+            this.checkpointResponseEnd(headers);
+            this.handler.onResponseStart?.(controller, statusCode, headers, statusMessage);
+          }
           controller.resume();
           return;
         }
@@ -60898,6 +61075,14 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
         state: { counter: this.retryCount },
         opts: { retryOptions: this.retryOpts, ...this.opts }
       }, shouldRetry.bind(this));
+    }
+    checkpointResponseEnd(headers) {
+      if (this.end == null && this.opts.method !== "HEAD") {
+        const contentLength2 = headers["content-length"];
+        this.end = contentLength2 != null ? Number(contentLength2) - 1 : null;
+        assert(this.end == null || Number.isFinite(this.end), "invalid content-length");
+        this.resume = this.end != null;
+      }
     }
     onRequestStart(controller, context5) {
       if (!this.headersSent) {
@@ -60979,8 +61164,12 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
         }
         validatePartialResponseContentLength(headers, contentRange, statusCode, this.retryCount);
         const { start, size, end = size ? size - 1 : null } = contentRange;
-        assert(this.start === start, "content-range mismatch");
-        assert(this.end == null || this.end === end, "content-range mismatch");
+        if (this.start !== start || this.end != null && this.end !== end) {
+          throw new RequestRetryError("Content-Range mismatch", statusCode, {
+            headers,
+            data: { count: this.retryCount }
+          });
+        }
         return;
       }
       if (this.end == null) {
@@ -61057,7 +61246,7 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
       }
     }
     onResponseError(controller, err) {
-      if (controller?.aborted || isDisturbed(this.opts.body)) {
+      if (controller?.aborted || isDisturbed(this.opts.body) || this.headersSent && !this.resume) {
         this.handler.onResponseError?.(controller, err);
         return;
       }
@@ -61156,7 +61345,7 @@ var require_h2c_client = __commonJS(function(exports, module) {
 var require_readable4 = __commonJS(function(exports, module) {
   var assert = __require("node:assert");
   var { Readable: Readable7 } = __require("node:stream");
-  var { RequestAbortedError, NotSupportedError, InvalidArgumentError, AbortError: AbortError4 } = require_errors4();
+  var { RequestAbortedError, NotSupportedError, InvalidArgumentError, AbortError: AbortError3 } = require_errors4();
   var util3 = require_util13();
   var { ReadableStreamFrom } = require_util13();
   var kConsume = Symbol("kConsume");
@@ -61273,24 +61462,24 @@ var require_readable4 = __commonJS(function(exports, module) {
       }
       const limit = opts?.limit && Number.isFinite(opts.limit) ? opts.limit : 128 * 1024;
       if (signal?.aborted) {
-        return Promise.reject(signal.reason ?? new AbortError4);
+        return Promise.reject(signal.reason ?? new AbortError3);
       }
       if (this._readableState.closeEmitted) {
         return Promise.resolve(null);
       }
       return new Promise((resolve2, reject) => {
         if (this[kContentLength] && this[kContentLength] > limit || this[kBytesRead] > limit) {
-          this.destroy(new AbortError4);
+          this.destroy(new AbortError3);
         }
         if (signal) {
           const onAbort = () => {
-            this.destroy(signal.reason ?? new AbortError4);
+            this.destroy(signal.reason ?? new AbortError3);
           };
           signal.addEventListener("abort", onAbort);
           this.on("close", function() {
             signal.removeEventListener("abort", onAbort);
             if (signal.aborted) {
-              reject(signal.reason ?? new AbortError4);
+              reject(signal.reason ?? new AbortError3);
             } else {
               resolve2(null);
             }
@@ -64258,7 +64447,6 @@ var require_dump2 = __commonJS(function(exports, module) {
     #maxSize = 1024 * 1024;
     #dumped = false;
     #size = 0;
-    #controller = null;
     aborted = false;
     reason = false;
     constructor({ maxSize: maxSize2, signal }, handler2) {
@@ -64274,7 +64462,6 @@ var require_dump2 = __commonJS(function(exports, module) {
     }
     onRequestStart(controller, context5) {
       controller.abort = this.#abort.bind(this);
-      this.#controller = controller;
       return super.onRequestStart(controller, context5);
     }
     onResponseStart(controller, statusCode, headers, statusMessage) {
@@ -64288,33 +64475,24 @@ var require_dump2 = __commonJS(function(exports, module) {
       return super.onResponseStart(controller, statusCode, headers, statusMessage);
     }
     onResponseError(controller, err) {
-      if (this.#dumped) {
-        return;
-      }
-      err = this.#controller?.reason ?? err;
-      super.onResponseError(controller, err);
+      super.onResponseError(controller, this.aborted === true ? this.reason : err);
     }
     onResponseData(controller, chunk) {
       this.#size = this.#size + chunk.length;
-      if (this.#size >= this.#maxSize) {
+      if (this.#size > this.#maxSize) {
+        throw new RequestAbortedError(`Response size (${this.#size}) larger than maxSize (${this.#maxSize})`);
+      }
+      if (this.#size === this.#maxSize) {
         this.#dumped = true;
-        if (this.aborted === true) {
-          super.onResponseError(controller, this.reason);
-        } else {
-          super.onResponseEnd(controller, {});
-        }
       }
       return true;
     }
     onResponseEnd(controller, trailers) {
-      if (this.#dumped) {
-        return;
-      }
-      if (this.#controller.aborted === true) {
+      if (this.aborted === true) {
         super.onResponseError(controller, this.reason);
         return;
       }
-      super.onResponseEnd(controller, trailers);
+      super.onResponseEnd(controller, this.#dumped ? {} : trailers);
     }
   }
   function createDumpInterceptor({ maxSize: defaultMaxSize } = {
@@ -65850,6 +66028,11 @@ var require_cache_handler = __commonJS(function(exports, module) {
         return downstreamOnHeaders();
       }
       const cacheControlHeader = resHeaders["cache-control"];
+      const cacheControlDirectives = cacheControlHeader ? parseCacheControlHeader(cacheControlHeader) : {};
+      if (revalidationResponseDisallowsCachedReuse(this.#cacheType, resHeaders, cacheControlDirectives)) {
+        deleteCachedValue(this.#store, this.#cacheKey);
+        return downstreamOnHeaders();
+      }
       const heuristicallyCacheable = resHeaders["last-modified"] && arrayIncludes(HEURISTICALLY_CACHEABLE_STATUS_CODES, statusCode);
       if (!cacheControlHeader && !resHeaders["expires"] && !heuristicallyCacheable && !this.#cacheByDefault) {
         if (statusCode === 304 && resHeaders.vary && isInvalidOrWildcardVaryHeader(resHeaders.vary)) {
@@ -65857,8 +66040,7 @@ var require_cache_handler = __commonJS(function(exports, module) {
         }
         return downstreamOnHeaders();
       }
-      const cacheControlDirectives = cacheControlHeader ? parseCacheControlHeader(cacheControlHeader) : {};
-      if (!canCacheResponse(this.#cacheType, statusCode, resHeaders, cacheControlDirectives, this.#cacheKey.headers)) {
+      if (!canCacheResponse(this.#cacheType, this.#cacheKey.method, statusCode, resHeaders, cacheControlDirectives, this.#cacheKey.headers)) {
         if (statusCode === 304 && (cacheControlHeader || revalidationResponseDisallowsCachedReuse(this.#cacheType, resHeaders, cacheControlDirectives))) {
           deleteCachedValue(this.#store, this.#cacheKey);
         }
@@ -66020,9 +66202,12 @@ var require_cache_handler = __commonJS(function(exports, module) {
     }
   }
   function revalidationResponseDisallowsCachedReuse(cacheType, resHeaders, cacheControlDirectives) {
-    return cacheControlDirectives["no-store"] === true || cacheType === "shared" && cacheControlDirectives.private === true || (resHeaders.vary ? isInvalidOrWildcardVaryHeader(resHeaders.vary) : false);
+    return cacheControlDirectives["no-store"] === true || cacheType === "shared" && (cacheControlDirectives.private === true || Object.hasOwn(resHeaders, "set-cookie")) || (resHeaders.vary ? isInvalidOrWildcardVaryHeader(resHeaders.vary) : false);
   }
-  function canCacheResponse(cacheType, statusCode, resHeaders, cacheControlDirectives, reqHeaders) {
+  function canCacheResponse(cacheType, method, statusCode, resHeaders, cacheControlDirectives, reqHeaders) {
+    if (!arrayIncludes(util3.safeHTTPMethods, method)) {
+      return false;
+    }
     if (statusCode < 200 || arrayIncludes(NOT_UNDERSTOOD_STATUS_CODES, statusCode)) {
       return false;
     }
@@ -66032,7 +66217,7 @@ var require_cache_handler = __commonJS(function(exports, module) {
     if (cacheControlDirectives["no-store"]) {
       return false;
     }
-    if (cacheType === "shared" && cacheControlDirectives.private === true) {
+    if (cacheType === "shared" && (cacheControlDirectives.private === true || Object.hasOwn(resHeaders, "set-cookie"))) {
       return false;
     }
     if (resHeaders.vary && hasVaryStar(resHeaders.vary)) {
@@ -66448,7 +66633,7 @@ var require_cache3 = __commonJS(function(exports, module) {
   var MemoryCacheStore = require_memory_cache_store();
   var CacheRevalidationHandler = require_cache_revalidation_handler();
   var { assertCacheStore, assertCacheMethods, makeCacheKey, normalizeHeaders, parseCacheControlHeader, isInvalidOrWildcardVaryHeader } = require_cache2();
-  var { AbortError: AbortError4 } = require_errors4();
+  var { AbortError: AbortError3 } = require_errors4();
   var { parseHttpDate } = require_date();
   function assertCacheOrigins(origins, name) {
     if (origins === undefined)
@@ -66511,7 +66696,7 @@ var require_cache3 = __commonJS(function(exports, module) {
     return result.cacheControlDirectives?.["must-revalidate"] === true || cacheType === "shared" && (result.cacheControlDirectives?.["proxy-revalidate"] === true || result.cacheControlDirectives?.["s-maxage"] !== undefined);
   }
   function revalidationResponseDisallowsCachedReuse(cacheType, headers) {
-    if (headers.vary && isInvalidOrWildcardVaryHeader(headers.vary)) {
+    if (headers.vary && isInvalidOrWildcardVaryHeader(headers.vary) || cacheType === "shared" && Object.hasOwn(headers, "set-cookie")) {
       return true;
     }
     const cacheControl = headers["cache-control"];
@@ -66628,7 +66813,7 @@ var require_cache3 = __commonJS(function(exports, module) {
         return stream4.errored;
       },
       abort(reason) {
-        stream4.destroy(reason ?? new AbortError4);
+        stream4.destroy(reason ?? new AbortError3);
       }
     };
     stream4.on("error", function(err) {
@@ -66663,6 +66848,13 @@ var require_cache3 = __commonJS(function(exports, module) {
   }
   function handleResult(dispatch, globalOpts, cacheKey, handler2, opts, reqCacheControl, result) {
     if (!result) {
+      return handleUncachedResponse(dispatch, globalOpts, cacheKey, handler2, opts, reqCacheControl);
+    }
+    if (globalOpts.type === "shared" && Object.hasOwn(result.headers, "set-cookie")) {
+      if (util3.isStream(result.body)) {
+        result.body.on("error", nop).destroy();
+      }
+      deleteCachedValue(globalOpts.store, cacheKey);
       return handleUncachedResponse(dispatch, globalOpts, cacheKey, handler2, opts, reqCacheControl);
     }
     const now = Date.now();
@@ -66797,6 +66989,9 @@ var require_cache3 = __commonJS(function(exports, module) {
           return dispatch(opts2, handler2);
         }
         const cacheKey = makeCacheKey(opts2);
+        if (!arrayIncludes(util3.safeHTTPMethods, opts2.method)) {
+          return dispatch(opts2, new CacheHandler(globalOpts, cacheKey, handler2));
+        }
         const result = store.get(cacheKey);
         if (result && typeof result.then === "function") {
           return result.then((result2) => handleResult(dispatch, globalOpts, cacheKey, handler2, opts2, reqCacheControl, result2));
@@ -66811,7 +67006,8 @@ var require_cache3 = __commonJS(function(exports, module) {
 // node_modules/@octokit/action/node_modules/undici/lib/interceptor/decompress.js
 var require_decompress = __commonJS(function(exports, module) {
   var { createInflate, createGunzip, createBrotliDecompress, createZstdDecompress } = __require("node:zlib");
-  var { pipeline } = __require("node:stream");
+  var { pipeline, Transform: TransformStream2 } = __require("node:stream");
+  var { InvalidArgumentError, ResponseExceededMaxSizeError } = require_errors4();
   var DecoratorHandler = require_decorator_handler2();
   var { runtimeFeatures } = require_runtime_features();
   var supportedEncodings = {
@@ -66824,16 +67020,40 @@ var require_decompress = __commonJS(function(exports, module) {
     ...runtimeFeatures.has("zstd") ? { zstd: createZstdDecompress } : {}
   };
   var defaultSkipStatusCodes = [204, 304];
+  var defaultMaxSize = 64 * 1024 * 1024;
+  function createMaxSizeLimiter(maxSize2) {
+    let size = 0;
+    return new TransformStream2({
+      transform(chunk, _encoding, callback) {
+        const decompressedSize = size + chunk.length;
+        if (decompressedSize > maxSize2) {
+          callback(new ResponseExceededMaxSizeError(`Decompressed response size (${decompressedSize}) exceeded maxSize (${maxSize2})`));
+          return;
+        }
+        size = decompressedSize;
+        callback(null, chunk);
+      }
+    });
+  }
   var warningEmitted = false;
 
   class DecompressHandler extends DecoratorHandler {
     #decompressors = [];
+    #trailers;
     #skipStatusCodes;
     #skipErrorResponses;
-    constructor(handler2, { skipStatusCodes = defaultSkipStatusCodes, skipErrorResponses = true } = {}) {
+    #maxSize;
+    #decompressedSize = 0;
+    #terminated = false;
+    #inputEnded = false;
+    constructor(handler2, { skipStatusCodes = defaultSkipStatusCodes, skipErrorResponses = true, maxSize: maxSize2 = defaultMaxSize } = {}) {
+      if (!Number.isSafeInteger(maxSize2) || maxSize2 < 1) {
+        throw new InvalidArgumentError("maxSize must be a positive integer");
+      }
       super(handler2);
       this.#skipStatusCodes = skipStatusCodes;
       this.#skipErrorResponses = skipErrorResponses;
+      this.#maxSize = maxSize2;
     }
     #shouldSkipDecompression(contentEncoding, statusCode) {
       if (!contentEncoding || statusCode < 200)
@@ -66861,12 +67081,41 @@ var require_decompress = __commonJS(function(exports, module) {
         }
         decompressors.push(supportedEncodings[encoding]());
       }
-      return decompressors;
+      if (decompressors.length < 2) {
+        return decompressors;
+      }
+      const streams = [];
+      for (let i = 0;i < decompressors.length; i++) {
+        streams.push(decompressors[i]);
+        if (i < decompressors.length - 1) {
+          streams.push(createMaxSizeLimiter(this.#maxSize));
+        }
+      }
+      return streams;
+    }
+    #fail(controller, error2) {
+      if (this.#terminated) {
+        return;
+      }
+      if (this.#inputEnded) {
+        this.onResponseError(controller, error2);
+      } else {
+        controller.abort(error2);
+      }
     }
     #setupDecompressorEvents(decompressor, controller) {
       decompressor.on("readable", () => {
+        if (this.#terminated) {
+          return;
+        }
         let chunk;
         while ((chunk = decompressor.read()) !== null) {
+          const decompressedSize = this.#decompressedSize + chunk.length;
+          if (decompressedSize > this.#maxSize) {
+            this.#fail(controller, new ResponseExceededMaxSizeError(`Decompressed response size (${decompressedSize}) exceeded maxSize (${this.#maxSize})`));
+            return;
+          }
+          this.#decompressedSize = decompressedSize;
           const result = super.onResponseData(controller, chunk);
           if (result === false) {
             break;
@@ -66874,25 +67123,35 @@ var require_decompress = __commonJS(function(exports, module) {
         }
       });
       decompressor.on("error", (error2) => {
-        super.onResponseError(controller, error2);
+        this.#fail(controller, error2);
       });
     }
     #setupSingleDecompressor(controller) {
       const decompressor = this.#decompressors[0];
       this.#setupDecompressorEvents(decompressor, controller);
       decompressor.on("end", () => {
-        super.onResponseEnd(controller, {});
+        if (this.#terminated) {
+          return;
+        }
+        this.#terminated = true;
+        this.#cleanupDecompressors();
+        super.onResponseEnd(controller, this.#trailers);
       });
     }
     #setupMultipleDecompressors(controller) {
       const lastDecompressor = this.#decompressors[this.#decompressors.length - 1];
       this.#setupDecompressorEvents(lastDecompressor, controller);
       pipeline(this.#decompressors, (err) => {
-        if (err) {
-          super.onResponseError(controller, err);
+        if (this.#terminated) {
           return;
         }
-        super.onResponseEnd(controller, {});
+        if (err) {
+          this.#fail(controller, err);
+          return;
+        }
+        this.#terminated = true;
+        this.#cleanupDecompressors();
+        super.onResponseEnd(controller, this.#trailers);
       });
     }
     #cleanupDecompressors() {
@@ -66910,6 +67169,29 @@ var require_decompress = __commonJS(function(exports, module) {
       }
       this.#decompressors = decompressors;
       const { "content-encoding": _2, "content-length": __, ...newHeaders } = headers;
+      if (controller?.rawHeaders) {
+        const rawHeaders = controller.rawHeaders;
+        if (Array.isArray(rawHeaders)) {
+          const filteredHeaders = [];
+          for (let i = 0;i < rawHeaders.length; i += 2) {
+            const headerName = rawHeaders[i];
+            const name = Buffer.isBuffer(headerName) ? headerName.toString("latin1") : `${headerName}`;
+            const lowerName = name.toLowerCase();
+            if (lowerName === "content-encoding" || lowerName === "content-length") {
+              continue;
+            }
+            filteredHeaders.push(rawHeaders[i], rawHeaders[i + 1]);
+          }
+          rawHeaders.splice(0, rawHeaders.length, ...filteredHeaders);
+        } else if (typeof rawHeaders === "object") {
+          for (const name of Object.keys(rawHeaders)) {
+            const lowerName = name.toLowerCase();
+            if (lowerName === "content-encoding" || lowerName === "content-length") {
+              delete rawHeaders[name];
+            }
+          }
+        }
+      }
       if (this.#decompressors.length === 1) {
         this.#setupSingleDecompressor(controller);
       } else {
@@ -66926,19 +67208,22 @@ var require_decompress = __commonJS(function(exports, module) {
     }
     onResponseEnd(controller, trailers) {
       if (this.#decompressors.length > 0) {
+        this.#inputEnded = true;
+        this.#trailers = trailers;
         this.#decompressors[0].end();
-        this.#cleanupDecompressors();
         return;
       }
       super.onResponseEnd(controller, trailers);
     }
     onResponseError(controller, err) {
-      if (this.#decompressors.length > 0) {
-        for (const decompressor of this.#decompressors) {
-          decompressor.destroy(err);
-        }
-        this.#cleanupDecompressors();
+      if (this.#terminated) {
+        return;
       }
+      this.#terminated = true;
+      for (const decompressor of this.#decompressors) {
+        decompressor.destroy();
+      }
+      this.#cleanupDecompressors();
       super.onResponseError(controller, err);
     }
   }
@@ -71888,7 +72173,7 @@ var require_connection2 = __commonJS(function(exports, module) {
         const secProtocol = response.headersList.get("Sec-WebSocket-Protocol");
         if (secProtocol !== null) {
           const requestProtocols = getDecodeSplit("sec-websocket-protocol", request2.headersList);
-          if (!requestProtocols.includes(secProtocol)) {
+          if (requestProtocols === null || !requestProtocols.includes(secProtocol)) {
             failWebsocketConnection(handler2, 1002, "Protocol was not set in the opening handshake.");
             return;
           }
@@ -71994,6 +72279,7 @@ var require_permessage_deflate2 = __commonJS(function(exports, module) {
           if (this.#maxPayloadSize > 0 && this.#inflate[kLength] > this.#maxPayloadSize) {
             callback(new MessageSizeExceededError);
             this.#inflate.removeAllListeners();
+            this.#inflate.destroy();
             this.#inflate = null;
             return;
           }
@@ -72974,7 +73260,7 @@ var require_websocketstream = __commonJS(function(exports, module) {
     #closedPromise;
     #readableStream;
     #readableStreamController;
-    #writableStream;
+    #writableStreamController;
     #handshakeAborted = false;
     #handler = {
       onConnectionEstablished: (response, extensions) => this.#onConnectionEstablished(response, extensions),
@@ -73112,12 +73398,14 @@ var require_websocketstream = __commonJS(function(exports, module) {
         cancel: (reason) => this.#cancel(reason)
       });
       const writable = new WritableStream({
+        start: (controller) => {
+          this.#writableStreamController = controller;
+        },
         write: (chunk) => this.#write(chunk),
         close: () => closeWebSocketConnection(this.#handler, null, null),
         abort: (reason) => this.#closeUsingReason(reason)
       });
       this.#readableStream = readable;
-      this.#writableStream = writable;
       this.#openedPromise.resolve({
         extensions,
         protocol,
@@ -73159,9 +73447,7 @@ var require_websocketstream = __commonJS(function(exports, module) {
       const reason = result?.reason == null ? "" : utf8DecodeBytes(Buffer.from(result.reason));
       if (wasClean) {
         this.#readableStreamController.close();
-        if (!this.#writableStream.locked) {
-          this.#writableStream.abort(new DOMException("A closed WebSocketStream cannot be written to", "InvalidStateError"));
-        }
+        this.#writableStreamController.error(new DOMException("A closed WebSocketStream cannot be written to", "InvalidStateError"));
         this.#closedPromise.resolve({
           closeCode: code,
           reason
@@ -73169,7 +73455,7 @@ var require_websocketstream = __commonJS(function(exports, module) {
       } else {
         const error2 = createUnvalidatedWebSocketError("unclean close", code, reason);
         this.#readableStreamController?.error(error2);
-        this.#writableStream?.abort(error2);
+        this.#writableStreamController?.error(error2);
         this.#closedPromise.reject(error2);
       }
     }
@@ -73259,14 +73545,51 @@ var require_eventsource_stream2 = __commonJS(function(exports, module) {
   var CR = 13;
   var COLON = 58;
   var SPACE = 32;
+  var DATA = Buffer.from("data");
+  var EVENT = Buffer.from("event");
+  var ID = Buffer.from("id");
+  var RETRY = Buffer.from("retry");
+  function isASCIINumberBytes(buffer2, start) {
+    if (start >= buffer2.length) {
+      return false;
+    }
+    for (let i = start;i < buffer2.length; i++) {
+      if (buffer2[i] < 48 || buffer2[i] > 57) {
+        return false;
+      }
+    }
+    return true;
+  }
+  function isValidLastEventIdBytes(buffer2, start) {
+    for (let i = start;i < buffer2.length; i++) {
+      if (buffer2[i] === 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+  function isFieldName(line, length, field) {
+    if (length !== field.length) {
+      return false;
+    }
+    for (let i = 0;i < length; i++) {
+      if (line[i] !== field[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   class EventSourceStream extends Transform3 {
     state;
     checkBOM = true;
     crlfCheck = false;
     eventEndCheck = false;
-    buffer = null;
+    chunks = [];
+    chunkIndex = 0;
     pos = 0;
+    lineChunkIndex = 0;
+    linePos = 0;
     event = {
       data: undefined,
       event: undefined,
@@ -73286,63 +73609,30 @@ var require_eventsource_stream2 = __commonJS(function(exports, module) {
         callback();
         return;
       }
-      if (this.buffer) {
-        this.buffer = Buffer.concat([this.buffer, chunk]);
-      } else {
-        this.buffer = chunk;
-      }
+      this.chunks.push(chunk);
       if (this.checkBOM) {
-        switch (this.buffer.length) {
-          case 1:
-            if (this.buffer[0] === BOM[0]) {
-              callback();
-              return;
-            }
-            this.checkBOM = false;
-            callback();
-            return;
-          case 2:
-            if (this.buffer[0] === BOM[0] && this.buffer[1] === BOM[1]) {
-              callback();
-              return;
-            }
-            this.checkBOM = false;
-            break;
-          case 3:
-            if (this.buffer[0] === BOM[0] && this.buffer[1] === BOM[1] && this.buffer[2] === BOM[2]) {
-              this.buffer = Buffer.alloc(0);
-              this.checkBOM = false;
-              callback();
-              return;
-            }
-            this.checkBOM = false;
-            break;
-          default:
-            if (this.buffer[0] === BOM[0] && this.buffer[1] === BOM[1] && this.buffer[2] === BOM[2]) {
-              this.buffer = this.buffer.subarray(3);
-            }
-            this.checkBOM = false;
-            break;
+        if (this.handleBOM()) {
+          callback();
+          return;
         }
       }
-      while (this.pos < this.buffer.length) {
+      while (this.hasCurrentByte()) {
+        const byte = this.currentByte();
         if (this.eventEndCheck) {
           if (this.crlfCheck) {
-            if (this.buffer[this.pos] === LF) {
-              this.buffer = this.buffer.subarray(this.pos + 1);
-              this.pos = 0;
+            if (byte === LF) {
               this.crlfCheck = false;
+              this.consumeCurrentByte();
               continue;
             }
             this.crlfCheck = false;
           }
-          if (this.buffer[this.pos] === LF || this.buffer[this.pos] === CR) {
-            if (this.buffer[this.pos] === CR) {
+          if (byte === LF || byte === CR) {
+            if (byte === CR) {
               this.crlfCheck = true;
             }
-            this.buffer = this.buffer.subarray(this.pos + 1);
-            this.pos = 0;
-            if (this.event.data !== undefined || this.event.event || this.event.id !== undefined || this.event.retry) {
+            this.consumeCurrentByte();
+            if (this.hasPendingEvent()) {
               this.processEvent(this.event);
             }
             this.clearEvent();
@@ -73351,17 +73641,16 @@ var require_eventsource_stream2 = __commonJS(function(exports, module) {
           this.eventEndCheck = false;
           continue;
         }
-        if (this.buffer[this.pos] === LF || this.buffer[this.pos] === CR) {
-          if (this.buffer[this.pos] === CR) {
+        if (byte === LF || byte === CR) {
+          if (byte === CR) {
             this.crlfCheck = true;
           }
-          this.parseLine(this.buffer.subarray(0, this.pos), this.event);
-          this.buffer = this.buffer.subarray(this.pos + 1);
-          this.pos = 0;
+          this.parseLine(this.readLine(), this.event);
+          this.consumeCurrentByte();
           this.eventEndCheck = true;
           continue;
         }
-        this.pos++;
+        this.advanceCursor();
       }
       callback();
     }
@@ -73373,43 +73662,42 @@ var require_eventsource_stream2 = __commonJS(function(exports, module) {
       if (colonPosition === 0) {
         return;
       }
-      let field = "";
-      let value = "";
+      let fieldLength = line.length;
+      let valueStart = line.length;
       if (colonPosition !== -1) {
-        field = line.subarray(0, colonPosition).toString("utf8");
-        let valueStart = colonPosition + 1;
+        fieldLength = colonPosition;
+        valueStart = colonPosition + 1;
         if (line[valueStart] === SPACE) {
           ++valueStart;
         }
-        value = line.subarray(valueStart).toString("utf8");
-      } else {
-        field = line.toString("utf8");
-        value = "";
       }
-      switch (field) {
-        case "data":
-          if (event[field] === undefined) {
-            event[field] = value;
-          } else {
-            event[field] += `
+      if (isFieldName(line, fieldLength, DATA)) {
+        const value = line.toString("utf8", valueStart);
+        if (event.data === undefined) {
+          event.data = value;
+        } else {
+          event.data += `
 ${value}`;
-          }
-          break;
-        case "retry":
-          if (isASCIINumber(value)) {
-            event[field] = value;
-          }
-          break;
-        case "id":
-          if (isValidLastEventId(value)) {
-            event[field] = value;
-          }
-          break;
-        case "event":
-          if (value.length > 0) {
-            event[field] = value;
-          }
-          break;
+        }
+        return;
+      }
+      if (isFieldName(line, fieldLength, RETRY)) {
+        if (isASCIINumberBytes(line, valueStart)) {
+          event.retry = line.toString("utf8", valueStart);
+        }
+        return;
+      }
+      if (isFieldName(line, fieldLength, ID)) {
+        if (isValidLastEventIdBytes(line, valueStart)) {
+          event.id = line.toString("utf8", valueStart);
+        }
+        return;
+      }
+      if (isFieldName(line, fieldLength, EVENT)) {
+        const value = line.toString("utf8", valueStart);
+        if (value.length > 0) {
+          event.event = value;
+        }
       }
     }
     processEvent(event) {
@@ -73431,12 +73719,120 @@ ${value}`;
       }
     }
     clearEvent() {
-      this.event = {
-        data: undefined,
-        event: undefined,
-        id: undefined,
-        retry: undefined
-      };
+      this.event.data = undefined;
+      this.event.event = undefined;
+      this.event.id = undefined;
+      this.event.retry = undefined;
+    }
+    hasPendingEvent() {
+      return this.event.data !== undefined || this.event.event !== undefined || this.event.id !== undefined || this.event.retry !== undefined;
+    }
+    hasCurrentByte() {
+      return this.chunkIndex < this.chunks.length && this.pos < this.chunks[this.chunkIndex].length;
+    }
+    currentByte() {
+      return this.chunks[this.chunkIndex][this.pos];
+    }
+    consumeCurrentByte() {
+      this.advanceCursor();
+      this.syncLineStartToCursor();
+    }
+    advanceCursor() {
+      this.pos++;
+      while (this.chunkIndex < this.chunks.length && this.pos >= this.chunks[this.chunkIndex].length) {
+        this.chunkIndex++;
+        this.pos = 0;
+      }
+    }
+    syncLineStartToCursor() {
+      this.lineChunkIndex = this.chunkIndex;
+      this.linePos = this.pos;
+      this.dropConsumedChunks();
+    }
+    dropConsumedChunks() {
+      while (this.lineChunkIndex > 0) {
+        this.chunks.shift();
+        this.lineChunkIndex--;
+        this.chunkIndex--;
+      }
+      if (this.chunkIndex === this.chunks.length) {
+        this.chunks.length = 0;
+        this.chunkIndex = 0;
+        this.pos = 0;
+        this.lineChunkIndex = 0;
+        this.linePos = 0;
+      }
+    }
+    readLine() {
+      if (this.lineChunkIndex === this.chunkIndex) {
+        return this.chunks[this.chunkIndex].subarray(this.linePos, this.pos);
+      }
+      const chunks = [];
+      let length = 0;
+      for (let i = this.lineChunkIndex;i <= this.chunkIndex; i++) {
+        const chunk = this.chunks[i];
+        const start = i === this.lineChunkIndex ? this.linePos : 0;
+        const end = i === this.chunkIndex ? this.pos : chunk.length;
+        const slice = chunk.subarray(start, end);
+        length += slice.length;
+        chunks.push(slice);
+      }
+      return Buffer.concat(chunks, length);
+    }
+    peekBufferedByte(offset) {
+      let chunkIndex = this.lineChunkIndex;
+      let pos = this.linePos;
+      while (chunkIndex < this.chunks.length) {
+        const chunk = this.chunks[chunkIndex];
+        const remaining = chunk.length - pos;
+        if (offset < remaining) {
+          return chunk[pos + offset];
+        }
+        offset -= remaining;
+        chunkIndex++;
+        pos = 0;
+      }
+    }
+    discardLeadingBytes(count) {
+      while (count > 0 && this.lineChunkIndex < this.chunks.length) {
+        const chunk = this.chunks[this.lineChunkIndex];
+        const remaining = chunk.length - this.linePos;
+        if (count < remaining) {
+          this.linePos += count;
+          count = 0;
+        } else {
+          count -= remaining;
+          this.lineChunkIndex++;
+          this.linePos = 0;
+        }
+      }
+      this.chunkIndex = this.lineChunkIndex;
+      this.pos = this.linePos;
+      this.dropConsumedChunks();
+    }
+    handleBOM() {
+      const first = this.peekBufferedByte(0);
+      const second = this.peekBufferedByte(1);
+      const third = this.peekBufferedByte(2);
+      if (second === undefined) {
+        if (first === BOM[0]) {
+          return true;
+        }
+        this.checkBOM = false;
+        return true;
+      }
+      if (third === undefined) {
+        if (first === BOM[0] && second === BOM[1]) {
+          return true;
+        }
+        this.checkBOM = false;
+        return false;
+      }
+      if (first === BOM[0] && second === BOM[1] && third === BOM[2]) {
+        this.discardLeadingBytes(3);
+      }
+      this.checkBOM = false;
+      return !this.hasCurrentByte();
     }
   }
   module.exports = {
@@ -76552,6 +76948,275 @@ function isTokenCredential(credential) {
   const castCredential = credential;
   return castCredential && typeof castCredential.getToken === "function" && (castCredential.signRequest === undefined || castCredential.getToken.length > 0);
 }
+// node_modules/@typespec/ts-http-runtime/dist/esm/abort-controller/AbortError.js
+class AbortError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "AbortError";
+  }
+}
+// node_modules/@typespec/ts-http-runtime/dist/esm/logger/log.js
+import { EOL as EOL4 } from "node:os";
+import util from "node:util";
+import process2 from "node:process";
+function log(message, ...args) {
+  process2.stderr.write(`${util.format(message, ...args)}${EOL4}`);
+}
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/env.js
+import process3 from "node:process";
+function getEnvironmentVariable(name) {
+  return process3.env[name];
+}
+var isDeno = typeof process3.versions.deno === "string" && process3.versions.deno.length > 0;
+var isBun = typeof process3.versions.bun === "string" && process3.versions.bun.length > 0;
+var isNodeLike = true;
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/logger/debug.js
+var debugEnvVariable = getEnvironmentVariable("DEBUG");
+var enabledString;
+var enabledNamespaces = [];
+var skippedNamespaces = [];
+var debuggers = [];
+if (debugEnvVariable) {
+  enable(debugEnvVariable);
+}
+var debugObj = Object.assign((namespace) => {
+  return createDebugger(namespace);
+}, {
+  enable,
+  enabled,
+  disable,
+  log
+});
+function enable(namespaces) {
+  enabledString = namespaces;
+  enabledNamespaces = [];
+  skippedNamespaces = [];
+  const namespaceList = namespaces.split(",").map((ns) => ns.trim());
+  for (const ns of namespaceList) {
+    if (ns.startsWith("-")) {
+      skippedNamespaces.push(ns.substring(1));
+    } else {
+      enabledNamespaces.push(ns);
+    }
+  }
+  for (const instance of debuggers) {
+    instance.enabled = enabled(instance.namespace);
+  }
+}
+function enabled(namespace) {
+  if (namespace.endsWith("*")) {
+    return true;
+  }
+  for (const skipped of skippedNamespaces) {
+    if (namespaceMatches(namespace, skipped)) {
+      return false;
+    }
+  }
+  for (const enabledNamespace of enabledNamespaces) {
+    if (namespaceMatches(namespace, enabledNamespace)) {
+      return true;
+    }
+  }
+  return false;
+}
+function namespaceMatches(namespace, patternToMatch) {
+  if (patternToMatch.indexOf("*") === -1) {
+    return namespace === patternToMatch;
+  }
+  let pattern = patternToMatch;
+  if (patternToMatch.indexOf("**") !== -1) {
+    const patternParts = [];
+    let lastCharacter = "";
+    for (const character of patternToMatch) {
+      if (character === "*" && lastCharacter === "*") {
+        continue;
+      } else {
+        lastCharacter = character;
+        patternParts.push(character);
+      }
+    }
+    pattern = patternParts.join("");
+  }
+  let namespaceIndex = 0;
+  let patternIndex = 0;
+  const patternLength = pattern.length;
+  const namespaceLength = namespace.length;
+  let lastWildcard = -1;
+  let lastWildcardNamespace = -1;
+  while (namespaceIndex < namespaceLength && patternIndex < patternLength) {
+    if (pattern[patternIndex] === "*") {
+      lastWildcard = patternIndex;
+      patternIndex++;
+      if (patternIndex === patternLength) {
+        return true;
+      }
+      while (namespace[namespaceIndex] !== pattern[patternIndex]) {
+        namespaceIndex++;
+        if (namespaceIndex === namespaceLength) {
+          return false;
+        }
+      }
+      lastWildcardNamespace = namespaceIndex;
+      namespaceIndex++;
+      patternIndex++;
+      continue;
+    } else if (pattern[patternIndex] === namespace[namespaceIndex]) {
+      patternIndex++;
+      namespaceIndex++;
+    } else if (lastWildcard >= 0) {
+      patternIndex = lastWildcard + 1;
+      namespaceIndex = lastWildcardNamespace + 1;
+      if (namespaceIndex === namespaceLength) {
+        return false;
+      }
+      while (namespace[namespaceIndex] !== pattern[patternIndex]) {
+        namespaceIndex++;
+        if (namespaceIndex === namespaceLength) {
+          return false;
+        }
+      }
+      lastWildcardNamespace = namespaceIndex;
+      namespaceIndex++;
+      patternIndex++;
+      continue;
+    } else {
+      return false;
+    }
+  }
+  const namespaceDone = namespaceIndex === namespace.length;
+  const patternDone = patternIndex === pattern.length;
+  const trailingWildCard = patternIndex === pattern.length - 1 && pattern[patternIndex] === "*";
+  return namespaceDone && (patternDone || trailingWildCard);
+}
+function disable() {
+  const result = enabledString || "";
+  enable("");
+  return result;
+}
+function createDebugger(namespace) {
+  const newDebugger = Object.assign(debug2, {
+    enabled: enabled(namespace),
+    destroy,
+    log: debugObj.log,
+    namespace,
+    extend
+  });
+  function debug2(...args) {
+    if (!newDebugger.enabled) {
+      return;
+    }
+    if (args.length > 0) {
+      args[0] = `${namespace} ${args[0]}`;
+    }
+    newDebugger.log(...args);
+  }
+  debuggers.push(newDebugger);
+  return newDebugger;
+}
+function destroy() {
+  const index = debuggers.indexOf(this);
+  if (index >= 0) {
+    debuggers.splice(index, 1);
+    return true;
+  }
+  return false;
+}
+function extend(namespace) {
+  const newDebugger = createDebugger(`${this.namespace}:${namespace}`);
+  newDebugger.log = this.log;
+  return newDebugger;
+}
+var debug_default = debugObj;
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/logger/logger.js
+var TYPESPEC_RUNTIME_LOG_LEVELS = ["verbose", "info", "warning", "error"];
+var levelMap = {
+  verbose: 400,
+  info: 300,
+  warning: 200,
+  error: 100
+};
+function patchLogMethod(parent, child) {
+  child.log = (...args) => {
+    parent.log(...args);
+  };
+}
+function isTypeSpecRuntimeLogLevel(level) {
+  return TYPESPEC_RUNTIME_LOG_LEVELS.includes(level);
+}
+function createLoggerContext(options) {
+  const registeredLoggers = new Set;
+  const logLevelFromEnv = getEnvironmentVariable(options.logLevelEnvVarName);
+  let logLevel;
+  const clientLogger = debug_default(options.namespace);
+  clientLogger.log = (...args) => {
+    debug_default.log(...args);
+  };
+  function contextSetLogLevel(level) {
+    if (level && !isTypeSpecRuntimeLogLevel(level)) {
+      throw new Error(`Unknown log level '${level}'. Acceptable values: ${TYPESPEC_RUNTIME_LOG_LEVELS.join(",")}`);
+    }
+    logLevel = level;
+    const enabledNamespaces2 = [];
+    for (const logger of registeredLoggers) {
+      if (shouldEnable(logger)) {
+        enabledNamespaces2.push(logger.namespace);
+      }
+    }
+    debug_default.enable(enabledNamespaces2.join(","));
+  }
+  if (logLevelFromEnv) {
+    if (isTypeSpecRuntimeLogLevel(logLevelFromEnv)) {
+      contextSetLogLevel(logLevelFromEnv);
+    } else {
+      console.error(`${options.logLevelEnvVarName} set to unknown log level '${logLevelFromEnv}'; logging is not enabled. Acceptable values: ${TYPESPEC_RUNTIME_LOG_LEVELS.join(", ")}.`);
+    }
+  }
+  function shouldEnable(logger) {
+    return Boolean(logLevel && levelMap[logger.level] <= levelMap[logLevel]);
+  }
+  function createLogger(parent, level) {
+    const logger = Object.assign(parent.extend(level), {
+      level
+    });
+    patchLogMethod(parent, logger);
+    if (shouldEnable(logger)) {
+      const enabledNamespaces2 = debug_default.disable();
+      debug_default.enable(enabledNamespaces2 + "," + logger.namespace);
+    }
+    registeredLoggers.add(logger);
+    return logger;
+  }
+  function contextGetLogLevel() {
+    return logLevel;
+  }
+  function contextCreateClientLogger(namespace) {
+    const clientRootLogger = clientLogger.extend(namespace);
+    patchLogMethod(clientLogger, clientRootLogger);
+    return {
+      error: createLogger(clientRootLogger, "error"),
+      warning: createLogger(clientRootLogger, "warning"),
+      info: createLogger(clientRootLogger, "info"),
+      verbose: createLogger(clientRootLogger, "verbose")
+    };
+  }
+  return {
+    setLogLevel: contextSetLogLevel,
+    getLogLevel: contextGetLogLevel,
+    createClientLogger: contextCreateClientLogger,
+    logger: clientLogger
+  };
+}
+var context = createLoggerContext({
+  logLevelEnvVarName: "TYPESPEC_RUNTIME_LOG_LEVEL",
+  namespace: "typeSpecRuntime"
+});
+var TypeSpecRuntimeLogger = context.logger;
+function createClientLogger(namespace) {
+  return context.createClientLogger(namespace);
+}
 // node_modules/@typespec/ts-http-runtime/dist/esm/httpHeaders.js
 function normalizeName(name) {
   return name.toLowerCase();
@@ -77030,282 +77695,18 @@ function isRestError(e) {
   }
   return isError(e) && e.name === "RestError";
 }
+// node_modules/@typespec/ts-http-runtime/dist/esm/util/bytesEncoding.js
+function uint8ArrayToString(bytes, format) {
+  return Buffer.from(bytes).toString(format);
+}
+function stringToUint8Array(value, format) {
+  return Buffer.from(value, format);
+}
 // node_modules/@typespec/ts-http-runtime/dist/esm/nodeHttpClient.js
 import http2 from "node:http";
 import https2 from "node:https";
 import zlib from "node:zlib";
 import { Transform } from "node:stream";
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/abort-controller/AbortError.js
-class AbortError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "AbortError";
-  }
-}
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/logger/log.js
-import { EOL as EOL4 } from "node:os";
-import util from "node:util";
-import process2 from "node:process";
-function log(message, ...args) {
-  process2.stderr.write(`${util.format(message, ...args)}${EOL4}`);
-}
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/env.js
-import process3 from "node:process";
-function getEnvironmentVariable(name) {
-  return process3.env[name];
-}
-var isDeno = typeof process3.versions.deno === "string" && process3.versions.deno.length > 0;
-var isBun = typeof process3.versions.bun === "string" && process3.versions.bun.length > 0;
-var isNodeLike = true;
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/logger/debug.js
-var debugEnvVariable = getEnvironmentVariable("DEBUG");
-var enabledString;
-var enabledNamespaces = [];
-var skippedNamespaces = [];
-var debuggers = [];
-if (debugEnvVariable) {
-  enable(debugEnvVariable);
-}
-var debugObj = Object.assign((namespace) => {
-  return createDebugger(namespace);
-}, {
-  enable,
-  enabled,
-  disable,
-  log
-});
-function enable(namespaces) {
-  enabledString = namespaces;
-  enabledNamespaces = [];
-  skippedNamespaces = [];
-  const namespaceList = namespaces.split(",").map((ns) => ns.trim());
-  for (const ns of namespaceList) {
-    if (ns.startsWith("-")) {
-      skippedNamespaces.push(ns.substring(1));
-    } else {
-      enabledNamespaces.push(ns);
-    }
-  }
-  for (const instance of debuggers) {
-    instance.enabled = enabled(instance.namespace);
-  }
-}
-function enabled(namespace) {
-  if (namespace.endsWith("*")) {
-    return true;
-  }
-  for (const skipped of skippedNamespaces) {
-    if (namespaceMatches(namespace, skipped)) {
-      return false;
-    }
-  }
-  for (const enabledNamespace of enabledNamespaces) {
-    if (namespaceMatches(namespace, enabledNamespace)) {
-      return true;
-    }
-  }
-  return false;
-}
-function namespaceMatches(namespace, patternToMatch) {
-  if (patternToMatch.indexOf("*") === -1) {
-    return namespace === patternToMatch;
-  }
-  let pattern = patternToMatch;
-  if (patternToMatch.indexOf("**") !== -1) {
-    const patternParts = [];
-    let lastCharacter = "";
-    for (const character of patternToMatch) {
-      if (character === "*" && lastCharacter === "*") {
-        continue;
-      } else {
-        lastCharacter = character;
-        patternParts.push(character);
-      }
-    }
-    pattern = patternParts.join("");
-  }
-  let namespaceIndex = 0;
-  let patternIndex = 0;
-  const patternLength = pattern.length;
-  const namespaceLength = namespace.length;
-  let lastWildcard = -1;
-  let lastWildcardNamespace = -1;
-  while (namespaceIndex < namespaceLength && patternIndex < patternLength) {
-    if (pattern[patternIndex] === "*") {
-      lastWildcard = patternIndex;
-      patternIndex++;
-      if (patternIndex === patternLength) {
-        return true;
-      }
-      while (namespace[namespaceIndex] !== pattern[patternIndex]) {
-        namespaceIndex++;
-        if (namespaceIndex === namespaceLength) {
-          return false;
-        }
-      }
-      lastWildcardNamespace = namespaceIndex;
-      namespaceIndex++;
-      patternIndex++;
-      continue;
-    } else if (pattern[patternIndex] === namespace[namespaceIndex]) {
-      patternIndex++;
-      namespaceIndex++;
-    } else if (lastWildcard >= 0) {
-      patternIndex = lastWildcard + 1;
-      namespaceIndex = lastWildcardNamespace + 1;
-      if (namespaceIndex === namespaceLength) {
-        return false;
-      }
-      while (namespace[namespaceIndex] !== pattern[patternIndex]) {
-        namespaceIndex++;
-        if (namespaceIndex === namespaceLength) {
-          return false;
-        }
-      }
-      lastWildcardNamespace = namespaceIndex;
-      namespaceIndex++;
-      patternIndex++;
-      continue;
-    } else {
-      return false;
-    }
-  }
-  const namespaceDone = namespaceIndex === namespace.length;
-  const patternDone = patternIndex === pattern.length;
-  const trailingWildCard = patternIndex === pattern.length - 1 && pattern[patternIndex] === "*";
-  return namespaceDone && (patternDone || trailingWildCard);
-}
-function disable() {
-  const result = enabledString || "";
-  enable("");
-  return result;
-}
-function createDebugger(namespace) {
-  const newDebugger = Object.assign(debug2, {
-    enabled: enabled(namespace),
-    destroy,
-    log: debugObj.log,
-    namespace,
-    extend
-  });
-  function debug2(...args) {
-    if (!newDebugger.enabled) {
-      return;
-    }
-    if (args.length > 0) {
-      args[0] = `${namespace} ${args[0]}`;
-    }
-    newDebugger.log(...args);
-  }
-  debuggers.push(newDebugger);
-  return newDebugger;
-}
-function destroy() {
-  const index = debuggers.indexOf(this);
-  if (index >= 0) {
-    debuggers.splice(index, 1);
-    return true;
-  }
-  return false;
-}
-function extend(namespace) {
-  const newDebugger = createDebugger(`${this.namespace}:${namespace}`);
-  newDebugger.log = this.log;
-  return newDebugger;
-}
-var debug_default = debugObj;
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/logger/logger.js
-var TYPESPEC_RUNTIME_LOG_LEVELS = ["verbose", "info", "warning", "error"];
-var levelMap = {
-  verbose: 400,
-  info: 300,
-  warning: 200,
-  error: 100
-};
-function patchLogMethod(parent, child) {
-  child.log = (...args) => {
-    parent.log(...args);
-  };
-}
-function isTypeSpecRuntimeLogLevel(level) {
-  return TYPESPEC_RUNTIME_LOG_LEVELS.includes(level);
-}
-function createLoggerContext(options) {
-  const registeredLoggers = new Set;
-  const logLevelFromEnv = getEnvironmentVariable(options.logLevelEnvVarName);
-  let logLevel;
-  const clientLogger = debug_default(options.namespace);
-  clientLogger.log = (...args) => {
-    debug_default.log(...args);
-  };
-  function contextSetLogLevel(level) {
-    if (level && !isTypeSpecRuntimeLogLevel(level)) {
-      throw new Error(`Unknown log level '${level}'. Acceptable values: ${TYPESPEC_RUNTIME_LOG_LEVELS.join(",")}`);
-    }
-    logLevel = level;
-    const enabledNamespaces2 = [];
-    for (const logger of registeredLoggers) {
-      if (shouldEnable(logger)) {
-        enabledNamespaces2.push(logger.namespace);
-      }
-    }
-    debug_default.enable(enabledNamespaces2.join(","));
-  }
-  if (logLevelFromEnv) {
-    if (isTypeSpecRuntimeLogLevel(logLevelFromEnv)) {
-      contextSetLogLevel(logLevelFromEnv);
-    } else {
-      console.error(`${options.logLevelEnvVarName} set to unknown log level '${logLevelFromEnv}'; logging is not enabled. Acceptable values: ${TYPESPEC_RUNTIME_LOG_LEVELS.join(", ")}.`);
-    }
-  }
-  function shouldEnable(logger) {
-    return Boolean(logLevel && levelMap[logger.level] <= levelMap[logLevel]);
-  }
-  function createLogger(parent, level) {
-    const logger = Object.assign(parent.extend(level), {
-      level
-    });
-    patchLogMethod(parent, logger);
-    if (shouldEnable(logger)) {
-      const enabledNamespaces2 = debug_default.disable();
-      debug_default.enable(enabledNamespaces2 + "," + logger.namespace);
-    }
-    registeredLoggers.add(logger);
-    return logger;
-  }
-  function contextGetLogLevel() {
-    return logLevel;
-  }
-  function contextCreateClientLogger(namespace) {
-    const clientRootLogger = clientLogger.extend(namespace);
-    patchLogMethod(clientLogger, clientRootLogger);
-    return {
-      error: createLogger(clientRootLogger, "error"),
-      warning: createLogger(clientRootLogger, "warning"),
-      info: createLogger(clientRootLogger, "info"),
-      verbose: createLogger(clientRootLogger, "verbose")
-    };
-  }
-  return {
-    setLogLevel: contextSetLogLevel,
-    getLogLevel: contextGetLogLevel,
-    createClientLogger: contextCreateClientLogger,
-    logger: clientLogger
-  };
-}
-var context = createLoggerContext({
-  logLevelEnvVarName: "TYPESPEC_RUNTIME_LOG_LEVEL",
-  namespace: "typeSpecRuntime"
-});
-var TypeSpecRuntimeLogger = context.logger;
-function createClientLogger(namespace) {
-  return context.createClientLogger(namespace);
-}
 
 // node_modules/@typespec/ts-http-runtime/dist/esm/log.js
 var logger = createClientLogger("ts-http-runtime");
@@ -77404,9 +77805,6 @@ class NodeHttpClient {
         body = uploadReportStream;
       }
       const res = await this.makeRequest(request, abortController, body);
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
       const headers = getResponseHeaders(res);
       const status = res.statusCode ?? 0;
       const response = {
@@ -77435,6 +77833,9 @@ class NodeHttpClient {
       }
       return response;
     } finally {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
       if (request.abortSignal && abortListener) {
         let uploadStreamDone = Promise.resolve();
         if (isReadableStream(body)) {
@@ -77599,49 +78000,45 @@ function createNodeHttpClient() {
 function createDefaultHttpClient() {
   return createNodeHttpClient();
 }
-// node_modules/@azure/core-rest-pipeline/dist/esm/pipeline.js
-function createEmptyPipeline2() {
-  return createEmptyPipeline();
-}
-// node_modules/@azure/logger/dist/esm/index.js
-var context2 = createLoggerContext({
-  logLevelEnvVarName: "AZURE_LOG_LEVEL",
-  namespace: "azure"
-});
-var AzureLogger = context2.logger;
-function createClientLogger3(namespace) {
-  return context2.createClientLogger(namespace);
-}
-
-// node_modules/@azure/core-rest-pipeline/dist/esm/log.js
-var logger2 = createClientLogger3("core-rest-pipeline");
-
-// node_modules/@typespec/ts-http-runtime/dist/esm/policies/agentPolicy.js
-var agentPolicyName = "agentPolicy";
-function agentPolicy(agent) {
+// node_modules/@typespec/ts-http-runtime/dist/esm/policies/logPolicy.js
+var logPolicyName = "logPolicy";
+function logPolicy(options = {}) {
+  const logger2 = options.logger ?? logger.info;
+  const sanitizer = new Sanitizer({
+    additionalAllowedHeaderNames: options.additionalAllowedHeaderNames,
+    additionalAllowedQueryParameters: options.additionalAllowedQueryParameters
+  });
   return {
-    name: agentPolicyName,
-    sendRequest: async (req, next) => {
-      if (!req.agent) {
-        req.agent = agent;
-      }
-      return next(req);
-    }
-  };
-}
-// node_modules/@typespec/ts-http-runtime/dist/esm/policies/decompressResponsePolicy.js
-var decompressResponsePolicyName = "decompressResponsePolicy";
-function decompressResponsePolicy() {
-  return {
-    name: decompressResponsePolicyName,
+    name: logPolicyName,
     async sendRequest(request, next) {
-      if (request.method !== "HEAD") {
-        request.headers.set("Accept-Encoding", "gzip,deflate");
+      if (!logger2.enabled) {
+        return next(request);
       }
-      return next(request);
+      logger2(`Request: ${sanitizer.sanitize(request)}`);
+      const response = await next(request);
+      logger2(`Response status code: ${response.status}`);
+      logger2(`Headers: ${sanitizer.sanitize({ headers: response.headers })}`);
+      return response;
     }
   };
 }
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/util/userAgentPlatform.js
+function getHeaderName() {
+  return "User-Agent";
+}
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/constants.js
+var DEFAULT_RETRY_POLICY_COUNT = 3;
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/util/userAgent.js
+function getUserAgentHeaderName() {
+  return getHeaderName();
+}
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/policies/userAgentPolicy.js
+var UserAgentHeaderName = getUserAgentHeaderName();
+
 // node_modules/@typespec/ts-http-runtime/dist/esm/util/random.js
 function getRandomIntegerInclusive(min, max) {
   min = Math.ceil(min);
@@ -77780,14 +78177,11 @@ function isSystemError(err) {
   return err.code === "ETIMEDOUT" || err.code === "ESOCKETTIMEDOUT" || err.code === "ECONNREFUSED" || err.code === "ECONNRESET" || err.code === "ENOENT" || err.code === "ENOTFOUND";
 }
 
-// node_modules/@typespec/ts-http-runtime/dist/esm/constants.js
-var DEFAULT_RETRY_POLICY_COUNT = 3;
-
 // node_modules/@typespec/ts-http-runtime/dist/esm/policies/retryPolicy.js
 var retryPolicyLogger = createClientLogger("ts-http-runtime retryPolicy");
 var retryPolicyName = "retryPolicy";
 function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_COUNT }) {
-  const logger3 = options.logger || retryPolicyLogger;
+  const logger2 = options.logger || retryPolicyLogger;
   return {
     name: retryPolicyName,
     async sendRequest(request, next) {
@@ -77797,14 +78191,13 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
       retryRequest:
         while (true) {
           retryCount += 1;
-          response = undefined;
           responseError = undefined;
           try {
-            logger3.info(`Retry ${retryCount}: Attempting to send request`, request.requestId);
+            logger2.info(`Retry ${retryCount}: Attempting to send request`, request.requestId);
             response = await next(request);
-            logger3.info(`Retry ${retryCount}: Received a response from request`, request.requestId);
+            logger2.info(`Retry ${retryCount}: Received a response from request`, request.requestId);
           } catch (e) {
-            logger3.error(`Retry ${retryCount}: Received an error from request`, request.requestId);
+            logger2.error(`Retry ${retryCount}: Received an error from request`, request.requestId);
             if (!isRestError(e)) {
               throw e;
             }
@@ -77812,12 +78205,12 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
             response = e.response;
           }
           if (request.abortSignal?.aborted) {
-            logger3.error(`Retry ${retryCount}: Request aborted.`);
+            logger2.error(`Retry ${retryCount}: Request aborted.`);
             const abortError = new AbortError;
             throw abortError;
           }
           if (retryCount >= (options.maxRetries ?? DEFAULT_RETRY_POLICY_COUNT)) {
-            logger3.info(`Retry ${retryCount}: Maximum retries reached. Returning the last received response, or throwing the last received error.`);
+            logger2.info(`Retry ${retryCount}: Maximum retries reached. Returning the last received response, or throwing the last received error.`);
             if (responseError) {
               throw responseError;
             } else if (response) {
@@ -77826,10 +78219,10 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
               throw new Error("Maximum retries reached with no response or error to throw");
             }
           }
-          logger3.info(`Retry ${retryCount}: Processing ${strategies.length} retry strategies.`);
+          logger2.info(`Retry ${retryCount}: Processing ${strategies.length} retry strategies.`);
           strategiesLoop:
             for (const strategy of strategies) {
-              const strategyLogger = strategy.logger || logger3;
+              const strategyLogger = strategy.logger || logger2;
               strategyLogger.info(`Retry ${retryCount}: Processing retry strategy ${strategy.name}.`);
               const modifiers = strategy.retry({
                 retryCount,
@@ -77857,11 +78250,11 @@ function retryPolicy(strategies, options = { maxRetries: DEFAULT_RETRY_POLICY_CO
               }
             }
           if (responseError) {
-            logger3.info(`None of the retry strategies could work with the received error. Throwing it.`);
+            logger2.info(`None of the retry strategies could work with the received error. Throwing it.`);
             throw responseError;
           }
           if (response) {
-            logger3.info(`None of the retry strategies could work with the received response. Returning it.`);
+            logger2.info(`None of the retry strategies could work with the received response. Returning it.`);
             return response;
           }
         }
@@ -77878,13 +78271,6 @@ function defaultRetryPolicy(options = {}) {
       maxRetries: options.maxRetries ?? DEFAULT_RETRY_POLICY_COUNT
     }).sendRequest
   };
-}
-// node_modules/@typespec/ts-http-runtime/dist/esm/util/bytesEncoding.js
-function uint8ArrayToString2(bytes, format) {
-  return Buffer.from(bytes).toString(format);
-}
-function stringToUint8Array2(value, format) {
-  return Buffer.from(value, format);
 }
 
 // node_modules/@typespec/ts-http-runtime/dist/esm/formData.js
@@ -77955,7 +78341,7 @@ async function prepareFormData(formData, request) {
           headers: createHttpHeaders({
             "Content-Disposition": `form-data; name="${fieldName}"`
           }),
-          body: stringToUint8Array2(value, "utf-8")
+          body: stringToUint8Array(value, "utf-8")
         });
       } else if (value === undefined || value === null || typeof value !== "object") {
         throw new Error(`Unexpected value for key ${fieldName}: ${value}. Value should be serialized to string first.`);
@@ -77973,187 +78359,35 @@ async function prepareFormData(formData, request) {
   }
   request.multipartBody = { parts };
 }
-// node_modules/@typespec/ts-http-runtime/dist/esm/policies/logPolicy.js
-var logPolicyName = "logPolicy";
-function logPolicy(options = {}) {
-  const logger3 = options.logger ?? logger.info;
-  const sanitizer = new Sanitizer({
-    additionalAllowedHeaderNames: options.additionalAllowedHeaderNames,
-    additionalAllowedQueryParameters: options.additionalAllowedQueryParameters
-  });
-  return {
-    name: logPolicyName,
-    async sendRequest(request, next) {
-      if (!logger3.enabled) {
-        return next(request);
-      }
-      logger3(`Request: ${sanitizer.sanitize(request)}`);
-      const response = await next(request);
-      logger3(`Response status code: ${response.status}`);
-      logger3(`Headers: ${sanitizer.sanitize({ headers: response.headers })}`);
-      return response;
-    }
-  };
-}
-// node_modules/@typespec/ts-http-runtime/dist/esm/util/typeGuards.js
-function isBlob(x) {
-  return x instanceof Blob;
-}
 
-// node_modules/@typespec/ts-http-runtime/dist/esm/util/concat.js
-import { Readable } from "stream";
-async function* streamAsyncIterator() {
-  const reader = this.getReader();
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        return;
+// node_modules/@typespec/ts-http-runtime/dist/esm/policies/agentPolicy.js
+var agentPolicyName = "agentPolicy";
+function agentPolicy(agent) {
+  return {
+    name: agentPolicyName,
+    sendRequest: async (req, next) => {
+      if (!req.agent) {
+        req.agent = agent;
       }
-      yield value;
+      return next(req);
     }
-  } finally {
-    reader.releaseLock();
-  }
-}
-function makeAsyncIterable(webStream) {
-  if (!webStream[Symbol.asyncIterator]) {
-    webStream[Symbol.asyncIterator] = streamAsyncIterator.bind(webStream);
-  }
-  if (!webStream.values) {
-    webStream.values = streamAsyncIterator.bind(webStream);
-  }
-}
-function ensureNodeStream(stream) {
-  if (stream instanceof ReadableStream) {
-    makeAsyncIterable(stream);
-    return Readable.fromWeb(stream);
-  } else {
-    return stream;
-  }
-}
-function toStream(source) {
-  if (source instanceof Uint8Array) {
-    return Readable.from(Buffer.from(source));
-  } else if (isBlob(source)) {
-    return ensureNodeStream(source.stream());
-  } else {
-    return ensureNodeStream(source);
-  }
-}
-async function concat(sources) {
-  return function() {
-    const streams = sources.map((x) => typeof x === "function" ? x() : x).map(toStream);
-    return Readable.from(async function* () {
-      for (const stream of streams) {
-        for await (const chunk of stream) {
-          yield chunk;
-        }
-      }
-    }());
   };
 }
 
-// node_modules/@typespec/ts-http-runtime/dist/esm/policies/multipartPolicy.js
-function generateBoundary() {
-  return `----AzSDKFormBoundary${randomUUID()}`;
-}
-function encodeHeaders(headers) {
-  let result = "";
-  for (const [key, value] of headers) {
-    result += `${key}: ${value}\r
-`;
-  }
-  return result;
-}
-function getLength(source) {
-  if (source instanceof Uint8Array) {
-    return source.byteLength;
-  } else if (isBlob(source)) {
-    return source.size === -1 ? undefined : source.size;
-  } else {
-    return;
-  }
-}
-function getTotalLength(sources) {
-  let total = 0;
-  for (const source of sources) {
-    const partLength = getLength(source);
-    if (partLength === undefined) {
-      return;
-    } else {
-      total += partLength;
-    }
-  }
-  return total;
-}
-async function buildRequestBody(request, parts, boundary) {
-  const sources = [
-    stringToUint8Array2(`--${boundary}`, "utf-8"),
-    ...parts.flatMap((part) => [
-      stringToUint8Array2(`\r
-`, "utf-8"),
-      stringToUint8Array2(encodeHeaders(part.headers), "utf-8"),
-      stringToUint8Array2(`\r
-`, "utf-8"),
-      part.body,
-      stringToUint8Array2(`\r
---${boundary}`, "utf-8")
-    ]),
-    stringToUint8Array2(`--\r
-\r
-`, "utf-8")
-  ];
-  const contentLength = getTotalLength(sources);
-  if (contentLength) {
-    request.headers.set("Content-Length", contentLength);
-  }
-  request.body = await concat(sources);
-}
-var multipartPolicyName = "multipartPolicy";
-var maxBoundaryLength = 70;
-var validBoundaryCharacters = new Set(`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'()+,-./:=?`);
-function assertValidBoundary(boundary) {
-  if (boundary.length > maxBoundaryLength) {
-    throw new Error(`Multipart boundary "${boundary}" exceeds maximum length of 70 characters`);
-  }
-  if (Array.from(boundary).some((x) => !validBoundaryCharacters.has(x))) {
-    throw new Error(`Multipart boundary "${boundary}" contains invalid characters`);
-  }
-}
-function multipartPolicy() {
+// node_modules/@typespec/ts-http-runtime/dist/esm/policies/tlsPolicy.js
+var tlsPolicyName = "tlsPolicy";
+function tlsPolicy(tlsSettings) {
   return {
-    name: multipartPolicyName,
-    async sendRequest(request, next) {
-      if (!request.multipartBody) {
-        return next(request);
+    name: tlsPolicyName,
+    sendRequest: async (req, next) => {
+      if (!req.tlsSettings) {
+        req.tlsSettings = tlsSettings;
       }
-      if (request.body) {
-        throw new Error("multipartBody and regular body cannot be set at the same time");
-      }
-      let boundary = request.multipartBody.boundary;
-      const contentTypeHeader = request.headers.get("Content-Type") ?? "multipart/mixed";
-      const parsedHeader = contentTypeHeader.match(/^(multipart\/[^ ;]+)(?:; *boundary=(.+))?$/);
-      if (!parsedHeader) {
-        throw new Error(`Got multipart request body, but content-type header was not multipart: ${contentTypeHeader}`);
-      }
-      const [, contentType, parsedBoundary] = parsedHeader;
-      if (parsedBoundary && boundary && parsedBoundary !== boundary) {
-        throw new Error(`Multipart boundary was specified as ${parsedBoundary} in the header, but got ${boundary} in the request body`);
-      }
-      boundary ??= parsedBoundary;
-      if (boundary) {
-        assertValidBoundary(boundary);
-      } else {
-        boundary = generateBoundary();
-      }
-      request.headers.set("Content-Type", `${contentType}; boundary=${boundary}`);
-      await buildRequestBody(request, request.multipartBody.parts, boundary);
-      request.multipartBody = undefined;
-      return next(request);
+      return next(req);
     }
   };
 }
+
 // node_modules/@typespec/ts-http-runtime/dist/esm/policies/proxyPolicy.js
 var import_https_proxy_agent = __toESM(require_dist2(), 1);
 var import_http_proxy_agent = __toESM(require_dist3(), 1);
@@ -78292,6 +78526,21 @@ function proxyPolicy(proxySettings, options) {
     }
   };
 }
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/policies/decompressResponsePolicy.js
+var decompressResponsePolicyName = "decompressResponsePolicy";
+function decompressResponsePolicy() {
+  return {
+    name: decompressResponsePolicyName,
+    async sendRequest(request, next) {
+      if (request.method !== "HEAD") {
+        request.headers.set("Accept-Encoding", "gzip,deflate");
+      }
+      return next(request);
+    }
+  };
+}
+
 // node_modules/@typespec/ts-http-runtime/dist/esm/policies/redirectPolicy.js
 var redirectPolicyName = "redirectPolicy";
 var allowedRedirect = ["GET", "HEAD"];
@@ -78329,19 +78578,182 @@ async function handleRedirect(next, response, maxRetries, allowCrossOriginRedire
   }
   return response;
 }
-// node_modules/@typespec/ts-http-runtime/dist/esm/policies/tlsPolicy.js
-var tlsPolicyName = "tlsPolicy";
-function tlsPolicy(tlsSettings) {
-  return {
-    name: tlsPolicyName,
-    sendRequest: async (req, next) => {
-      if (!req.tlsSettings) {
-        req.tlsSettings = tlsSettings;
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/util/typeGuards.js
+function isBlob(x) {
+  return x instanceof Blob;
+}
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/util/concat.js
+import { Readable } from "stream";
+async function* streamAsyncIterator() {
+  const reader = this.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        return;
       }
-      return next(req);
+      yield value;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+function makeAsyncIterable(webStream) {
+  if (!webStream[Symbol.asyncIterator]) {
+    webStream[Symbol.asyncIterator] = streamAsyncIterator.bind(webStream);
+  }
+  if (!webStream.values) {
+    webStream.values = streamAsyncIterator.bind(webStream);
+  }
+}
+function ensureNodeStream(stream) {
+  if (stream instanceof ReadableStream) {
+    makeAsyncIterable(stream);
+    return Readable.fromWeb(stream);
+  } else {
+    return stream;
+  }
+}
+function toStream(source) {
+  if (source instanceof Uint8Array) {
+    return Readable.from(Buffer.from(source));
+  } else if (isBlob(source)) {
+    return ensureNodeStream(source.stream());
+  } else {
+    return ensureNodeStream(source);
+  }
+}
+async function concat(sources) {
+  return function() {
+    const streams = sources.map((x) => typeof x === "function" ? x() : x).map(toStream);
+    return Readable.from(async function* () {
+      for (const stream of streams) {
+        for await (const chunk of stream) {
+          yield chunk;
+        }
+      }
+    }());
+  };
+}
+
+// node_modules/@typespec/ts-http-runtime/dist/esm/policies/multipartPolicy.js
+function generateBoundary() {
+  return `----AzSDKFormBoundary${randomUUID()}`;
+}
+function encodeHeaders(headers) {
+  let result = "";
+  for (const [key, value] of headers) {
+    result += `${key}: ${value}\r
+`;
+  }
+  return result;
+}
+function getLength(source) {
+  if (source instanceof Uint8Array) {
+    return source.byteLength;
+  } else if (isBlob(source)) {
+    return source.size === -1 ? undefined : source.size;
+  } else {
+    return;
+  }
+}
+function getTotalLength(sources) {
+  let total = 0;
+  for (const source of sources) {
+    const partLength = getLength(source);
+    if (partLength === undefined) {
+      return;
+    } else {
+      total += partLength;
+    }
+  }
+  return total;
+}
+async function buildRequestBody(request, parts, boundary) {
+  const sources = [
+    stringToUint8Array(`--${boundary}`, "utf-8"),
+    ...parts.flatMap((part) => [
+      stringToUint8Array(`\r
+`, "utf-8"),
+      stringToUint8Array(encodeHeaders(part.headers), "utf-8"),
+      stringToUint8Array(`\r
+`, "utf-8"),
+      part.body,
+      stringToUint8Array(`\r
+--${boundary}`, "utf-8")
+    ]),
+    stringToUint8Array(`--\r
+\r
+`, "utf-8")
+  ];
+  const contentLength = getTotalLength(sources);
+  if (contentLength) {
+    request.headers.set("Content-Length", contentLength);
+  }
+  request.body = await concat(sources);
+}
+var multipartPolicyName = "multipartPolicy";
+var maxBoundaryLength = 70;
+var validBoundaryCharacters = new Set(`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'()+,-./:=?`);
+function assertValidBoundary(boundary) {
+  if (boundary.length > maxBoundaryLength) {
+    throw new Error(`Multipart boundary "${boundary}" exceeds maximum length of 70 characters`);
+  }
+  if (Array.from(boundary).some((x) => !validBoundaryCharacters.has(x))) {
+    throw new Error(`Multipart boundary "${boundary}" contains invalid characters`);
+  }
+}
+function multipartPolicy() {
+  return {
+    name: multipartPolicyName,
+    async sendRequest(request, next) {
+      if (!request.multipartBody) {
+        return next(request);
+      }
+      if (request.body) {
+        throw new Error("multipartBody and regular body cannot be set at the same time");
+      }
+      let boundary = request.multipartBody.boundary;
+      const contentTypeHeader = request.headers.get("Content-Type") ?? "multipart/mixed";
+      const parsedHeader = contentTypeHeader.match(/^(multipart\/[^ ;]+)(?:; *boundary=(.+))?$/);
+      if (!parsedHeader) {
+        throw new Error(`Got multipart request body, but content-type header was not multipart: ${contentTypeHeader}`);
+      }
+      const [, contentType, parsedBoundary] = parsedHeader;
+      if (parsedBoundary && boundary && parsedBoundary !== boundary) {
+        throw new Error(`Multipart boundary was specified as ${parsedBoundary} in the header, but got ${boundary} in the request body`);
+      }
+      boundary ??= parsedBoundary;
+      if (boundary) {
+        assertValidBoundary(boundary);
+      } else {
+        boundary = generateBoundary();
+      }
+      request.headers.set("Content-Type", `${contentType}; boundary=${boundary}`);
+      await buildRequestBody(request, request.multipartBody.parts, boundary);
+      request.multipartBody = undefined;
+      return next(request);
     }
   };
 }
+// node_modules/@azure/core-rest-pipeline/dist/esm/pipeline.js
+function createEmptyPipeline2() {
+  return createEmptyPipeline();
+}
+// node_modules/@azure/logger/dist/esm/index.js
+var context2 = createLoggerContext({
+  logLevelEnvVarName: "AZURE_LOG_LEVEL",
+  namespace: "azure"
+});
+var AzureLogger = context2.logger;
+function createClientLogger2(namespace) {
+  return context2.createClientLogger(namespace);
+}
+
+// node_modules/@azure/core-rest-pipeline/dist/esm/log.js
+var logger2 = createClientLogger2("core-rest-pipeline");
 // node_modules/@azure/core-rest-pipeline/dist/esm/policies/logPolicy.js
 function logPolicy2(options = {}) {
   return logPolicy({
@@ -78359,10 +78771,10 @@ function redirectPolicy2(options = {}) {
 // node_modules/@azure/core-rest-pipeline/dist/esm/util/userAgentPlatform.js
 import os5 from "node:os";
 import process4 from "node:process";
-function getHeaderName() {
+function getHeaderName2() {
   return "User-Agent";
 }
-async function setPlatformSpecificData(map) {
+async function setPlatformSpecificData2(map) {
   if (process4 && process4.versions) {
     const osInfo = `${os5.type()} ${os5.release()}; ${os5.arch()}`;
     if (process4.versions.bun) {
@@ -78376,7 +78788,7 @@ async function setPlatformSpecificData(map) {
 }
 
 // node_modules/@azure/core-rest-pipeline/dist/esm/constants.js
-var SDK_VERSION = "1.25.0";
+var SDK_VERSION2 = "1.25.0";
 
 // node_modules/@azure/core-rest-pipeline/dist/esm/util/userAgent.js
 function getUserAgentString2(telemetryInfo) {
@@ -78387,28 +78799,28 @@ function getUserAgentString2(telemetryInfo) {
   }
   return parts.join(" ");
 }
-function getUserAgentHeaderName() {
-  return getHeaderName();
+function getUserAgentHeaderName2() {
+  return getHeaderName2();
 }
-async function getUserAgentValue(prefix) {
+async function getUserAgentValue2(prefix) {
   const runtimeInfo = new Map;
-  runtimeInfo.set("core-rest-pipeline", SDK_VERSION);
-  await setPlatformSpecificData(runtimeInfo);
+  runtimeInfo.set("core-rest-pipeline", SDK_VERSION2);
+  await setPlatformSpecificData2(runtimeInfo);
   const defaultAgent = getUserAgentString2(runtimeInfo);
   const userAgentValue = prefix ? `${prefix} ${defaultAgent}` : defaultAgent;
   return userAgentValue;
 }
 
 // node_modules/@azure/core-rest-pipeline/dist/esm/policies/userAgentPolicy.js
-var UserAgentHeaderName = getUserAgentHeaderName();
+var UserAgentHeaderName2 = getUserAgentHeaderName2();
 var userAgentPolicyName2 = "userAgentPolicy";
-function userAgentPolicy2(options = {}) {
-  const userAgentValue = getUserAgentValue(options.userAgentPrefix);
+function userAgentPolicy3(options = {}) {
+  const userAgentValue = getUserAgentValue2(options.userAgentPrefix);
   return {
     name: userAgentPolicyName2,
     async sendRequest(request, next) {
-      if (!request.headers.has(UserAgentHeaderName)) {
-        request.headers.set(UserAgentHeaderName, await userAgentValue);
+      if (!request.headers.has(UserAgentHeaderName2)) {
+        request.headers.set(UserAgentHeaderName2, await userAgentValue);
       }
       return next(request);
     }
@@ -78463,7 +78875,7 @@ function formDataPolicy2() {
   return formDataPolicy();
 }
 // node_modules/@azure/abort-controller/dist/esm/AbortError.js
-class AbortError3 extends Error {
+class AbortError2 extends Error {
   constructor(message) {
     super(message);
     this.name = "AbortError";
@@ -78474,7 +78886,7 @@ function createAbortablePromise(buildPromise, options) {
   const { cleanupBeforeAbort, abortSignal, abortErrorMsg } = options ?? {};
   return new Promise((resolve2, reject) => {
     function rejectOnAbort() {
-      reject(new AbortError3(abortErrorMsg ?? "The operation was aborted."));
+      reject(new AbortError2(abortErrorMsg ?? "The operation was aborted."));
     }
     function removeListeners() {
       abortSignal?.removeEventListener("abort", onAbort);
@@ -78541,11 +78953,11 @@ function randomUUID2() {
   return randomUUID();
 }
 var isNodeLike2 = isNodeLike;
-function uint8ArrayToString3(bytes, format) {
-  return uint8ArrayToString2(bytes, format);
+function uint8ArrayToString2(bytes, format) {
+  return uint8ArrayToString(bytes, format);
 }
-function stringToUint8Array3(value, format) {
-  return stringToUint8Array2(value, format);
+function stringToUint8Array2(value, format) {
+  return stringToUint8Array(value, format);
 }
 
 // node_modules/@azure/core-rest-pipeline/dist/esm/policies/proxyPolicy.js
@@ -78719,7 +79131,7 @@ function isRestError2(e) {
 // node_modules/@azure/core-rest-pipeline/dist/esm/policies/tracingPolicy.js
 var tracingPolicyName = "tracingPolicy";
 function tracingPolicy(options = {}) {
-  const userAgentPromise = getUserAgentValue(options.userAgentPrefix);
+  const userAgentPromise = getUserAgentValue2(options.userAgentPrefix);
   const sanitizer = new Sanitizer({
     additionalAllowedQueryParameters: options.additionalAllowedQueryParameters
   });
@@ -78760,7 +79172,7 @@ function tryCreateTracingClient() {
     return createTracingClient({
       namespace: "",
       packageName: "@azure/core-rest-pipeline",
-      packageVersion: SDK_VERSION
+      packageVersion: SDK_VERSION2
     });
   } catch (e) {
     logger2.warning(`Error when creating the TracingClient: ${getErrorMessage(e)}`);
@@ -78866,7 +79278,7 @@ function wrapAbortSignalLikePolicy() {
 }
 
 // node_modules/@azure/core-rest-pipeline/dist/esm/createPipelineFromOptions.js
-function createPipelineFromOptions(options) {
+function createPipelineFromOptions2(options) {
   const pipeline = createEmptyPipeline2();
   if (isNodeLike2) {
     if (options.agent) {
@@ -78880,7 +79292,7 @@ function createPipelineFromOptions(options) {
   }
   pipeline.addPolicy(wrapAbortSignalLikePolicy());
   pipeline.addPolicy(formDataPolicy2(), { beforePolicies: [multipartPolicyName2] });
-  pipeline.addPolicy(userAgentPolicy2(options.userAgentOptions));
+  pipeline.addPolicy(userAgentPolicy3(options.userAgentOptions));
   pipeline.addPolicy(setClientRequestIdPolicy(options.telemetryOptions?.clientRequestIdHeaderName));
   pipeline.addPolicy(multipartPolicy2(), { afterPhase: "Deserialize" });
   pipeline.addPolicy(defaultRetryPolicy2(options.retryOptions), { phase: "Retry" });
@@ -79175,10 +79587,10 @@ function pipelineContainsDisableKeepAlivePolicy(pipeline) {
 
 // node_modules/@azure/core-client/dist/esm/base64.js
 function encodeByteArray(value) {
-  return uint8ArrayToString3(value, "base64");
+  return uint8ArrayToString2(value, "base64");
 }
 function decodeString(value) {
-  return stringToUint8Array3(value, "base64");
+  return stringToUint8Array2(value, "base64");
 }
 
 // node_modules/@azure/core-client/dist/esm/interfaces.js
@@ -80356,7 +80768,7 @@ function serializeRequestBody(request, operationArguments, operationSpec, string
         }
       }
     } catch (error2) {
-      throw new Error(`Error "${error2.message}" occurred in serializing the payload - ${JSON.stringify(serializedName, undefined, "  ")}.`);
+      throw new Error(`Error "${error2.message}" occurred in serializing the payload - ${JSON.stringify(serializedName, undefined, "  ")}.`, { cause: error2 });
     }
   } else if (operationSpec.formDataParameters && operationSpec.formDataParameters.length > 0) {
     request.formData = {};
@@ -80392,7 +80804,7 @@ function prepareXMLRootList(obj, elementName, xmlNamespaceKey, xmlNamespace) {
 
 // node_modules/@azure/core-client/dist/esm/pipeline.js
 function createClientPipeline(options = {}) {
-  const pipeline = createPipelineFromOptions(options ?? {});
+  const pipeline = createPipelineFromOptions2(options ?? {});
   if (options.credentialOptions) {
     pipeline.addPolicy(bearerTokenAuthenticationPolicy({
       credential: options.credentialOptions.credential,
@@ -80608,7 +81020,7 @@ function appendQueryParams(url, queryParams, sequenceParams, noOverwrite = false
 }
 
 // node_modules/@azure/core-client/dist/esm/log.js
-var logger3 = createClientLogger3("core-client");
+var logger3 = createClientLogger2("core-client");
 
 // node_modules/@azure/core-client/dist/esm/serviceClient.js
 class ServiceClient {
@@ -80625,7 +81037,7 @@ class ServiceClient {
     }
     this._allowInsecureConnection = options.allowInsecureConnection;
     this._httpClient = options.httpClient || getCachedDefaultHttpClient();
-    this.pipeline = options.pipeline || createDefaultPipeline(options);
+    this.pipeline = options.pipeline || createDefaultPipeline2(options);
     if (options.additionalPolicies?.length) {
       for (const { policy, position } of options.additionalPolicies) {
         const afterPhase = position === "perRetry" ? "Sign" : undefined;
@@ -80708,7 +81120,7 @@ class ServiceClient {
     }
   }
 }
-function createDefaultPipeline(options) {
+function createDefaultPipeline2(options) {
   const credentialScopes = getCredentialScopes(options);
   const credentialOptions = options.credential && credentialScopes ? { credentialScopes, credential: options.credential } : undefined;
   return createClientPipeline({
@@ -85545,7 +85957,7 @@ async function parseXML(str, opts = {}) {
   return parsedXml;
 }
 // node_modules/@azure/storage-blob/dist/esm/log.js
-var logger4 = createClientLogger3("storage-blob");
+var logger4 = createClientLogger2("storage-blob");
 
 // node_modules/@azure/storage-common/dist/esm/BufferScheduler.js
 import { EventEmitter } from "events";
@@ -88163,7 +88575,7 @@ class StructuredMessageEncoding {
 }
 
 // node_modules/@azure/storage-common/dist/esm/StructuredMessageEncodingStream.js
-function isNodeReadableStream(source) {
+function isNodeReadableStream2(source) {
   return source !== null && source instanceof Stream && typeof source._read === "function" && typeof source._readableState === "object" && typeof source.pipe === "function";
 }
 async function structuredMessageEncoding(source, contentLength) {
@@ -88173,7 +88585,7 @@ async function structuredMessageEncoding(source, contentLength) {
       encodedContentLength: contentLength
     };
   }
-  if (isNodeReadableStream(source)) {
+  if (isNodeReadableStream2(source)) {
     const encodingMessage = new StructuredMessageEncodingStream(source, contentLength, {});
     return {
       body: encodingMessage,
@@ -88297,7 +88709,7 @@ class StructuredMessageEncodingStream extends Readable3 {
     this.encodingMethods.sourceDataHandler(data);
   };
   sourceAbortedHandler = () => {
-    const abortError = new AbortError3("The operation was aborted.");
+    const abortError = new AbortError2("The operation was aborted.");
     this.destroy(abortError);
   };
   sourceErrorOrEndHandler = (err) => {
@@ -88542,7 +88954,7 @@ class StructuredMessageDecodingStream extends Readable4 {
     }
   };
   sourceAbortedHandler = () => {
-    const abortError = new AbortError3("The operation was aborted.");
+    const abortError = new AbortError2("The operation was aborted.");
     this.destroy(abortError);
   };
   sourceErrorOrEndHandler = (err) => {
@@ -89275,7 +89687,7 @@ class StorageSharedKeyCredential extends Credential {
   }
 }
 // node_modules/@azure/storage-common/dist/esm/log.js
-var logger5 = createClientLogger3("storage-common");
+var logger5 = createClientLogger2("storage-common");
 
 // node_modules/@azure/storage-common/dist/esm/policies/StorageRetryPolicyType.js
 var StorageRetryPolicyType;
@@ -89293,7 +89705,7 @@ var DEFAULT_RETRY_OPTIONS = {
   secondaryHost: "",
   tryTimeoutInMs: undefined
 };
-var RETRY_ABORT_ERROR = new AbortError3("The operation was aborted.");
+var RETRY_ABORT_ERROR = new AbortError2("The operation was aborted.");
 
 class StorageRetryPolicy extends BaseRequestPolicy {
   retryOptions;
@@ -89467,7 +89879,7 @@ var retriableErrors = [
   "EPIPE",
   "REQUEST_SEND_ERROR"
 ];
-var RETRY_ABORT_ERROR2 = new AbortError3("The operation was aborted.");
+var RETRY_ABORT_ERROR2 = new AbortError2("The operation was aborted.");
 function storageRetryPolicy(options = {}) {
   const retryPolicyType = options.retryPolicyType ?? DEFAULT_RETRY_OPTIONS2.retryPolicyType;
   const maxTries = options.maxTries ?? DEFAULT_RETRY_OPTIONS2.maxTries;
@@ -89712,7 +90124,7 @@ class UserDelegationKeyCredential {
   }
 }
 // node_modules/@azure/storage-blob/dist/esm/utils/constants.js
-var SDK_VERSION2 = "12.33.0";
+var SDK_VERSION3 = "12.33.0";
 var SERVICE_VERSION = "2026-06-06";
 var BLOCK_BLOB_MAX_UPLOAD_BLOB_BYTES = 256 * 1024 * 1024;
 var BLOCK_BLOB_MAX_STAGE_BLOCK_BYTES = 4000 * 1024 * 1024;
@@ -89959,7 +90371,7 @@ function getCoreClientOptions(pipeline) {
   }
   let corePipeline = pipeline._corePipeline;
   if (!corePipeline) {
-    const packageDetails = `azsdk-js-azure-storage-blob/${SDK_VERSION2}`;
+    const packageDetails = `azsdk-js-azure-storage-blob/${SDK_VERSION3}`;
     const userAgentPrefix = restOptions.userAgentOptions && restOptions.userAgentOptions.userAgentPrefix ? `${restOptions.userAgentOptions.userAgentPrefix} ${packageDetails}` : `${packageDetails}`;
     corePipeline = createClientPipeline({
       ...restOptions,
@@ -103535,7 +103947,7 @@ class StorageClient2 {
 // node_modules/@azure/storage-blob/dist/esm/utils/tracing.js
 var tracingClient = createTracingClient({
   packageName: "@azure/storage-blob",
-  packageVersion: SDK_VERSION2,
+  packageVersion: SDK_VERSION3,
   namespace: "Microsoft.Storage"
 });
 
@@ -104904,7 +105316,7 @@ class RetriableReadableStream extends Readable5 {
     }
   };
   sourceAbortedHandler = () => {
-    const abortError = new AbortError3("The operation was aborted.");
+    const abortError = new AbortError2("The operation was aborted.");
     this.destroy(abortError);
   };
   sourceErrorOrEndHandler = (err) => {
@@ -105511,7 +105923,7 @@ class AvroReadable {
 
 // node_modules/@azure/storage-blob/dist/esm/internal-avro/AvroReadableFromStream.js
 import { Buffer as Buffer2 } from "buffer";
-var ABORT_ERROR = new AbortError3("Reading from the avro stream was aborted.");
+var ABORT_ERROR = new AbortError2("Reading from the avro stream was aborted.");
 
 class AvroReadableFromStream extends AvroReadable {
   _position;
@@ -109552,7 +109964,7 @@ var createTokenAuth = function createTokenAuth2(token) {
 };
 
 // node_modules/@octokit/core/dist-src/version.js
-var VERSION4 = "7.0.7";
+var VERSION4 = "7.0.8";
 
 // node_modules/@octokit/core/dist-src/index.js
 var noop2 = () => {};
@@ -132214,5 +132626,5 @@ async function index() {
 }
 await index();
 
-//# debugId=EC7A4AE8067FC8AE64756E2164756E21
+//# debugId=79FF5987120915D464756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
