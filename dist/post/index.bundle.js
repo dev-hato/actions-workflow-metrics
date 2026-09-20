@@ -114205,9 +114205,6 @@ function members(proto, table) {
     else
       defineBound(proto, key, desc.value);
   }
-  for (const sym of Object.getOwnPropertySymbols(table)) {
-    defineBound(proto, sym, table[sym]);
-  }
 }
 function own(inst, key, value, enumerable = true) {
   Object.defineProperty(inst, key, { configurable: true, writable: true, enumerable, value });
@@ -114355,8 +114352,7 @@ function $constructor(name, initializer, proto, params) {
       } finally {
         _zodDesc.value = undefined;
       }
-    }
-    if (inst._zod.traits.has(name)) {
+    } else if (inst._zod.traits.has(name)) {
       return;
     }
     inst._zod.traits.add(name);
@@ -115114,7 +115110,7 @@ ${content.join(`
 var version3 = {
   major: 4,
   minor: 6,
-  patch: 2
+  patch: 4
 };
 
 // node_modules/zod/v4/core/schemas.js
@@ -115299,11 +115295,32 @@ var $ZodEmail = /* @__PURE__ */ $constructor("$ZodEmail", (inst, def) => {
 });
 var URL_BAD_FORMAT = 1;
 var URL_UNPARSEABLE = 2;
+function canParseURL(input) {
+  try {
+    if (typeof URL !== "undefined" && typeof URL.canParse === "function")
+      return URL.canParse(input);
+    new URL(input);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function validateURL(trimmed, def) {
+  if (!("normalize" in def) && !("hostname" in def) && !("protocol" in def)) {
+    return canParseURL(trimmed) || URL_UNPARSEABLE;
+  }
+  return parseURLObject(trimmed, def);
+}
 function parseURLObject(trimmed, def) {
   if (!def.normalize && def.protocol?.source === httpProtocol.source && !/^https?:\/\//i.test(trimmed)) {
     return URL_BAD_FORMAT;
   }
   try {
+    if (typeof URL !== "undefined") {
+      const URLStatic = URL;
+      if (typeof URLStatic.parse === "function")
+        return URLStatic.parse(trimmed) ?? URL_UNPARSEABLE;
+    }
     return new URL(trimmed);
   } catch {
     return URL_UNPARSEABLE;
@@ -115326,7 +115343,7 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
   inst._zod.check = (payload) => {
     try {
       const trimmed = payload.value.trim();
-      const url = parseURLObject(trimmed, def);
+      const url = validateURL(trimmed, def);
       if (url === URL_BAD_FORMAT) {
         payload.issues.push({
           code: "invalid_format",
@@ -115346,6 +115363,10 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
           inst,
           continue: !def.abort
         });
+        return;
+      }
+      if (url === true) {
+        payload.value = stripTabAndNewline(trimmed);
         return;
       }
       if (def.hostname && !urlHostnameOk(url, def.hostname)) {
@@ -115437,12 +115458,7 @@ var ipv6Alphabet = /^[0-9a-fA-F:.]+$/;
 function isValidIPv6(value) {
   if (!ipv6Alphabet.test(value))
     return false;
-  try {
-    new URL(`http://[${value}]`);
-    return true;
-  } catch {
-    return false;
-  }
+  return canParseURL(`http://[${value}]`);
 }
 var $ZodIPv6 = /* @__PURE__ */ $constructor("$ZodIPv6", (inst, def) => {
   def.pattern ?? (def.pattern = ipv6);
@@ -116491,61 +116507,6 @@ function handleRefineResult(result, payload, input, inst) {
     payload.issues.push(issue2(_iss));
   }
 }
-function handlePropertiesResult(result, payload, key) {
-  if (result.issues.length) {
-    payload.issues.push(...prefixIssues(key, result.issues));
-  }
-}
-var $ZodProperties = /* @__PURE__ */ $constructor("$ZodProperties", (inst, def) => {
-  $ZodType.init(inst, def);
-  $ZodCheck.init(inst, def);
-  const memo = globalConfig.memoizer;
-  memo?.attach(inst);
-  let entries;
-  const runShape = (payload, ctx) => {
-    entries ?? (entries = Reflect.ownKeys(def.shape).map((key) => [key, def.shape[key]]));
-    const input = payload.value;
-    let proms;
-    for (const [key, schema] of entries) {
-      const result = schema._zod.run({ value: input[key], issues: [] }, ctx);
-      if (result instanceof Promise) {
-        proms ?? (proms = []);
-        proms.push(result.then((result) => handlePropertiesResult(result, payload, key)));
-      } else {
-        handlePropertiesResult(result, payload, key);
-      }
-    }
-    if (proms)
-      return Promise.all(proms).then(() => {
-        return;
-      });
-    return;
-  };
-  inst._zod.parse = (payload, ctx) => {
-    const input = payload.value;
-    if (input === null || typeof input !== "object" && typeof input !== "function") {
-      payload.issues.push({ expected: "object", code: "invalid_type", input, inst });
-      return payload;
-    }
-    if (ctx.direction === "backward")
-      ctx = { ...ctx, direction: "forward" };
-    if (memo)
-      memo.alloc(inst, payload, input, ctx);
-    const result = runShape(payload, ctx);
-    return result instanceof Promise ? result.then(() => payload) : payload;
-  };
-  inst._zod.check = (payload) => {
-    if (payload.value == null) {
-      payload.issues.push({ expected: "object", code: "invalid_type", input: payload.value, inst });
-      return;
-    }
-    return runShape(payload, {});
-  };
-}, {
-  *[Symbol.iterator]() {
-    yield this;
-  }
-});
 // node_modules/zod/v4/core/memoizer.js
 class $ZodCyclicError extends Error {
   constructor() {
@@ -116556,7 +116517,7 @@ class $ZodCyclicError extends Error {
 var STATE = "~memo";
 var NO_ISSUES = [];
 function isRef(value) {
-  return value !== null && (typeof value === "object" || typeof value === "function");
+  return value !== null && typeof value === "object";
 }
 function cloneIssues(issues) {
   return issues.map((iss) => iss.path ? { ...iss, path: iss.path.slice() } : { ...iss });
@@ -116605,9 +116566,6 @@ function isRecursive(inst, stack, resolve) {
       check(def.catchall);
       break;
     }
-    case "properties":
-      merge(shape(def.shape, false));
-      break;
     case "array":
       check(def.element);
       break;
@@ -116858,6 +116816,7 @@ var error2 = () => {
     base64url: "base64url-encoded string",
     json_string: "JSON string",
     e164: "E.164 number",
+    currency_code: "currency code",
     credit_card: "credit card number",
     iban: "IBAN",
     jwt: "JWT",
@@ -116987,18 +116946,16 @@ function registry() {
 (_a2 = globalThis).__zod_globalRegistry ?? (_a2.__zod_globalRegistry = registry());
 var globalRegistry = globalThis.__zod_globalRegistry;
 // node_modules/zod/v4/core/api.js
+function snapshotChecks(def) {
+  if (def.checks)
+    def.checks = [...def.checks];
+  return def;
+}
 function _string(Class, params) {
-  return new Class({
-    type: "string",
-    ...normalizeParams(params)
-  });
+  return new Class(snapshotChecks({ type: "string", ...normalizeParams(params) }));
 }
 function _coercedString(Class, params) {
-  return new Class({
-    type: "string",
-    coerce: true,
-    ...normalizeParams(params)
-  });
+  return new Class(snapshotChecks({ type: "string", coerce: true, ...normalizeParams(params) }));
 }
 function _email(Class, params) {
   return new Class({
@@ -117238,19 +117195,10 @@ function _isoDuration(Class, params) {
   });
 }
 function _number(Class, params) {
-  return new Class({
-    type: "number",
-    checks: [],
-    ...normalizeParams(params)
-  });
+  return new Class(snapshotChecks({ type: "number", checks: [], ...normalizeParams(params) }));
 }
 function _coercedNumber(Class, params) {
-  return new Class({
-    type: "number",
-    coerce: true,
-    checks: [],
-    ...normalizeParams(params)
-  });
+  return new Class(snapshotChecks({ type: "number", coerce: true, checks: [], ...normalizeParams(params) }));
 }
 function _int(Class, params) {
   return new Class({
@@ -118236,17 +118184,15 @@ var objectProcessor = (schema, ctx, _json, params) => {
       path: [...params.path, "properties", key]
     }));
   }
-  const allKeys = new Set(Object.keys(shape));
-  const requiredKeys = new Set([...allKeys].filter((key) => {
+  const requiredKeys = [];
+  for (const key of Object.keys(shape)) {
     const field = def.shape[key];
-    if (ctx.io === "input") {
-      return inputOptin(field) === undefined;
-    } else {
-      return field._zod.optout === undefined;
+    if (ctx.io === "input" ? inputOptin(field) === undefined : field._zod.optout === undefined) {
+      requiredKeys.push(key);
     }
-  }));
-  if (requiredKeys.size > 0) {
-    json.required = Array.from(requiredKeys);
+  }
+  if (requiredKeys.length > 0) {
+    json.required = requiredKeys;
   }
   if (def.catchall?._zod.def.type === "never") {
     json.additionalProperties = false;
@@ -119765,5 +119711,5 @@ async function index() {
 }
 await index();
 
-//# debugId=2A30E8271F7B345C64756E2164756E21
+//# debugId=9271A9D3F906831E64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
