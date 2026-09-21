@@ -115110,7 +115110,7 @@ ${content.join(`
 var version3 = {
   major: 4,
   minor: 6,
-  patch: 4
+  patch: 5
 };
 
 // node_modules/zod/v4/core/schemas.js
@@ -119711,5 +119711,5 @@ async function index() {
 }
 await index();
 
-//# debugId=9271A9D3F906831E64756E2164756E21
+//# debugId=4438F2062F8AD9B664756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
