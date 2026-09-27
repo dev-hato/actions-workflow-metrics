@@ -1791,10 +1791,46 @@ var require_request = __commonJS(function(exports, module) {
         return false;
       }
     }
-    onUpgrade(statusCode, headers, socket) {
+    onUpgrade(statusCode, headers, socket, statusText = "") {
+      this.onFinally();
       assert(!this.aborted);
       assert(!this.completed);
-      return this[kHandler].onUpgrade(statusCode, headers, socket);
+      if (statusCode !== null) {
+        this.#publishUpgradeHeaders(statusCode, headers, statusText);
+      }
+      const result = this[kHandler].onUpgrade(statusCode, headers, socket);
+      if (!this.aborted) {
+        this.completed = true;
+        if (statusCode !== null) {
+          this.#publishUpgradeTrailers();
+        }
+      }
+      return result;
+    }
+    onUpgradeResponse(statusCode, headers, parseHeaders, statusText = "") {
+      assert(!this.aborted);
+      assert(this.completed);
+      if (channels.headers.hasSubscribers) {
+        this.#publishUpgradeHeaders(statusCode, parseHeaders(headers), statusText);
+      }
+      this.#publishUpgradeTrailers();
+    }
+    onUpgradeError(error) {
+      assert(!this.aborted);
+      assert(this.completed);
+      if (channels.error.hasSubscribers) {
+        channels.error.publish({ request: this, error });
+      }
+    }
+    #publishUpgradeHeaders(statusCode, headers, statusText) {
+      if (channels.headers.hasSubscribers) {
+        channels.headers.publish({ request: this, response: { statusCode, headers, statusText } });
+      }
+    }
+    #publishUpgradeTrailers() {
+      if (channels.trailers.hasSubscribers) {
+        channels.trailers.publish({ request: this, trailers: [] });
+      }
     }
     onComplete(trailers) {
       this.onFinally();
@@ -5584,7 +5620,7 @@ var require_client_h1 = __commonJS(function(exports, module) {
       }
     }
     onUpgrade(head) {
-      const { upgrade, client, socket, headers, statusCode } = this;
+      const { upgrade, client, socket, headers, statusCode, statusText } = this;
       assert(upgrade);
       assert(client[kSocket] === socket);
       assert(!socket.destroyed);
@@ -5609,9 +5645,10 @@ var require_client_h1 = __commonJS(function(exports, module) {
       client[kQueue][client[kRunningIdx]++] = null;
       client.emit("disconnect", client[kUrl], [client], new InformationalError("upgrade"));
       try {
-        request.onUpgrade(statusCode, headers, socket);
-      } catch (err) {
-        util.destroy(socket, err);
+        request.onUpgrade(statusCode, headers, socket, statusText);
+      } catch (error) {
+        util.errorRequest(client, request, error);
+        util.destroy(socket, error);
       }
       client[kResume]();
     }
@@ -6010,11 +6047,17 @@ var require_client_h1 = __commonJS(function(exports, module) {
     }
     const socket = client[kSocket];
     clearIdleSocketValidation(socket);
-    const abort = (err) => {
-      if (request.aborted || request.completed) {
+    const abort = (error) => {
+      if (request.aborted) {
         return;
       }
-      util.errorRequest(client, request, err || new RequestAbortedError);
+      if (request.completed) {
+        if (request.upgrade || request.method === "CONNECT") {
+          util.destroy(socket, new InformationalError("aborted"));
+        }
+        return;
+      }
+      util.errorRequest(client, request, error || new RequestAbortedError);
       util.destroy(body);
       util.destroy(socket, new InformationalError("aborted"));
     };
@@ -6373,6 +6416,7 @@ ${len.toString(16)}\r
 // node_modules/undici/lib/dispatcher/client-h2.js
 var require_client_h2 = __commonJS(function(exports, module) {
   var assert = __require("node:assert");
+  var { errorMonitor } = __require("node:events");
   var { pipeline } = __require("node:stream");
   var util = require_util();
   var {
@@ -6432,6 +6476,10 @@ var require_client_h2 = __commonJS(function(exports, module) {
       }
     }
     return result;
+  }
+  function parseH2ResponseHeaders(headers) {
+    const { [HTTP2_HEADER_STATUS]: _statusCode, ...realHeaders } = headers;
+    return parseH2Headers(realHeaders);
   }
   async function connectH2(client, socket) {
     client[kSocket] = socket;
@@ -6596,16 +6644,22 @@ var require_client_h2 = __commonJS(function(exports, module) {
     const { hostname, port } = client[kUrl];
     headers[HTTP2_HEADER_AUTHORITY] = host || `${hostname}${port ? `:${port}` : ""}`;
     headers[HTTP2_HEADER_METHOD] = method;
-    const abort = (err) => {
-      if (request.aborted || request.completed) {
+    const abort = (error) => {
+      if (request.aborted) {
         return;
       }
-      err = err || new RequestAbortedError;
-      util.errorRequest(client, request, err);
-      if (stream != null) {
-        util.destroy(stream, err);
+      if (request.completed) {
+        if (method === "CONNECT" && stream != null) {
+          util.destroy(stream, error || new RequestAbortedError);
+        }
+        return;
       }
-      util.destroy(body, err);
+      error = error || new RequestAbortedError;
+      util.errorRequest(client, request, error);
+      if (stream != null) {
+        util.destroy(stream, error);
+      }
+      util.destroy(body, error);
       client[kQueue][client[kRunningIdx]++] = null;
       client[kResume]();
     };
@@ -6620,18 +6674,42 @@ var require_client_h2 = __commonJS(function(exports, module) {
     if (method === "CONNECT") {
       session.ref();
       stream = session.request(headers, { endStream: false, signal });
-      if (stream.id && !stream.pending) {
-        request.onUpgrade(null, null, stream);
-        ++session[kOpenStreams];
-        client[kQueue][client[kRunningIdx]++] = null;
-      } else {
-        stream.once("ready", () => {
+      let upgradeResponseFinished = false;
+      const onResponse = (headers) => {
+        upgradeResponseFinished = true;
+        stream.off(errorMonitor, onUpgradeError);
+        request.onUpgradeResponse(Number(headers[HTTP2_HEADER_STATUS]), headers, parseH2ResponseHeaders);
+      };
+      const onUpgradeError = (error) => {
+        upgradeResponseFinished = true;
+        stream.off("response", onResponse);
+        request.onUpgradeError(error);
+      };
+      const onReady = () => {
+        try {
           request.onUpgrade(null, null, stream);
-          ++session[kOpenStreams];
-          client[kQueue][client[kRunningIdx]++] = null;
-        });
-      }
+        } catch (error) {
+          stream.off("response", onResponse);
+          abort(error);
+          return;
+        }
+        if (request.aborted) {
+          return;
+        }
+        stream.off("error", abort);
+        stream.once(errorMonitor, onUpgradeError);
+        client[kQueue][client[kRunningIdx]++] = null;
+      };
+      stream.once("response", onResponse);
+      stream.once("error", abort);
+      ++session[kOpenStreams];
+      onReady();
       stream.once("close", () => {
+        if (!upgradeResponseFinished && request.completed) {
+          stream.off("response", onResponse);
+          stream.off(errorMonitor, onUpgradeError);
+          request.onUpgradeError(new InformationalError(`HTTP/2: "stream error" received - code ${stream.rstCode}`));
+        }
         session[kOpenStreams] -= 1;
         if (session[kOpenStreams] === 0)
           session.unref();
@@ -8590,7 +8668,7 @@ var require_retry_handler = __commonJS(function(exports, module) {
       const headers = parseHeaders(rawHeaders);
       this.retryCount += 1;
       if (statusCode >= 300) {
-        if (this.retryOpts.statusCodes.includes(statusCode) === false) {
+        if (!this.headersSent && this.retryOpts.statusCodes.includes(statusCode) === false) {
           this.headersSent = true;
           this.checkpointResponseEnd(headers, resume);
           return this.handler.onHeaders(statusCode, rawHeaders, resume, statusMessage);
@@ -53068,10 +53146,21 @@ var require_request3 = __commonJS(function(exports, module) {
         return false;
       }
     }
-    onUpgrade(statusCode, headers, socket) {
+    onUpgrade(statusCode, headers, socket, statusText = "") {
+      this.onFinally();
       assert(!this.aborted);
       assert(!this.completed);
-      return this[kHandler].onUpgrade(statusCode, headers, socket);
+      if (channels.headers.hasSubscribers) {
+        channels.headers.publish({ request: this, response: { statusCode, headers, statusText } });
+      }
+      const result = this[kHandler].onUpgrade(statusCode, headers, socket);
+      if (!this.aborted) {
+        this.completed = true;
+        if (channels.trailers.hasSubscribers) {
+          channels.trailers.publish({ request: this, trailers: [] });
+        }
+      }
+      return result;
     }
     onComplete(trailers) {
       this.onFinally();
@@ -56980,7 +57069,13 @@ var require_client_h12 = __commonJS(function(exports, module) {
   function lazyllhttp() {
     const llhttpWasmData = process.env.JEST_WORKER_ID ? require_llhttp_wasm2() : undefined;
     let mod;
-    let useWasmSIMD = process.arch !== "ppc64";
+    let useWasmSIMD = true;
+    if (process.arch === "ppc64") {
+      const [major, minor] = process.versions.node.split(".").map((n) => parseInt(n, 10));
+      if (major < 24 || major === 24 && minor < 12) {
+        useWasmSIMD = false;
+      }
+    }
     if (process.env.UNDICI_NO_WASM_SIMD === "1") {
       useWasmSIMD = false;
     } else if (process.env.UNDICI_NO_WASM_SIMD === "0") {
@@ -57260,7 +57355,7 @@ var require_client_h12 = __commonJS(function(exports, module) {
       }
     }
     onUpgrade(head) {
-      const { upgrade, client, socket, headers, statusCode } = this;
+      const { upgrade, client, socket, headers, statusCode, statusText } = this;
       assert(upgrade);
       assert(client[kSocket] === socket);
       assert(!socket.destroyed);
@@ -57285,8 +57380,9 @@ var require_client_h12 = __commonJS(function(exports, module) {
       client[kQueue][client[kRunningIdx]++] = null;
       client.emit("disconnect", client[kUrl], [client], new InformationalError("upgrade"));
       try {
-        request.onUpgrade(statusCode, headers, socket);
+        request.onUpgrade(statusCode, headers, socket, statusText);
       } catch (err) {
+        util.errorRequest(client, request, err);
         util.destroy(socket, err);
       }
       client[kResume]();
@@ -58454,10 +58550,15 @@ var require_client_h22 = __commonJS(function(exports, module) {
         }
         stream = session.request(headers, { endStream: false, signal });
         stream[kHTTP2Stream] = true;
+        ++session[kOpenStreams];
         stream.once("response", (headers, _flags) => {
           const { [HTTP2_HEADER_STATUS]: statusCode, ...realHeaders } = headers;
-          request.onUpgrade(statusCode, parseH2Headers(realHeaders), stream);
-          ++session[kOpenStreams];
+          try {
+            request.onUpgrade(statusCode, parseH2Headers(realHeaders), stream);
+          } catch (err) {
+            abort(err);
+            return;
+          }
           completeRequest(client, request);
         });
         stream.on("error", () => {
@@ -58475,10 +58576,15 @@ var require_client_h22 = __commonJS(function(exports, module) {
       }
       stream = session.request(headers, { endStream: false, signal });
       stream[kHTTP2Stream] = true;
+      ++session[kOpenStreams];
       stream.on("response", (headers) => {
         const { [HTTP2_HEADER_STATUS]: statusCode, ...realHeaders } = headers;
-        request.onUpgrade(statusCode, parseH2Headers(realHeaders), stream);
-        ++session[kOpenStreams];
+        try {
+          request.onUpgrade(statusCode, parseH2Headers(realHeaders), stream);
+        } catch (err) {
+          abort(err);
+          return;
+        }
         completeRequest(client, request);
       });
       stream.on("error", abort);
@@ -61033,6 +61139,56 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
     }
   }
 
+  class RetryController {
+    #paused = false;
+    #target = null;
+    set target(target) {
+      this.#target = target;
+      if (this.#paused) {
+        target?.pause();
+      }
+    }
+    get target() {
+      return this.#target;
+    }
+    pause() {
+      this.#paused = true;
+      this.#target?.pause();
+    }
+    resume() {
+      this.#paused = false;
+      this.#target?.resume();
+    }
+    abort(reason) {
+      this.#target?.abort(reason);
+    }
+    get paused() {
+      return this.#paused || (this.#target?.paused ?? false);
+    }
+    get aborted() {
+      return this.#target?.aborted ?? false;
+    }
+    get reason() {
+      return this.#target?.reason ?? null;
+    }
+    get rawHeaders() {
+      return this.#target?.rawHeaders ?? null;
+    }
+    set rawHeaders(value) {
+      if (this.#target) {
+        this.#target.rawHeaders = value;
+      }
+    }
+    get rawTrailers() {
+      return this.#target?.rawTrailers ?? null;
+    }
+    set rawTrailers(value) {
+      if (this.#target) {
+        this.#target.rawTrailers = value;
+      }
+    }
+  }
+
   class RetryHandler {
     constructor(opts, { dispatch, handler }) {
       const { retryOptions, ...dispatchOpts } = opts;
@@ -61080,16 +61236,17 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
       this.start = 0;
       this.end = null;
       this.etag = null;
+      this.controllerProxy = new RetryController;
     }
     onResponseStartWithRetry(controller, statusCode, headers, statusMessage, err) {
       if (this.retryOpts.throwOnError) {
         if (this.retryOpts.statusCodes.includes(statusCode) === false) {
           if (this.headersSent) {
-            this.handler.onResponseError?.(controller, err);
+            this.handler.onResponseError?.(this.controllerProxy, err);
           } else {
             this.headersSent = true;
             this.checkpointResponseEnd(headers);
-            this.handler.onResponseStart?.(controller, statusCode, headers, statusMessage);
+            this.handler.onResponseStart?.(this.controllerProxy, statusCode, headers, statusMessage);
           }
         } else {
           this.error = err;
@@ -61099,17 +61256,17 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
       if (isDisturbed(this.opts.body)) {
         this.headersSent = true;
         this.checkpointResponseEnd(headers);
-        this.handler.onResponseStart?.(controller, statusCode, headers, statusMessage);
+        this.handler.onResponseStart?.(this.controllerProxy, statusCode, headers, statusMessage);
         return;
       }
       function shouldRetry(passedErr) {
         if (passedErr) {
           if (this.headersSent) {
-            this.handler.onResponseError?.(controller, passedErr);
+            this.handler.onResponseError?.(this.controllerProxy, passedErr);
           } else {
             this.headersSent = true;
             this.checkpointResponseEnd(headers);
-            this.handler.onResponseStart?.(controller, statusCode, headers, statusMessage);
+            this.handler.onResponseStart?.(this.controllerProxy, statusCode, headers, statusMessage);
           }
           controller.resume();
           return;
@@ -61132,12 +61289,13 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
       }
     }
     onRequestStart(controller, context) {
+      this.controllerProxy.target = controller;
       if (!this.headersSent) {
-        this.handler.onRequestStart?.(controller, context);
+        this.handler.onRequestStart?.(this.controllerProxy, context);
       }
     }
-    onRequestUpgrade(controller, statusCode, headers, socket) {
-      this.handler.onRequestUpgrade?.(controller, statusCode, headers, socket);
+    onRequestUpgrade(_controller, statusCode, headers, socket) {
+      this.handler.onRequestUpgrade?.(this.controllerProxy, statusCode, headers, socket);
     }
     static [kRetryHandlerDefaultRetry](err, { state, opts }, cb) {
       const { statusCode, code, headers } = err;
@@ -61224,7 +61382,7 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
           const range = parseRangeHeader(headers["content-range"]);
           if (range == null) {
             this.headersSent = true;
-            this.handler.onResponseStart?.(controller, statusCode, headers, statusMessage);
+            this.handler.onResponseStart?.(this.controllerProxy, statusCode, headers, statusMessage);
             return;
           }
           validatePartialResponseContentLength(headers, range, statusCode, this.retryCount);
@@ -61246,7 +61404,7 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
           this.etag = null;
         }
         this.headersSent = true;
-        this.handler.onResponseStart?.(controller, statusCode, headers, statusMessage);
+        this.handler.onResponseStart?.(this.controllerProxy, statusCode, headers, statusMessage);
       } else {
         throw new RequestRetryError("Request failed", statusCode, {
           headers,
@@ -61254,24 +61412,24 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
         });
       }
     }
-    onResponseData(controller, chunk) {
+    onResponseData(_controller, chunk) {
       if (this.error) {
         return;
       }
       this.start += chunk.length;
-      this.handler.onResponseData?.(controller, chunk);
+      this.handler.onResponseData?.(this.controllerProxy, chunk);
     }
-    onResponseEnd(controller, trailers) {
+    onResponseEnd(_controller, trailers) {
       if (this.error && this.retryOpts.throwOnError) {
         throw this.error;
       }
       if (!this.error) {
         this.retryCount = 0;
-        return this.handler.onResponseEnd?.(controller, trailers);
+        return this.handler.onResponseEnd?.(this.controllerProxy, trailers);
       }
-      this.retry(controller);
+      this.retry();
     }
-    retry(controller) {
+    retry() {
       if (this.start !== 0) {
         const headers = { range: `bytes=${this.start}-${this.end ?? ""}` };
         if (this.etag != null) {
@@ -61289,20 +61447,20 @@ var require_retry_handler2 = __commonJS(function(exports, module) {
         this.retryCountCheckpoint = this.retryCount;
         this.dispatch(this.opts, this);
       } catch (err) {
-        this.handler.onResponseError?.(controller, err);
+        this.handler.onResponseError?.(this.controllerProxy, err);
       }
     }
     onResponseError(controller, err) {
       if (controller?.aborted || isDisturbed(this.opts.body) || this.headersSent && !this.resume) {
-        this.handler.onResponseError?.(controller, err);
+        this.handler.onResponseError?.(this.controllerProxy, err);
         return;
       }
       function shouldRetry(returnedErr) {
         if (!returnedErr) {
-          this.retry(controller);
+          this.retry();
           return;
         }
-        this.handler?.onResponseError?.(controller, returnedErr);
+        this.handler?.onResponseError?.(this.controllerProxy, returnedErr);
       }
       if (this.retryCount - this.retryCountCheckpoint > 0) {
         this.retryCount = this.retryCountCheckpoint + (this.retryCount - this.retryCountCheckpoint);
@@ -67057,6 +67215,62 @@ var require_decompress = __commonJS(function(exports, module) {
   var { InvalidArgumentError, ResponseExceededMaxSizeError } = require_errors4();
   var DecoratorHandler = require_decorator_handler2();
   var { runtimeFeatures } = require_runtime_features();
+
+  class DecompressController {
+    #onPause;
+    #onResume;
+    #onAbort;
+    #paused = false;
+    constructor(onPause, onResume, onAbort) {
+      this.#onPause = onPause;
+      this.#onResume = onResume;
+      this.#onAbort = onAbort;
+      this.target = null;
+    }
+    pause() {
+      if (this.#paused) {
+        return;
+      }
+      this.#paused = true;
+      this.#onPause();
+    }
+    resume() {
+      if (!this.#paused) {
+        return;
+      }
+      this.#paused = false;
+      this.#onResume();
+    }
+    abort(reason) {
+      this.target?.abort(reason);
+      this.#onAbort(reason);
+    }
+    get paused() {
+      return this.#paused;
+    }
+    get aborted() {
+      return this.target?.aborted ?? false;
+    }
+    get reason() {
+      return this.target?.reason ?? null;
+    }
+    get rawHeaders() {
+      return this.target?.rawHeaders ?? null;
+    }
+    set rawHeaders(value) {
+      if (this.target) {
+        this.target.rawHeaders = value;
+      }
+    }
+    get rawTrailers() {
+      return this.target?.rawTrailers ?? null;
+    }
+    set rawTrailers(value) {
+      if (this.target) {
+        this.target.rawTrailers = value;
+      }
+    }
+  }
   var supportedEncodings = {
     gzip: createGunzip,
     "x-gzip": createGunzip,
@@ -67067,7 +67281,7 @@ var require_decompress = __commonJS(function(exports, module) {
     ...runtimeFeatures.has("zstd") ? { zstd: createZstdDecompress } : {}
   };
   var defaultSkipStatusCodes = [204, 304];
-  var defaultMaxSize = 64 * 1024 * 1024;
+  var defaultMaxSize = 0;
   function createMaxSizeLimiter(maxSize) {
     let size = 0;
     return new TransformStream2({
@@ -67093,14 +67307,101 @@ var require_decompress = __commonJS(function(exports, module) {
     #decompressedSize = 0;
     #terminated = false;
     #inputEnded = false;
+    #inputBackpressured = false;
+    #upstreamPaused = false;
+    #draining = false;
+    #drainRequested = false;
+    #completionPending = false;
+    #finalDecompressor;
+    #controller;
     constructor(handler, { skipStatusCodes = defaultSkipStatusCodes, skipErrorResponses = true, maxSize = defaultMaxSize } = {}) {
-      if (!Number.isSafeInteger(maxSize) || maxSize < 1) {
-        throw new InvalidArgumentError("maxSize must be a positive integer");
+      if (!Number.isSafeInteger(maxSize) || maxSize < 0) {
+        throw new InvalidArgumentError("maxSize must be a non-negative integer");
       }
       super(handler);
       this.#skipStatusCodes = skipStatusCodes;
       this.#skipErrorResponses = skipErrorResponses;
       this.#maxSize = maxSize;
+      this.#controller = new DecompressController(() => this.#onDownstreamPause(), () => this.#onDownstreamResume(), (reason) => {
+        if (this.#inputEnded && !this.#terminated) {
+          this.onResponseError(this.#controller, reason);
+        }
+      });
+    }
+    #onDownstreamPause() {
+      this.#pauseUpstream();
+    }
+    #onDownstreamResume() {
+      const drainWasDeferred = this.#draining;
+      this.#drainOutput();
+      if (!drainWasDeferred) {
+        this.#resumeUpstreamIfNeeded();
+        this.#finishIfReady();
+      }
+    }
+    #pauseUpstream() {
+      if (!this.#upstreamPaused && !this.#terminated) {
+        this.#upstreamPaused = true;
+        this.#controller.target?.pause();
+      }
+    }
+    #resumeUpstreamIfNeeded() {
+      if (this.#upstreamPaused && !this.#controller.paused && !this.#inputBackpressured) {
+        this.#upstreamPaused = false;
+        if (!this.#inputEnded) {
+          this.#controller.target?.resume();
+        }
+      }
+    }
+    #drainOutput() {
+      if (this.#terminated || this.#controller.paused || !this.#finalDecompressor) {
+        return;
+      }
+      if (this.#draining) {
+        this.#drainRequested = true;
+        return;
+      }
+      this.#draining = true;
+      try {
+        do {
+          this.#drainRequested = false;
+          let chunk;
+          while (!this.#terminated && !this.#controller.paused && (chunk = this.#finalDecompressor.read()) !== null) {
+            if (this.#maxSize > 0) {
+              const decompressedSize = this.#decompressedSize + chunk.length;
+              if (decompressedSize > this.#maxSize) {
+                this.#fail(new ResponseExceededMaxSizeError(`Decompressed response size (${decompressedSize}) exceeded maxSize (${this.#maxSize})`));
+                return;
+              }
+              this.#decompressedSize = decompressedSize;
+            }
+            const result = super.onResponseData(this.#controller, chunk);
+            if (result === false && !this.#controller.paused) {
+              this.#controller.pause();
+            }
+          }
+        } while (this.#drainRequested && !this.#terminated && !this.#controller.paused);
+      } finally {
+        this.#draining = false;
+      }
+      this.#resumeUpstreamIfNeeded();
+      this.#finishIfReady();
+    }
+    #finishIfReady() {
+      if (this.#terminated || !this.#completionPending || this.#controller.paused || this.#draining) {
+        return;
+      }
+      this.#terminated = true;
+      this.#cleanupDecompressors();
+      super.onResponseEnd(this.#controller, this.#trailers);
+    }
+    #onDecompressionEnd() {
+      if (this.#terminated) {
+        return;
+      }
+      this.#completionPending = true;
+      this.#drainOutput();
+      this.#finishIfReady();
     }
     #shouldSkipDecompression(contentEncoding, statusCode) {
       if (!contentEncoding || statusCode < 200)
@@ -67134,90 +67435,84 @@ var require_decompress = __commonJS(function(exports, module) {
       const streams = [];
       for (let i = 0;i < decompressors.length; i++) {
         streams.push(decompressors[i]);
-        if (i < decompressors.length - 1) {
+        if (i < decompressors.length - 1 && this.#maxSize > 0) {
           streams.push(createMaxSizeLimiter(this.#maxSize));
         }
       }
       return streams;
     }
-    #fail(controller, error) {
+    #fail(error) {
       if (this.#terminated) {
         return;
       }
       if (this.#inputEnded) {
-        this.onResponseError(controller, error);
+        this.onResponseError(this.#controller, error);
       } else {
-        controller.abort(error);
+        this.#controller.abort(error);
       }
     }
-    #setupDecompressorEvents(decompressor, controller) {
-      decompressor.on("readable", () => {
-        if (this.#terminated) {
-          return;
-        }
-        let chunk;
-        while ((chunk = decompressor.read()) !== null) {
-          const decompressedSize = this.#decompressedSize + chunk.length;
-          if (decompressedSize > this.#maxSize) {
-            this.#fail(controller, new ResponseExceededMaxSizeError(`Decompressed response size (${decompressedSize}) exceeded maxSize (${this.#maxSize})`));
-            return;
-          }
-          this.#decompressedSize = decompressedSize;
-          const result = super.onResponseData(controller, chunk);
-          if (result === false) {
-            break;
-          }
-        }
-      });
-      decompressor.on("error", (error) => {
-        this.#fail(controller, error);
-      });
+    #setupDecompressorEvents(decompressor) {
+      this.#finalDecompressor = decompressor;
+      decompressor.on("readable", () => this.#drainOutput());
+      decompressor.on("error", (error) => this.#fail(error));
     }
-    #setupSingleDecompressor(controller) {
+    #setupSingleDecompressor() {
       const decompressor = this.#decompressors[0];
-      this.#setupDecompressorEvents(decompressor, controller);
-      decompressor.on("end", () => {
-        if (this.#terminated) {
-          return;
-        }
-        this.#terminated = true;
-        this.#cleanupDecompressors();
-        super.onResponseEnd(controller, this.#trailers);
-      });
+      this.#setupDecompressorEvents(decompressor);
+      decompressor.on("end", () => this.#onDecompressionEnd());
     }
-    #setupMultipleDecompressors(controller) {
+    #setupMultipleDecompressors() {
       const lastDecompressor = this.#decompressors[this.#decompressors.length - 1];
-      this.#setupDecompressorEvents(lastDecompressor, controller);
+      this.#setupDecompressorEvents(lastDecompressor);
       pipeline(this.#decompressors, (err) => {
         if (this.#terminated) {
           return;
         }
         if (err) {
-          this.#fail(controller, err);
+          this.#fail(err);
           return;
         }
-        this.#terminated = true;
-        this.#cleanupDecompressors();
-        super.onResponseEnd(controller, this.#trailers);
+        this.#onDecompressionEnd();
+      });
+    }
+    #setupInputBackpressure() {
+      const decompressor = this.#decompressors[0];
+      decompressor.on("drain", () => {
+        if (this.#terminated) {
+          return;
+        }
+        this.#inputBackpressured = false;
+        if (!this.#controller.paused) {
+          this.#drainOutput();
+          this.#resumeUpstreamIfNeeded();
+        }
       });
     }
     #cleanupDecompressors() {
       this.#decompressors.length = 0;
+      this.#finalDecompressor = undefined;
+    }
+    onRequestStart(controller, context) {
+      this.#controller.target = controller;
+      return super.onRequestStart(this.#controller, context);
+    }
+    onRequestUpgrade(controller, statusCode, headers, socket) {
+      return super.onRequestUpgrade(this.#controller, statusCode, headers, socket);
     }
     onResponseStart(controller, statusCode, headers, statusMessage) {
       const contentEncoding = headers["content-encoding"];
       if (this.#shouldSkipDecompression(contentEncoding, statusCode)) {
-        return super.onResponseStart(controller, statusCode, headers, statusMessage);
+        return super.onResponseStart(this.#controller, statusCode, headers, statusMessage);
       }
       const decompressors = this.#createDecompressionChain(contentEncoding.toLowerCase());
       if (decompressors.length === 0) {
         this.#cleanupDecompressors();
-        return super.onResponseStart(controller, statusCode, headers, statusMessage);
+        return super.onResponseStart(this.#controller, statusCode, headers, statusMessage);
       }
       this.#decompressors = decompressors;
       const { "content-encoding": _2, "content-length": __, ...newHeaders } = headers;
-      if (controller?.rawHeaders) {
-        const rawHeaders = controller.rawHeaders;
+      if (this.#controller.rawHeaders) {
+        const rawHeaders = this.#controller.rawHeaders;
         if (Array.isArray(rawHeaders)) {
           const filteredHeaders = [];
           for (let i = 0;i < rawHeaders.length; i += 2) {
@@ -67239,19 +67534,23 @@ var require_decompress = __commonJS(function(exports, module) {
           }
         }
       }
+      this.#setupInputBackpressure();
       if (this.#decompressors.length === 1) {
-        this.#setupSingleDecompressor(controller);
+        this.#setupSingleDecompressor();
       } else {
-        this.#setupMultipleDecompressors(controller);
+        this.#setupMultipleDecompressors();
       }
-      return super.onResponseStart(controller, statusCode, newHeaders, statusMessage);
+      return super.onResponseStart(this.#controller, statusCode, newHeaders, statusMessage);
     }
     onResponseData(controller, chunk) {
       if (this.#decompressors.length > 0) {
-        this.#decompressors[0].write(chunk);
+        if (!this.#decompressors[0].write(chunk)) {
+          this.#inputBackpressured = true;
+          this.#pauseUpstream();
+        }
         return;
       }
-      super.onResponseData(controller, chunk);
+      return super.onResponseData(this.#controller, chunk);
     }
     onResponseEnd(controller, trailers) {
       if (this.#decompressors.length > 0) {
@@ -67260,7 +67559,7 @@ var require_decompress = __commonJS(function(exports, module) {
         this.#decompressors[0].end();
         return;
       }
-      super.onResponseEnd(controller, trailers);
+      return super.onResponseEnd(this.#controller, trailers);
     }
     onResponseError(controller, err) {
       if (this.#terminated) {
@@ -67271,7 +67570,7 @@ var require_decompress = __commonJS(function(exports, module) {
         decompressor.destroy();
       }
       this.#cleanupDecompressors();
-      super.onResponseError(controller, err);
+      super.onResponseError(this.#controller, err);
     }
   }
   function createDecompressInterceptor(options = {}) {
@@ -72178,11 +72477,11 @@ var require_connection2 = __commonJS(function(exports, module) {
       processResponse(response) {
         if (response.type === "error" || response.status !== 101) {
           if (response.socket?.session == null) {
-            failWebsocketConnection(handler, 1002, "Received network error or non-101 status code.", response.error);
+            failHandshake(handler, response, 1002, "Received network error or non-101 status code.", response.error);
             return;
           }
           if (response.status !== 200) {
-            failWebsocketConnection(handler, 1002, "Received network error or non-200 status code.", response.error);
+            failHandshake(handler, response, 1002, "Received network error or non-200 status code.", response.error);
             return;
           }
         }
@@ -72191,21 +72490,21 @@ var require_connection2 = __commonJS(function(exports, module) {
           warningEmitted = true;
         }
         if (protocols.length !== 0 && !response.headersList.get("Sec-WebSocket-Protocol")) {
-          failWebsocketConnection(handler, 1002, "Server did not respond with sent protocols.");
+          failHandshake(handler, response, 1002, "Server did not respond with sent protocols.");
           return;
         }
         if (response.socket.session == null && response.headersList.get("Upgrade")?.toLowerCase() !== "websocket") {
-          failWebsocketConnection(handler, 1002, 'Server did not set Upgrade header to "websocket".');
+          failHandshake(handler, response, 1002, 'Server did not set Upgrade header to "websocket".');
           return;
         }
         if (response.socket.session == null && response.headersList.get("Connection")?.toLowerCase() !== "upgrade") {
-          failWebsocketConnection(handler, 1002, 'Server did not set Connection header to "upgrade".');
+          failHandshake(handler, response, 1002, 'Server did not set Connection header to "upgrade".');
           return;
         }
         const secWSAccept = response.headersList.get("Sec-WebSocket-Accept");
         const digest = crypto.hash("sha1", keyValue + uid, "base64");
         if (secWSAccept !== digest) {
-          failWebsocketConnection(handler, 1002, "Incorrect hash received in Sec-WebSocket-Accept header.");
+          failHandshake(handler, response, 1002, "Incorrect hash received in Sec-WebSocket-Accept header.");
           return;
         }
         const secExtension = response.headersList.get("Sec-WebSocket-Extensions");
@@ -72213,7 +72512,7 @@ var require_connection2 = __commonJS(function(exports, module) {
         if (secExtension !== null) {
           extensions = parseExtensions(secExtension);
           if (!extensions.has("permessage-deflate")) {
-            failWebsocketConnection(handler, 1002, "Sec-WebSocket-Extensions header does not match.");
+            failHandshake(handler, response, 1002, "Sec-WebSocket-Extensions header does not match.");
             return;
           }
         }
@@ -72221,7 +72520,7 @@ var require_connection2 = __commonJS(function(exports, module) {
         if (secProtocol !== null) {
           const requestProtocols = getDecodeSplit("sec-websocket-protocol", request.headersList);
           if (requestProtocols === null || !requestProtocols.includes(secProtocol)) {
-            failWebsocketConnection(handler, 1002, "Protocol was not set in the opening handshake.");
+            failHandshake(handler, response, 1002, "Protocol was not set in the opening handshake.");
             return;
           }
         }
@@ -72266,6 +72565,12 @@ var require_connection2 = __commonJS(function(exports, module) {
     } else {
       object.readyState = states.CLOSING;
     }
+  }
+  function failHandshake(handler, response, code, reason, cause) {
+    if (response.socket?.session != null && !response.socket.destroyed) {
+      response.socket.destroy();
+    }
+    failWebsocketConnection(handler, code, reason, cause);
   }
   function failWebsocketConnection(handler, code, reason, cause) {
     if (isEstablished(handler.readyState)) {
@@ -90172,8 +90477,8 @@ class UserDelegationKeyCredential {
   }
 }
 // node_modules/@azure/storage-blob/dist/esm/utils/constants.js
-var SDK_VERSION3 = "12.33.0";
-var SERVICE_VERSION = "2026-06-06";
+var SDK_VERSION3 = "12.34.0";
+var SERVICE_VERSION = "2026-10-06";
 var BLOCK_BLOB_MAX_UPLOAD_BLOB_BYTES = 256 * 1024 * 1024;
 var BLOCK_BLOB_MAX_STAGE_BLOCK_BYTES = 4000 * 1024 * 1024;
 var BLOCK_BLOB_MAX_BLOCKS = 50000;
@@ -90665,8 +90970,12 @@ __export(exports_mappers, {
   ContainerGetPropertiesExceptionHeaders: () => ContainerGetPropertiesExceptionHeaders,
   ContainerGetPropertiesHeaders: () => ContainerGetPropertiesHeaders,
   ContainerItem: () => ContainerItem,
+  ContainerListBlobFlatSegmentApacheArrowExceptionHeaders: () => ContainerListBlobFlatSegmentApacheArrowExceptionHeaders,
+  ContainerListBlobFlatSegmentApacheArrowHeaders: () => ContainerListBlobFlatSegmentApacheArrowHeaders,
   ContainerListBlobFlatSegmentExceptionHeaders: () => ContainerListBlobFlatSegmentExceptionHeaders,
   ContainerListBlobFlatSegmentHeaders: () => ContainerListBlobFlatSegmentHeaders,
+  ContainerListBlobHierarchySegmentApacheArrowExceptionHeaders: () => ContainerListBlobHierarchySegmentApacheArrowExceptionHeaders,
+  ContainerListBlobHierarchySegmentApacheArrowHeaders: () => ContainerListBlobHierarchySegmentApacheArrowHeaders,
   ContainerListBlobHierarchySegmentExceptionHeaders: () => ContainerListBlobHierarchySegmentExceptionHeaders,
   ContainerListBlobHierarchySegmentHeaders: () => ContainerListBlobHierarchySegmentHeaders,
   ContainerProperties: () => ContainerProperties,
@@ -94425,6 +94734,66 @@ var ContainerListBlobFlatSegmentExceptionHeaders = {
     }
   }
 };
+var ContainerListBlobFlatSegmentApacheArrowHeaders = {
+  serializedName: "Container_listBlobFlatSegmentApacheArrowHeaders",
+  type: {
+    name: "Composite",
+    className: "ContainerListBlobFlatSegmentApacheArrowHeaders",
+    modelProperties: {
+      contentType: {
+        serializedName: "content-type",
+        xmlName: "content-type",
+        type: {
+          name: "String"
+        }
+      },
+      clientRequestId: {
+        serializedName: "x-ms-client-request-id",
+        xmlName: "x-ms-client-request-id",
+        type: {
+          name: "String"
+        }
+      },
+      requestId: {
+        serializedName: "x-ms-request-id",
+        xmlName: "x-ms-request-id",
+        type: {
+          name: "String"
+        }
+      },
+      version: {
+        serializedName: "x-ms-version",
+        xmlName: "x-ms-version",
+        type: {
+          name: "String"
+        }
+      },
+      date: {
+        serializedName: "date",
+        xmlName: "date",
+        type: {
+          name: "DateTimeRfc1123"
+        }
+      }
+    }
+  }
+};
+var ContainerListBlobFlatSegmentApacheArrowExceptionHeaders = {
+  serializedName: "Container_listBlobFlatSegmentApacheArrowExceptionHeaders",
+  type: {
+    name: "Composite",
+    className: "ContainerListBlobFlatSegmentApacheArrowExceptionHeaders",
+    modelProperties: {
+      errorCode: {
+        serializedName: "x-ms-error-code",
+        xmlName: "x-ms-error-code",
+        type: {
+          name: "String"
+        }
+      }
+    }
+  }
+};
 var ContainerListBlobHierarchySegmentHeaders = {
   serializedName: "Container_listBlobHierarchySegmentHeaders",
   type: {
@@ -94481,6 +94850,66 @@ var ContainerListBlobHierarchySegmentExceptionHeaders = {
   type: {
     name: "Composite",
     className: "ContainerListBlobHierarchySegmentExceptionHeaders",
+    modelProperties: {
+      errorCode: {
+        serializedName: "x-ms-error-code",
+        xmlName: "x-ms-error-code",
+        type: {
+          name: "String"
+        }
+      }
+    }
+  }
+};
+var ContainerListBlobHierarchySegmentApacheArrowHeaders = {
+  serializedName: "Container_listBlobHierarchySegmentApacheArrowHeaders",
+  type: {
+    name: "Composite",
+    className: "ContainerListBlobHierarchySegmentApacheArrowHeaders",
+    modelProperties: {
+      contentType: {
+        serializedName: "content-type",
+        xmlName: "content-type",
+        type: {
+          name: "String"
+        }
+      },
+      clientRequestId: {
+        serializedName: "x-ms-client-request-id",
+        xmlName: "x-ms-client-request-id",
+        type: {
+          name: "String"
+        }
+      },
+      requestId: {
+        serializedName: "x-ms-request-id",
+        xmlName: "x-ms-request-id",
+        type: {
+          name: "String"
+        }
+      },
+      version: {
+        serializedName: "x-ms-version",
+        xmlName: "x-ms-version",
+        type: {
+          name: "String"
+        }
+      },
+      date: {
+        serializedName: "date",
+        xmlName: "date",
+        type: {
+          name: "DateTimeRfc1123"
+        }
+      }
+    }
+  }
+};
+var ContainerListBlobHierarchySegmentApacheArrowExceptionHeaders = {
+  serializedName: "Container_listBlobHierarchySegmentApacheArrowExceptionHeaders",
+  type: {
+    name: "Composite",
+    className: "ContainerListBlobHierarchySegmentApacheArrowExceptionHeaders",
     modelProperties: {
       errorCode: {
         serializedName: "x-ms-error-code",
@@ -94918,6 +95347,34 @@ var BlobDownloadHeaders = {
         xmlName: "x-ms-structured-content-length",
         type: {
           name: "Number"
+        }
+      },
+      accessTier: {
+        serializedName: "x-ms-access-tier",
+        xmlName: "x-ms-access-tier",
+        type: {
+          name: "String"
+        }
+      },
+      accessTierInferred: {
+        serializedName: "x-ms-access-tier-inferred",
+        xmlName: "x-ms-access-tier-inferred",
+        type: {
+          name: "Boolean"
+        }
+      },
+      accessTierChangedOn: {
+        serializedName: "x-ms-access-tier-change-time",
+        xmlName: "x-ms-access-tier-change-time",
+        type: {
+          name: "DateTimeRfc1123"
+        }
+      },
+      smartAccessTier: {
+        serializedName: "x-ms-smart-access-tier",
+        xmlName: "x-ms-smart-access-tier",
+        type: {
+          name: "String"
         }
       },
       errorCode: {
@@ -98535,6 +98992,13 @@ var BlockBlobUploadHeaders = {
           name: "ByteArray"
         }
       },
+      xMsContentCrc64: {
+        serializedName: "x-ms-content-crc64",
+        xmlName: "x-ms-content-crc64",
+        type: {
+          name: "ByteArray"
+        }
+      },
       clientRequestId: {
         serializedName: "x-ms-client-request-id",
         xmlName: "x-ms-client-request-id",
@@ -98647,6 +99111,13 @@ var BlockBlobPutBlobFromUrlHeaders = {
       contentMD5: {
         serializedName: "content-md5",
         xmlName: "content-md5",
+        type: {
+          name: "ByteArray"
+        }
+      },
+      xMsContentCrc64: {
+        serializedName: "x-ms-content-crc64",
+        xmlName: "x-ms-content-crc64",
         type: {
           name: "ByteArray"
         }
@@ -99240,7 +99711,7 @@ var timeoutInSeconds = {
 var version2 = {
   parameterPath: "version",
   mapper: {
-    defaultValue: "2026-06-06",
+    defaultValue: "2026-10-06",
     isConstant: true,
     serializedName: "x-ms-version",
     type: {
@@ -99780,6 +100251,27 @@ var startFrom = {
   mapper: {
     serializedName: "startFrom",
     xmlName: "startFrom",
+    type: {
+      name: "String"
+    }
+  }
+};
+var accept2 = {
+  parameterPath: "accept",
+  mapper: {
+    defaultValue: "application/vnd.apache.arrow.stream,application/xml",
+    isConstant: true,
+    serializedName: "Accept",
+    type: {
+      name: "String"
+    }
+  }
+};
+var endBefore = {
+  parameterPath: ["options", "endBefore"],
+  mapper: {
+    serializedName: "endBefore",
+    xmlName: "endBefore",
     type: {
       name: "String"
     }
@@ -100540,7 +101032,7 @@ var body1 = {
     }
   }
 };
-var accept2 = {
+var accept3 = {
   parameterPath: "accept",
   mapper: {
     defaultValue: "application/xml",
@@ -101220,8 +101712,14 @@ class ContainerImpl {
   listBlobFlatSegment(options) {
     return this.client.sendOperationRequest({ options }, listBlobFlatSegmentOperationSpec);
   }
+  listBlobFlatSegmentApacheArrow(options) {
+    return this.client.sendOperationRequest({ options }, listBlobFlatSegmentApacheArrowOperationSpec);
+  }
   listBlobHierarchySegment(delimiter, options) {
     return this.client.sendOperationRequest({ delimiter, options }, listBlobHierarchySegmentOperationSpec);
+  }
+  listBlobHierarchySegmentApacheArrow(delimiter, options) {
+    return this.client.sendOperationRequest({ delimiter, options }, listBlobHierarchySegmentApacheArrowOperationSpec);
   }
   getAccountInfo(options) {
     return this.client.sendOperationRequest({ options }, getAccountInfoOperationSpec2);
@@ -101709,6 +102207,42 @@ var listBlobFlatSegmentOperationSpec = {
   isXML: true,
   serializer: xmlSerializer2
 };
+var listBlobFlatSegmentApacheArrowOperationSpec = {
+  path: "/{containerName}",
+  httpMethod: "GET",
+  responses: {
+    200: {
+      bodyMapper: {
+        type: { name: "Stream" },
+        serializedName: "parsedResponse"
+      },
+      headersMapper: ContainerListBlobFlatSegmentApacheArrowHeaders
+    },
+    default: {
+      bodyMapper: StorageError,
+      headersMapper: ContainerListBlobFlatSegmentApacheArrowExceptionHeaders
+    }
+  },
+  queryParameters: [
+    timeoutInSeconds,
+    comp2,
+    prefix,
+    marker,
+    maxPageSize,
+    restype2,
+    include1,
+    startFrom,
+    endBefore
+  ],
+  urlParameters: [url],
+  headerParameters: [
+    version2,
+    requestId,
+    accept2
+  ],
+  isXML: true,
+  serializer: xmlSerializer2
+};
 var listBlobHierarchySegmentOperationSpec = {
   path: "/{containerName}",
   httpMethod: "GET",
@@ -101738,6 +102272,43 @@ var listBlobHierarchySegmentOperationSpec = {
     version2,
     requestId,
     accept1
+  ],
+  isXML: true,
+  serializer: xmlSerializer2
+};
+var listBlobHierarchySegmentApacheArrowOperationSpec = {
+  path: "/{containerName}",
+  httpMethod: "GET",
+  responses: {
+    200: {
+      bodyMapper: {
+        type: { name: "Stream" },
+        serializedName: "parsedResponse"
+      },
+      headersMapper: ContainerListBlobHierarchySegmentApacheArrowHeaders
+    },
+    default: {
+      bodyMapper: StorageError,
+      headersMapper: ContainerListBlobHierarchySegmentApacheArrowExceptionHeaders
+    }
+  },
+  queryParameters: [
+    timeoutInSeconds,
+    comp2,
+    prefix,
+    marker,
+    maxPageSize,
+    restype2,
+    include1,
+    startFrom,
+    endBefore,
+    delimiter
+  ],
+  urlParameters: [url],
+  headerParameters: [
+    version2,
+    requestId,
+    accept2
   ],
   isXML: true,
   serializer: xmlSerializer2
@@ -102763,7 +103334,7 @@ var uploadPagesOperationSpec = {
     transactionalContentMD5,
     transactionalContentCrc64,
     contentType1,
-    accept2,
+    accept3,
     pageWrite,
     ifSequenceNumberLessThanOrEqualTo,
     ifSequenceNumberLessThan,
@@ -103128,7 +103699,7 @@ var appendBlockOperationSpec = {
     transactionalContentMD5,
     transactionalContentCrc64,
     contentType1,
-    accept2,
+    accept3,
     structuredContentLength,
     maxSize,
     appendPosition
@@ -103287,7 +103858,7 @@ var uploadOperationSpec = {
     transactionalContentMD5,
     transactionalContentCrc64,
     contentType1,
-    accept2,
+    accept3,
     structuredContentLength,
     blobType2
   ],
@@ -103386,7 +103957,7 @@ var stageBlockOperationSpec = {
     transactionalContentMD5,
     transactionalContentCrc64,
     contentType1,
-    accept2,
+    accept3,
     structuredContentLength
   ],
   isXML: true,
@@ -103534,7 +104105,7 @@ class StorageClient extends ExtendedServiceClient {
     const defaults = {
       requestContentType: "application/json; charset=utf-8"
     };
-    const packageDetails = `azsdk-js-azure-storage-blob/12.33.0`;
+    const packageDetails = `azsdk-js-azure-storage-blob/12.34.0`;
     const userAgentPrefix = options.userAgentOptions && options.userAgentOptions.userAgentPrefix ? `${options.userAgentOptions.userAgentPrefix} ${packageDetails}` : `${packageDetails}`;
     const optionsWithDefaults = {
       ...defaults,
@@ -103546,7 +104117,7 @@ class StorageClient extends ExtendedServiceClient {
     };
     super(optionsWithDefaults);
     this.url = url;
-    this.version = options.version || "2026-06-06";
+    this.version = options.version || "2026-10-06";
     this.service = new ServiceImpl(this);
     this.container = new ContainerImpl(this);
     this.blob = new BlobImpl(this);
@@ -105532,6 +106103,18 @@ class BlobDownloadResponse {
   }
   get legalHold() {
     return this.originalResponse.legalHold;
+  }
+  get accessTier() {
+    return this.originalResponse.accessTier;
+  }
+  get accessTierInferred() {
+    return this.originalResponse.accessTierInferred;
+  }
+  get accessTierChangedOn() {
+    return this.originalResponse.accessTierChangedOn;
+  }
+  get smartAccessTier() {
+    return this.originalResponse.smartAccessTier;
   }
   get structuredBodyType() {
     return this.originalResponse.structuredBodyType;
@@ -119711,5 +120294,5 @@ async function index() {
 }
 await index();
 
-//# debugId=4438F2062F8AD9B664756E2164756E21
+//# debugId=2B49DBDE70F1D58264756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
