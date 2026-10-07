@@ -35,7 +35,7 @@ jobs:
         run: bun install --force --registry https://npm.flatt.tech/
       - run: bun run build
         if: github.event_name != 'pull_request' || github.event.action != 'closed'
-      - uses: dev-hato/actions-diff-pr-management@571be0d9572aaf77cdd315c12d6e73a1112910d7 # v2.2.6
+      - uses: dev-hato/actions-diff-pr-management@ac5ddb8fbc4e36f31ef0f90ded9488c0305055e6 # v2.3.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           branch-name-prefix: fix-format
