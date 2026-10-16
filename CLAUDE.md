@@ -40,16 +40,7 @@ When updating one, update the other accordingly. Note that action.yml's descript
    └─ Fetches metrics from server, renders Mermaid chart, outputs to summary
 ```
 
-### Key Components
-
-- **src/main/metrics.ts**: Collects CPU (user/system 0-100%) and memory (active/available in MB).
-  Uses `systeminformation`. Starts collection in constructor with drift-compensated `setTimeout`.
-- **src/post/renderer.ts**: Generates Mermaid stacked bar charts using template literals. Converts time series to cumulative values with `toReversed()` and `reduce()`.
-- **src/lib.ts**: Zod schema for metrics validation and server port constant (7777).
-
 ### Build Process
-
-Entry points: `src/main/index.ts`, `src/main/server.ts`, `src/post/index.ts` → bundled to `dist/`
 
 **Critical**: `dist/` directory must be committed. All dependencies are bundled into dist files.
 
