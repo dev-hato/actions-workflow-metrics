@@ -1,6 +1,13 @@
 {
   "threshold": 0,
   "reporters": ["consoleFull"],
-  "ignore": ["**/__snapshots__/**", "**/node_modules/**", "**/dist/**"],
+  "ignore": [
+    "**/__snapshots__/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/CLAUDE.md",
+    "**/AGENTS.md",
+    "**/.github/copilot-instructions.md"
+  ],
   "absolute": true
 }
