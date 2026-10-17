@@ -26,15 +26,18 @@ When updating one, update the other accordingly. Note that action.yml's descript
 
 ## Security
 
-**Important**: Always consider security and resistance to attacks when implementing or reviewing changes.
-This action runs inside other repositories' workflows, so a weakness here can affect every user of the action.
+**Important**: Always consider security and attack resistance when implementing or reviewing changes.
+This action runs inside other repositories' workflows.
+A weakness here can affect every user of the action.
 
-- Treat all external input as untrusted: action inputs, environment variables, and responses from the metrics server.
+- Treat all external input as untrusted.
+  This includes action inputs, environment variables, and responses from the metrics server.
   Validate them (e.g. with the Zod schema) before use.
 - Keep the metrics HTTP server bound to localhost only. Do not expose new endpoints or accept data that changes behavior.
 - Never log or write secrets (e.g. `GITHUB_TOKEN`) to the job summary, artifacts, or console output.
 - Avoid shell command construction from input. When spawning processes, pass arguments as arrays, never as interpolated strings.
-- Pin GitHub Actions to full commit SHAs and keep dependencies minimal, since all dependencies are bundled into `dist/`.
+- Pin GitHub Actions to full commit SHAs.
+  Keep dependencies minimal, since all dependencies are bundled into `dist/`.
 - When reviewing, check `dist/` changes for unexpected code that does not correspond to `src/` changes.
 
 ## Architecture
