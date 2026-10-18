@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, mock } from "bun:test";
-import { Metrics } from "./metrics";
+import { Metrics, maxIntervalSeconds, parseIntervalMs } from "./metrics";
 import type { Systeminformation } from "systeminformation";
 import type { z } from "zod";
 import type {
@@ -199,4 +199,40 @@ describe("Metrics", () => {
       );
     }
   }, 15000); // Set test timeout to 15 seconds
+});
+
+describe("parseIntervalMs", (): void => {
+  it("should convert positive integer seconds to milliseconds", (): void => {
+    expect(parseIntervalMs("1")).toBe(1000);
+    expect(parseIntervalMs("10")).toBe(10000);
+  });
+
+  it("should fall back to 5 seconds when unset", (): void => {
+    expect(parseIntervalMs(undefined)).toBe(5000);
+    expect(parseIntervalMs("")).toBe(5000);
+  });
+
+  it("should fall back to 5 seconds for values that would cause a busy loop", (): void => {
+    for (const input of ["0", "-1", "1.5", "1e400", "abc", "5s"]) {
+      expect(parseIntervalMs(input)).toBe(5000);
+    }
+  });
+
+  it("should accept the largest interval that setTimeout can handle", (): void => {
+    expect(maxIntervalSeconds).toBe(2147483);
+    expect(parseIntervalMs(String(maxIntervalSeconds))).toBe(2147483000);
+    expect(parseIntervalMs(String(maxIntervalSeconds))).toBeLessThanOrEqual(
+      2 ** 31 - 1,
+    );
+  });
+
+  it("should fall back to 5 seconds for intervals that overflow setTimeout", (): void => {
+    for (const input of [
+      String(maxIntervalSeconds + 1),
+      "3000000",
+      String(Number.MAX_SAFE_INTEGER),
+    ]) {
+      expect(parseIntervalMs(input)).toBe(5000);
+    }
+  });
 });
