@@ -1,8 +1,11 @@
-import { describe, expect, it, beforeEach, mock } from "bun:test";
-import { getMetricsData, render } from "./lib";
+import { describe, expect, it, beforeEach, afterEach, mock } from "bun:test";
+import { promises as fs } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { getMetricsData, render, writeMetricsFile } from "./lib";
 import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
-import type { metricsDataWithStepsSchema } from "./lib";
+import type { MetricsFile, metricsDataWithStepsSchema } from "./lib";
 import type { metricsDataSchema } from "../type";
 
 /**
@@ -181,6 +184,18 @@ describe("getMetricsData", () => {
       ...sampleMetricsData,
       steps: [],
     });
+  });
+
+  it("should fetch metrics data from the loopback address", async (): Promise<void> => {
+    const mockFetch: typeof fetch = createMockFetch(sampleMetricsData);
+    globalThis.fetch = mockFetch;
+
+    await getMetricsData([]);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://127.0.0.1:7777/metrics",
+      expect.anything(),
+    );
   });
 
   it("should throw error for invalid metrics data", async () => {
@@ -418,5 +433,80 @@ describe("getMetricsData", () => {
 
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0].stepName).toBe("Correct Job Step");
+  });
+});
+
+describe("writeMetricsFile", (): void => {
+  const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
+    ...sampleMetricsData,
+    steps: [],
+  };
+  let tempDirectory: string;
+
+  beforeEach(async (): Promise<void> => {
+    tempDirectory = await fs.mkdtemp(join(tmpdir(), "write_metrics_test_"));
+  });
+
+  afterEach(
+    async (): Promise<void> =>
+      await fs.rm(tempDirectory, { recursive: true, force: true }),
+  );
+
+  it("should write metrics into a new directory under the temp directory", async (): Promise<void> => {
+    const { rootDirectory, fileName }: MetricsFile = await writeMetricsFile({
+      metricsData,
+      fileBaseName: "workflow_metrics",
+      tempDirectory,
+    });
+
+    expect(
+      rootDirectory.startsWith(join(tempDirectory, "workflow_metrics_")),
+    ).toBe(true);
+    expect(fileName).toBe(join(rootDirectory, "workflow_metrics.json"));
+    const written: z.output<typeof metricsDataWithStepsSchema> = JSON.parse(
+      await fs.readFile(fileName, "utf8"),
+    );
+    expect(written).toEqual(metricsData);
+  });
+
+  it("should not write to the current directory or follow a planted symlink", async (): Promise<void> => {
+    // Simulate a checked-out repository that plants a symlink with the output file name
+    const workspace: string = join(tempDirectory, "workspace");
+    const target: string = join(tempDirectory, "target.txt");
+    await fs.mkdir(workspace);
+    const data: string = "original";
+    await fs.writeFile(target, data);
+    await fs.symlink(target, join(workspace, "workflow_metrics.json"));
+    const originalCwd: string = process.cwd();
+    process.chdir(workspace);
+
+    try {
+      const { fileName }: MetricsFile = await writeMetricsFile({
+        metricsData,
+        fileBaseName: "workflow_metrics",
+        tempDirectory,
+      });
+
+      expect(fileName.startsWith(workspace)).toBe(false);
+    } finally {
+      process.chdir(originalCwd);
+    }
+
+    expect(await fs.readFile(target, "utf8")).toBe(data);
+  });
+
+  it("should use a different directory on each call", async (): Promise<void> => {
+    const first: MetricsFile = await writeMetricsFile({
+      metricsData,
+      fileBaseName: "workflow_metrics",
+      tempDirectory,
+    });
+    const second: MetricsFile = await writeMetricsFile({
+      metricsData,
+      fileBaseName: "workflow_metrics",
+      tempDirectory,
+    });
+
+    expect(first.rootDirectory).not.toBe(second.rootDirectory);
   });
 });
