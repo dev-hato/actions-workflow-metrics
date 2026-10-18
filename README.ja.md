@@ -149,13 +149,13 @@ src/
 
 1. `src/main/index.ts`が実行される
 2. Node.jsで`src/main/server.ts`をデタッチドプロセスとして起動
-3. サーバーが`localhost:7777`でメトリクスJSONを配信開始
+3. サーバーが`127.0.0.1:7777`でメトリクスJSONを配信開始
 4. `Metrics`クラスが5秒ごとに`systeminformation`ライブラリを使ってCPU/メモリ情報を収集
 
 ### post実行時
 
 1. `src/post/index.ts`が実行される
-2. `localhost:7777`からメトリクスJSONを取得（タイムアウト： 10秒）
+2. `127.0.0.1:7777`からメトリクスJSONを取得（タイムアウト： 10秒）
 3. `Renderer`クラスがMermaidチャートを生成
 4. `@actions/core`の`summary` APIでジョブサマリーに出力
 

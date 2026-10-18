@@ -145,13 +145,13 @@ src/
 
 1. `src/main/index.ts` is executed
 2. Node.js spawns `src/main/server.ts` as a detached process
-3. Server starts serving metrics JSON at `localhost:7777`
+3. Server starts serving metrics JSON at `127.0.0.1:7777`
 4. `Metrics` class collects CPU/memory information every 5 seconds using `systeminformation` library
 
 ### post Execution
 
 1. `src/post/index.ts` is executed
-2. Fetches metrics JSON from `localhost:7777` (timeout: 10 seconds)
+2. Fetches metrics JSON from `127.0.0.1:7777` (timeout: 10 seconds)
 3. `Renderer` class generates Mermaid charts
 4. Outputs to job summary using `@actions/core` `summary` API
 
