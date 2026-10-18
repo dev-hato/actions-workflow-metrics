@@ -48,6 +48,9 @@ A weakness here can affect every user of the action.
 - Pin GitHub Actions to full commit SHAs.
   Keep dependencies minimal, since all dependencies are bundled into `dist/`.
 - When reviewing, check `dist/` changes for unexpected code that does not correspond to `src/` changes.
+- When fixing a security issue, always write a test that confirms the issue no longer reproduces.
+  - Use the input an attacker would send, and check that it is escaped or rejected after the fix.
+  - Confirm the test fails against the code before the fix, so it actually detects the issue.
 
 ## Architecture
 
