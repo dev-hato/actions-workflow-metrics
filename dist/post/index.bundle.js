@@ -74685,7 +74685,7 @@ __export(exports_coerce, {
 });
 
 // src/post/index.ts
-import { promises as fs7 } from "node:fs";
+import { tmpdir } from "node:os";
 
 // node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -114374,6 +114374,10 @@ function getApiBaseUrl2() {
   return process.env["GITHUB_API_URL"] || "https://api.github.com";
 }
 
+// src/post/lib.ts
+import { promises as fs7 } from "node:fs";
+import { join as join2 } from "node:path";
+
 // node_modules/zod/v4/core/util.js
 function getEnumValues(entries) {
   const numericValues = Object.values(entries).filter((v) => typeof v === "number");
@@ -114719,18 +114723,6 @@ function prefixIssues(path, issues) {
 }
 function unwrapMessage(message) {
   return typeof message === "string" ? message : message?.message;
-}
-function sizeCaps(defChecks) {
-  const caps = [];
-  for (const ch of defChecks ?? []) {
-    const d = ch._zod.def;
-    if (!/_(length|size)$|_equals$/.test(d.check))
-      break;
-    const max = d.maximum ?? d.length ?? d.size;
-    if (max >= 0)
-      caps.push([max, ch]);
-  }
-  return caps;
 }
 function attachSchema(issues, start, inst) {
   var _a;
@@ -115729,7 +115721,7 @@ ${content.join(`
 var version3 = {
   major: 4,
   minor: 6,
-  patch: 6
+  patch: 5
 };
 
 // node_modules/zod/v4/core/schemas.js
@@ -116323,29 +116315,6 @@ var $ZodDate = /* @__PURE__ */ $constructor("$ZodDate", (inst, def) => {
     return payload;
   };
 });
-function capSize(inst, size) {
-  const caps = sizeCaps(inst._zod.def.checks);
-  if (!caps.length)
-    return;
-  const cap = Math.min(...caps.map((c) => c[0]));
-  const parse = inst._zod.parse;
-  inst._zod.parse = (payload, ctx) => {
-    const n = size(payload.value);
-    if (n > cap && !ctx?.skipChecks && ctx?.direction !== "backward") {
-      for (const [max, ch] of sizeCaps(inst._zod.def.checks)) {
-        if (n > max && ch._zod.def.when(payload)) {
-          const start = payload.issues.length;
-          ch._zod.check(payload);
-          payload.issues[start].continue = false;
-          attachSchema(payload.issues, start, inst);
-          return payload;
-        }
-      }
-    }
-    return parse(payload, ctx);
-  };
-}
-var arraySize = (input) => Array.isArray(input) ? input.length : -1;
 function handleArrayResult(result, final, index) {
   if (result.issues.length) {
     final.issues.push(...prefixIssues(index, result.issues));
@@ -116389,7 +116358,6 @@ var $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
     }
     return payload;
   };
-  capSize(inst, arraySize);
 });
 function handlePropertyResult(result, final, key, input, optin, optout) {
   const isPresent = key in input;
@@ -120016,8 +119984,14 @@ ${charts}`;
     return legends.map((l) => `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`).join(`
 `);
   }
+  formatCodeSpan(text) {
+    const singleLine = text.replace(/[\r\n]+/g, " ");
+    const fence = "`".repeat(Math.max(0, ...(singleLine.match(/`+/g) ?? []).map((s) => s.length)) + 1);
+    const padding = singleLine.startsWith("`") || singleLine.endsWith("`") ? " " : "";
+    return `${fence}${padding}${singleLine}${padding}${fence}`;
+  }
   formatChartHeader(stepName) {
-    return stepName === undefined ? "#### All" : `#### Step \`${stepName}\`
+    return stepName === undefined ? "#### All" : `#### Step ${this.formatCodeSpan(stepName)}
 
 <details>
 <summary>Chart</summary>`;
@@ -120087,6 +120061,7 @@ ${this.calculateStackedBars(chartParams.stackedBarData)}
 }
 
 // src/lib.ts
+var serverHost = "127.0.0.1";
 var serverPort = 7777;
 
 // src/type.ts
@@ -120166,7 +120141,7 @@ async function getMetricsData(jobs) {
   const controller = new AbortController;
   const timer = setTimeout(() => controller.abort(), 10 * 1000);
   try {
-    const res = await fetch(`http://localhost:${serverPort}/metrics`, {
+    const res = await fetch(`http://${serverHost}:${serverPort}/metrics`, {
       signal: controller.signal
     });
     if (!res.ok) {
@@ -120264,6 +120239,16 @@ function render(metricsData, metricsID) {
     }
   ]), metricsID);
 }
+async function writeMetricsFile({
+  metricsData,
+  fileBaseName,
+  tempDirectory
+}) {
+  const rootDirectory = await fs7.mkdtemp(join2(tempDirectory, `${fileBaseName}_`));
+  const fileName = join2(rootDirectory, `${fileBaseName}.json`);
+  await fs7.writeFile(fileName, JSON.stringify(metricsData), { flag: "wx" });
+  return { rootDirectory, fileName };
+}
 
 // src/post/index.ts
 function reportError(error, report) {
@@ -120306,14 +120291,17 @@ async function index() {
       throw new Error("Failed to retrieve metrics data");
     }
     const fileBaseName = "workflow_metrics";
-    const fileName = `${fileBaseName}.json`;
-    await fs7.writeFile(fileName, JSON.stringify(metricsData));
+    const { rootDirectory, fileName } = await writeMetricsFile({
+      metricsData,
+      fileBaseName,
+      tempDirectory: process.env.RUNNER_TEMP || tmpdir()
+    });
     let metricsID = "";
     for (let i = 0;i < maxRetryCount; i++) {
       metricsID = new Date().getTime().toString();
       try {
         const client = new DefaultArtifactClient;
-        await client.uploadArtifact([fileBaseName, metricsID].join("_"), [fileName], ".");
+        await client.uploadArtifact([fileBaseName, metricsID].join("_"), [fileName], rootDirectory);
         break;
       } catch (error) {
         if (maxRetryCount - 2 < i || !(error instanceof Error) || !error.message.includes("Failed request: (409) Conflict: an artifact with this name already exists on the workflow run")) {
@@ -120329,7 +120317,7 @@ async function index() {
     const controller = new AbortController;
     const timer = setTimeout(() => controller.abort(), 10 * 1000);
     try {
-      const res = await fetch(`http://localhost:${serverPort}/finish`, {
+      const res = await fetch(`http://${serverHost}:${serverPort}/finish`, {
         signal: controller.signal
       });
       if (res.ok) {
@@ -120346,5 +120334,5 @@ async function index() {
 }
 await index();
 
-//# debugId=86FC633EFDAF8EB464756E2164756E21
+//# debugId=882892D1873A67DD64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

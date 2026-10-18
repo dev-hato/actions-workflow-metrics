@@ -36252,9 +36252,6 @@ var require_lib = __commonJS(function(exports) {
   exports.powerShellRelease = util.powerShellRelease;
 });
 
-// src/main/server.ts
-import { createServer } from "node:http";
-
 // node_modules/@actions/core/lib/command.js
 import * as os from "os";
 
@@ -37254,20 +37251,24 @@ function info(message) {
 
 // src/main/metrics.ts
 var import_systeminformation = __toESM(require_lib(), 1);
+var maxIntervalSeconds = Math.floor((2 ** 31 - 1) / 1000);
+function parseIntervalMs(intervalSecondsInput) {
+  let intervalSeconds = 5;
+  if (intervalSecondsInput) {
+    const intervalSecondsVal = Number(intervalSecondsInput);
+    if (Number.isSafeInteger(intervalSecondsVal) && 0 < intervalSecondsVal && intervalSecondsVal <= maxIntervalSeconds) {
+      intervalSeconds = intervalSecondsVal;
+    }
+  }
+  return intervalSeconds * 1000;
+}
 
 class Metrics {
   data;
   intervalMs;
   constructor() {
     this.data = { cpuLoadPercentages: [], memoryUsageMBs: [] };
-    this.intervalMs = 5 * 1000;
-    const intervalSecondsInput = process.env.METRICS_INTERVAL_SECONDS;
-    if (intervalSecondsInput) {
-      const intervalSecondsVal = parseInt(intervalSecondsInput, 10);
-      if (Number.isInteger(intervalSecondsVal)) {
-        this.intervalMs = intervalSecondsVal * 1000;
-      }
-    }
+    this.intervalMs = parseIntervalMs(process.env.METRICS_INTERVAL_SECONDS);
     this.append(Date.now()).catch(setFailed);
   }
   get() {
@@ -37301,25 +37302,36 @@ class Metrics {
   }
 }
 
+// src/main/metricsServer.ts
+import { createServer } from "node:http";
+
 // src/lib.ts
+var serverHost = "127.0.0.1";
 var serverPort = 7777;
 
-// src/main/server.ts
-async function server() {
-  const metrics = new Metrics;
+// src/main/metricsServer.ts
+function createMetricsServer(metrics, onFinish) {
   const server = createServer((request, response) => {
     try {
+      if (request.headers.host !== `${serverHost}:${serverPort}`) {
+        response.statusCode = 403;
+        response.end();
+        return;
+      }
       switch (request.url) {
         case "/metrics":
           response.setHeader("Content-Type", "application/json");
-          response.setHeader("Access-Control-Allow-Origin", "*");
           response.statusCode = 200;
           response.end(metrics.get());
           break;
         case "/finish":
           response.statusCode = 200;
           response.end();
-          server.close(() => process.exit(0));
+          server.close(onFinish);
+          break;
+        default:
+          response.statusCode = 404;
+          response.end();
           break;
       }
     } catch (error) {
@@ -37330,10 +37342,19 @@ async function server() {
       setFailed(error instanceof Error ? error : String(error));
     }
   });
+  return server;
+}
+function listenMetricsServer(server, port = serverPort) {
+  return server.listen(port, serverHost);
+}
+
+// src/main/server.ts
+async function server() {
+  const server = createMetricsServer(new Metrics, () => process.exit(0));
   server.on("error", setFailed);
-  server.listen(serverPort);
+  listenMetricsServer(server);
 }
 await server();
 
-//# debugId=2C0D46253C46743364756E2164756E21
+//# debugId=5A9364E162A6B3E764756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
