@@ -2011,6 +2011,7 @@ var require_dispatcher = __commonJS(function(exports, module) {
 
 // node_modules/undici/lib/dispatcher/dispatcher-base.js
 var require_dispatcher_base = __commonJS(function(exports, module) {
+  var buffer = __require("node:buffer");
   var Dispatcher = require_dispatcher();
   var {
     ClientDestroyedError,
@@ -2022,6 +2023,7 @@ var require_dispatcher_base = __commonJS(function(exports, module) {
   var kOnClosed = Symbol("onClosed");
   var kInterceptedDispatch = Symbol("Intercepted Dispatch");
   var kWebSocketOptions = Symbol("webSocketOptions");
+  var kEventSourceOptions = Symbol("eventSourceOptions");
 
   class DispatcherBase extends Dispatcher {
     constructor(opts) {
@@ -2031,11 +2033,17 @@ var require_dispatcher_base = __commonJS(function(exports, module) {
       this[kClosed] = false;
       this[kOnClosed] = [];
       this[kWebSocketOptions] = opts?.webSocket ?? {};
+      this[kEventSourceOptions] = opts?.eventSource ?? {};
     }
     get webSocketOptions() {
       return {
         maxFragments: this[kWebSocketOptions].maxFragments ?? 131072,
         maxPayloadSize: this[kWebSocketOptions].maxPayloadSize ?? 128 * 1024 * 1024
+      };
+    }
+    get eventSourceOptions() {
+      return {
+        maxEventSize: this[kEventSourceOptions].maxEventSize ?? buffer.kStringMaxLength
       };
     }
     get destroyed() {
@@ -5831,7 +5839,6 @@ var require_client_h1 = __commonJS(function(exports, module) {
     socket[kSocketUsed] = false;
     socket[kParser] = new Parser(client, socket, llhttpInstance);
     addListener(socket, "error", function(err) {
-      assert(err.code !== "ERR_TLS_CERT_ALTNAME_INVALID");
       const parser = this[kParser];
       if (err.code === "ECONNRESET" && parser.statusCode && !parser.shouldKeepAlive) {
         const parserErr = parser.finish();
@@ -6518,7 +6525,6 @@ var require_client_h2 = __commonJS(function(exports, module) {
     client[kHTTP2Session] = session;
     socket[kHTTP2Session] = session;
     util.addListener(socket, "error", function(err) {
-      assert(err.code !== "ERR_TLS_CERT_ALTNAME_INVALID");
       this[kError] = err;
       this[kClient][kOnError](err);
     });
@@ -6577,7 +6583,6 @@ var require_client_h2 = __commonJS(function(exports, module) {
     }
   }
   function onHttp2SessionError(err) {
-    assert(err.code !== "ERR_TLS_CERT_ALTNAME_INVALID");
     this[kSocket][kError] = err;
     this[kClient][kOnError](err);
   }
@@ -7200,9 +7205,10 @@ var require_client = __commonJS(function(exports, module) {
       autoSelectFamilyAttemptTimeout,
       maxConcurrentStreams,
       allowH2,
-      webSocket
+      webSocket,
+      eventSource
     } = {}) {
-      super({ webSocket });
+      super({ webSocket, eventSource });
       if (keepAlive !== undefined) {
         throw new InvalidArgumentError("unsupported keepAlive, use pipelining=0 instead");
       }
@@ -8085,7 +8091,7 @@ var require_agent = __commonJS(function(exports, module) {
   }
 
   class Agent extends DispatcherBase {
-    constructor({ factory = defaultFactory, maxRedirections = 0, connect, ...options } = {}) {
+    constructor({ factory = defaultFactory, maxRedirections = 0, connect, tls, ...options } = {}) {
       if (typeof factory !== "function") {
         throw new InvalidArgumentError("factory must be a function.");
       }
@@ -8099,8 +8105,11 @@ var require_agent = __commonJS(function(exports, module) {
       if (connect && typeof connect !== "function") {
         connect = { ...connect };
       }
+      if (tls && typeof tls !== "function") {
+        tls = { ...tls };
+      }
       this[kInterceptors] = options.interceptors?.Agent && Array.isArray(options.interceptors.Agent) ? options.interceptors.Agent : [createRedirectInterceptor({ maxRedirections })];
-      this[kOptions] = { ...util.deepClone(options), connect };
+      this[kOptions] = { ...util.deepClone(options), connect, tls };
       this[kOptions].interceptors = options.interceptors ? { ...options.interceptors } : undefined;
       this[kMaxRedirections] = maxRedirections;
       this[kFactory] = factory;
@@ -13378,8 +13387,9 @@ var require_fetch = __commonJS(function(exports, module) {
       type: "bytes"
     });
     response.body = { stream, source: null, length: null };
-    fetchParams.controller.onAborted = onAborted;
-    fetchParams.controller.on("terminated", onAborted);
+    if (!fetchParams.controller.resume) {
+      fetchParams.controller.on("terminated", onAborted);
+    }
     fetchParams.controller.resume = async () => {
       while (true) {
         let bytes;
@@ -13475,7 +13485,6 @@ var require_fetch = __commonJS(function(exports, module) {
             headersList.append(bufferToLowerCasedHeaderName(rawHeaders[i]), rawHeaders[i + 1].toString("latin1"), true);
           }
           location = headersList.get("location", true);
-          this.body = new Readable({ read: resume });
           const decoders = [];
           const willFollow = location && request.redirect === "follow" && redirectStatusSet.has(status);
           if (request.method !== "HEAD" && request.method !== "CONNECT" && !nullBodyStatus.includes(status) && !willFollow) {
@@ -13483,7 +13492,7 @@ var require_fetch = __commonJS(function(exports, module) {
             const codings = contentEncoding ? contentEncoding.toLowerCase().split(",") : [];
             const maxContentEncodings = 5;
             if (codings.length > maxContentEncodings) {
-              reject(new Error(`too many content-encodings in response: ${codings.length}, maximum allowed is ${maxContentEncodings}`));
+              this.abort(new Error(`too many content-encodings in response: ${codings.length}, maximum allowed is ${maxContentEncodings}`));
               return true;
             }
             for (let i = codings.length - 1;i >= 0; --i) {
@@ -13509,6 +13518,7 @@ var require_fetch = __commonJS(function(exports, module) {
               }
             }
           }
+          this.body = new Readable({ read: resume });
           const onError = this.onError.bind(this);
           resolve({
             status,
@@ -13533,9 +13543,6 @@ var require_fetch = __commonJS(function(exports, module) {
         onComplete() {
           if (this.abort) {
             fetchParams.controller.off("terminated", this.abort);
-          }
-          if (fetchParams.controller.onAborted) {
-            fetchParams.controller.off("terminated", fetchParams.controller.onAborted);
           }
           fetchParams.controller.ended = true;
           this.body.push(null);
@@ -16367,6 +16374,17 @@ var require_receiver = __commonJS(function(exports, module) {
           if (isControlFrame(this.#info.opcode)) {
             this.#loop = this.parseControlFrame(body);
             this.#state = parserStates.INFO;
+            const socket = this.ws[kResponse].socket;
+            if (this.#loop && socket.writableNeedDrain) {
+              this.#loop = false;
+              socket.once("drain", () => {
+                if (this.destroyed)
+                  return;
+                this.#loop = true;
+                this.run(callback);
+              });
+              return;
+            }
           } else {
             if (!this.#info.compressed) {
               if (!this.writeFragments(body)) {
@@ -16997,6 +17015,7 @@ var require_util8 = __commonJS(function(exports, module) {
 
 // node_modules/undici/lib/web/eventsource/eventsource-stream.js
 var require_eventsource_stream = __commonJS(function(exports, module) {
+  var buffer = __require("node:buffer");
   var { Transform } = __require("node:stream");
   var { isASCIINumber, isValidLastEventId } = require_util8();
   var BOM = [239, 187, 191];
@@ -17004,10 +17023,14 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
   var CR = 13;
   var COLON = 58;
   var SPACE = 32;
+  var defaultMaxEventSize = buffer.kStringMaxLength;
   var DATA = Buffer.from("data");
   var EVENT = Buffer.from("event");
   var ID = Buffer.from("id");
   var RETRY = Buffer.from("retry");
+  var minParserItems = 1024;
+  var maxParserItems = 131072;
+  var bytesPerParserItem = 128;
   function isASCIINumberBytes(buffer, start) {
     if (start >= buffer.length) {
       return false;
@@ -17038,6 +17061,11 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
     }
     return true;
   }
+  function createMaxEventSizeExceededError() {
+    const error = new Error("EventSource message size exceeded");
+    error.aborted = false;
+    return error;
+  }
 
   class EventSourceStream extends Transform {
     state = null;
@@ -17049,6 +17077,13 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
     pos = 0;
     lineChunkIndex = 0;
     linePos = 0;
+    lineLength = 0;
+    eventSize = 0;
+    eventFieldSizes = { data: 0, event: 0, id: 0, retry: 0 };
+    dataLineCount = 0;
+    maxEventSize;
+    maxDataLines;
+    maxBufferedChunks;
     event = {
       data: undefined,
       event: undefined,
@@ -17059,6 +17094,10 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
       options.readableObjectMode = true;
       super(options);
       this.state = options.eventSourceSettings || {};
+      this.maxEventSize = options.maxEventSize ?? defaultMaxEventSize;
+      const parserItemLimit = this.maxEventSize > 0 ? Math.min(maxParserItems, Math.max(minParserItems, Math.floor(this.maxEventSize / bytesPerParserItem))) : 0;
+      this.maxDataLines = parserItemLimit;
+      this.maxBufferedChunks = parserItemLimit;
       if (options.push) {
         this.push = options.push;
       }
@@ -17066,6 +17105,10 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
     _transform(chunk, _encoding, callback) {
       if (chunk.length === 0) {
         callback();
+        return;
+      }
+      if (this.maxEventSize > 0 && this.chunks.length >= this.maxBufferedChunks && chunk[0] !== LF && chunk[0] !== CR) {
+        callback(createMaxEventSizeExceededError());
         return;
       }
       this.chunks.push(chunk);
@@ -17104,14 +17147,28 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
           if (byte === CR) {
             this.crlfCheck = true;
           }
-          this.parseLine(this.readLine(), this.event);
+          try {
+            this.parseLine(this.readLine(), this.event);
+          } catch (error) {
+            callback(error);
+            return;
+          }
           this.consumeCurrentByte();
           this.eventEndCheck = true;
           continue;
         }
+        if (this.maxEventSize > 0 && ++this.lineLength > this.maxEventSize + 7) {
+          callback(createMaxEventSizeExceededError());
+          return;
+        }
         this.advanceCursor();
       }
       callback();
+    }
+    _destroy(error, callback) {
+      this.chunks.length = 0;
+      this.clearEvent();
+      super._destroy(error, callback);
     }
     parseLine(line, event) {
       if (line.length === 0) {
@@ -17131,6 +17188,12 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
         }
       }
       if (isFieldName(line, fieldLength, DATA)) {
+        if (this.maxEventSize > 0 && this.dataLineCount >= this.maxDataLines) {
+          throw createMaxEventSizeExceededError();
+        }
+        const valueBytes = line.length - valueStart;
+        const dataSize = this.eventFieldSizes.data + (event.data === undefined ? 0 : 1) + valueBytes;
+        this.setEventFieldSize("data", dataSize);
         const value = line.toString("utf8", valueStart);
         if (event.data === undefined) {
           event.data = value;
@@ -17138,26 +17201,37 @@ var require_eventsource_stream = __commonJS(function(exports, module) {
           event.data += `
 ${value}`;
         }
+        this.dataLineCount++;
         return;
       }
       if (isFieldName(line, fieldLength, RETRY)) {
         if (isASCIINumberBytes(line, valueStart)) {
+          this.setEventFieldSize("retry", line.length - valueStart);
           event.retry = line.toString("utf8", valueStart);
         }
         return;
       }
       if (isFieldName(line, fieldLength, ID)) {
         if (isValidLastEventIdBytes(line, valueStart)) {
+          this.setEventFieldSize("id", line.length - valueStart);
           event.id = line.toString("utf8", valueStart);
         }
         return;
       }
       if (isFieldName(line, fieldLength, EVENT)) {
-        const value = line.toString("utf8", valueStart);
-        if (value.length > 0) {
-          event.event = value;
+        if (valueStart < line.length) {
+          this.setEventFieldSize("event", line.length - valueStart);
+          event.event = line.toString("utf8", valueStart);
         }
       }
+    }
+    setEventFieldSize(field, size) {
+      const eventSize = this.eventSize - this.eventFieldSizes[field] + size;
+      if (this.maxEventSize > 0 && eventSize > this.maxEventSize) {
+        throw createMaxEventSizeExceededError();
+      }
+      this.eventSize = eventSize;
+      this.eventFieldSizes[field] = size;
     }
     processEvent(event) {
       if (event.retry && isASCIINumber(event.retry)) {
@@ -17182,6 +17256,12 @@ ${value}`;
       this.event.event = undefined;
       this.event.id = undefined;
       this.event.retry = undefined;
+      this.eventSize = 0;
+      this.dataLineCount = 0;
+      this.eventFieldSizes.data = 0;
+      this.eventFieldSizes.event = 0;
+      this.eventFieldSizes.id = 0;
+      this.eventFieldSizes.retry = 0;
     }
     hasPendingEvent() {
       return this.event.data !== undefined || this.event.event !== undefined || this.event.id !== undefined || this.event.retry !== undefined;
@@ -17206,13 +17286,15 @@ ${value}`;
     syncLineStartToCursor() {
       this.lineChunkIndex = this.chunkIndex;
       this.linePos = this.pos;
+      this.lineLength = 0;
       this.dropConsumedChunks();
     }
     dropConsumedChunks() {
-      while (this.lineChunkIndex > 0) {
-        this.chunks.shift();
-        this.lineChunkIndex--;
-        this.chunkIndex--;
+      if (this.lineChunkIndex > 0) {
+        const consumed = this.lineChunkIndex;
+        this.chunks.splice(0, consumed);
+        this.lineChunkIndex = 0;
+        this.chunkIndex -= consumed;
       }
       if (this.chunkIndex === this.chunks.length) {
         this.chunks.length = 0;
@@ -17312,6 +17394,7 @@ var require_eventsource = __commonJS(function(exports, module) {
   var { delay } = require_util8();
   var { kEnumerableProperty } = require_util();
   var { environmentSettingsObject } = require_util2();
+  var { getGlobalDispatcher } = require_global2();
   var experimentalWarned = false;
   var defaultReconnectionTime = 3000;
   var CONNECTING = 0;
@@ -17429,6 +17512,7 @@ var require_eventsource = __commonJS(function(exports, module) {
         this.#state.origin = response.urlList[response.urlList.length - 1].origin;
         const eventSourceStream = new EventSourceStream({
           eventSourceSettings: this.#state,
+          maxEventSize: this.#dispatcher.eventSourceOptions?.maxEventSize,
           push: (event) => {
             this.dispatchEvent(createFastMessageEvent(event.type, event.options));
           }
@@ -17548,7 +17632,8 @@ var require_eventsource = __commonJS(function(exports, module) {
     },
     {
       key: "dispatcher",
-      converter: webidl.converters.any
+      converter: webidl.converters.any,
+      defaultValue: () => getGlobalDispatcher()
     }
   ]);
   module.exports = {
@@ -17700,7 +17785,7 @@ var require_undici = __commonJS(function(exports, module) {
 var require_package = __commonJS(function(exports, module) {
   module.exports = {
     name: "systeminformation",
-    version: "5.33.13",
+    version: "5.33.15",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -17875,14 +17960,14 @@ var require_util9 = __commonJS(function(exports) {
   var stringStartWith = new String().startsWith;
   var mathMin = Math.min;
   function isFunction(functionToCheck) {
-    let getType = {};
+    const getType = {};
     return functionToCheck && getType.toString.call(functionToCheck) === "[object Function]";
   }
   function unique(obj) {
     const uniques = [];
     const stringify = {};
     for (let i = 0;i < obj.length; i++) {
-      let keys = Object.keys(obj[i]);
+      const keys = Object.keys(obj[i]);
       keys.sort((a, b) => {
         return a - b;
       });
@@ -17975,7 +18060,7 @@ var require_util9 = __commonJS(function(exports) {
         parts[1] += parts[2];
       }
       const p1 = (parts[1] || "").toLowerCase();
-      let isPM = p1.indexOf("pm") > -1 || p1.indexOf("p.m.") > -1 || p1.indexOf("p. m.") > -1 || p1.indexOf("n") > -1 || p1.indexOf("ch") > -1 || p1.indexOf("ös") > -1 || pmDesignator && p1.indexOf(pmDesignator) > -1;
+      const isPM = p1.indexOf("pm") > -1 || p1.indexOf("p.m.") > -1 || p1.indexOf("p. m.") > -1 || p1.indexOf("n") > -1 || p1.indexOf("ch") > -1 || p1.indexOf("ös") > -1 || pmDesignator && p1.indexOf(pmDesignator) > -1;
       hour = parseInt(parts[0], 10);
       min = parseInt(parts[1], 10);
       hour = isPM && hour < 12 ? hour + 12 : hour;
@@ -18394,7 +18479,7 @@ var require_util9 = __commonJS(function(exports) {
       callback = opts;
       opts = execOptsWin;
     }
-    let newCmd = "chcp 65001 > nul && cmd /C " + cmd + " && chcp " + codepage + " > nul";
+    const newCmd = "chcp 65001 > nul && cmd /C " + cmd + " && chcp " + codepage + " > nul";
     exec(newCmd, opts, (error, stdout) => {
       callback(error, stdout);
     });
@@ -18766,7 +18851,7 @@ var require_util9 = __commonJS(function(exports) {
         model,
         serial,
         revisionCode,
-        memory: 256 * Math.pow(2, memSizeCode),
+        memory: 256 * 2 ** memSizeCode,
         manufacturer,
         processor,
         type: {}.hasOwnProperty.call(typeList, typeCode) ? typeList[typeCode] : "",
@@ -18868,7 +18953,7 @@ var require_util9 = __commonJS(function(exports) {
     const tags = ["array", "dict", "key", "string", "integer", "date", "real", "data", "boolean", "arrayEmpty"];
     const startStr = "<plist version";
     let pos = xmlStr.indexOf(startStr);
-    let len = xmlStr.length;
+    const len = xmlStr.length;
     while (xmlStr[pos] !== ">" && pos < len) {
       pos++;
     }
@@ -18876,7 +18961,7 @@ var require_util9 = __commonJS(function(exports) {
     let inTagStart = false;
     let inTagContent = false;
     let inTagEnd = false;
-    let metaData = [{ tagStart: "", tagEnd: "", tagContent: "", key: "", data: null }];
+    const metaData = [{ tagStart: "", tagEnd: "", tagContent: "", key: "", data: null }];
     let c = "";
     let cn = xmlStr[pos];
     while (pos < len) {
@@ -19071,6 +19156,38 @@ var require_util9 = __commonJS(function(exports) {
   }
   function getAppleModel(key) {
     const appleModelIds = [
+      {
+        key: "Mac18,5",
+        name: "Mac mini",
+        size: "",
+        processor: "M6",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,16",
+        name: "Mac mini",
+        size: "",
+        processor: "M5 Pro",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,15",
+        name: "Mac Studio",
+        size: "",
+        processor: "M5 Ultra",
+        year: "2026",
+        additional: ""
+      },
+      {
+        key: "Mac17,14",
+        name: "Mac Studio",
+        size: "",
+        processor: "M5 Max",
+        year: "2026",
+        additional: ""
+      },
       {
         key: "Mac17,9",
         name: "MacBook Pro",
@@ -22486,6 +22603,9 @@ Profile on interface`);
           tx_sec: null,
           ms: 0
         };
+        if (ifaceSanitized[0] === "-") {
+          return resolve(result);
+        }
         let operstate = "unknown";
         let rx_bytes = 0;
         let tx_bytes = 0;
@@ -22496,7 +22616,8 @@ Profile on interface`);
         let cmd, lines, stats;
         if (!_network[ifaceSanitized] || _network[ifaceSanitized] && !_network[ifaceSanitized].ms || _network[ifaceSanitized] && _network[ifaceSanitized].ms && Date.now() - _network[ifaceSanitized].ms >= 500) {
           if (_linux) {
-            if (fs.existsSync("/sys/class/net/" + ifaceSanitized)) {
+            const ifaceIsSegment = ifaceSanitized !== "" && ifaceSanitized !== "." && ifaceSanitized !== ".." && ifaceSanitized.split("").every((c) => c !== "/");
+            if (ifaceIsSegment && fs.existsSync("/sys/class/net/" + ifaceSanitized)) {
               cmd = "cat /sys/class/net/" + ifaceSanitized + "/operstate; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/rx_bytes; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/tx_bytes; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/rx_dropped; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/rx_errors; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/tx_dropped; " + "cat /sys/class/net/" + ifaceSanitized + "/statistics/tx_errors; ";
               exec(cmd, (error, stdout) => {
                 if (!error) {
@@ -27467,7 +27588,7 @@ var require_graphics = __commonJS(function(exports) {
       let isGraphicsController = false;
       let pciIDs = [];
       try {
-        pciIDs = execSync('export LC_ALL=C; dmidecode -t 9 2>/dev/null; unset LC_ALL | grep "Bus Address: "', util.execOptsLinux).toString().split(`
+        pciIDs = execSync('export LC_ALL=C; dmidecode -t 9 2>/dev/null | grep "Bus Address: "', util.execOptsLinux).toString().split(`
 `);
         for (let i = 0;i < pciIDs.length; i++) {
           pciIDs[i] = pciIDs[i].replace("Bus Address:", "").replace("0000:", "").trim();
@@ -32380,7 +32501,7 @@ var require_users = __commonJS(function(exports) {
       process.nextTick(() => {
         let result = [];
         if (_linux) {
-          exec('export LC_ALL=C; who --ips; echo "---"; w; unset LC_ALL | tail -n +2', (error, stdout) => {
+          exec('export LC_ALL=C; who --ips; echo "---"; w | tail -n +2', (error, stdout) => {
             if (!error) {
               let lines = stdout.toString().split(`
 `);
@@ -37335,5 +37456,5 @@ async function server() {
 }
 await server();
 
-//# debugId=2C0D46253C46743364756E2164756E21
+//# debugId=C8C21F1EFB303A9F64756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
