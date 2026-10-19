@@ -12,4 +12,4 @@ reason = "braces is a transitive dependency of build/lint tools and is absent fr
 # https://github.com/CVEProject/cvelistV5/blob/main/cves/2026/97xxx/CVE-2026-97058.json
 [[IgnoredVulns]]
 id = "GHSA-hp3w-g68c-fv3c"
-reason = "CVE-2026-97058 was rejected by its assigning CNA on 2026-10-12, while the corresponding GHSA/OSV advisory still reports it. sprintf-js is also a transitive development dependency and is absent from the shipped action bundles."
+reason = "CVE-2026-97058 was rejected by its assigning CVE Numbering Authority on 2026-10-12, while the corresponding GHSA/OSV advisory still reports it. sprintf-js is also a transitive development dependency and is absent from the shipped action bundles."
