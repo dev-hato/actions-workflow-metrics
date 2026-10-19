@@ -15,11 +15,11 @@
         "@octokit/openapi-types": "29.0.1",
         "@proofdict/textlint-rule-proofdict": "3.1.2",
         "@textlint-ja/textlint-rule-no-insert-dropping-sa": "2.0.1",
-        "@types/bun": "1.4.2",
+        "@types/bun": "1.4.3",
         "@types/node": "26.6.5",
         "node-fetch": "2.6.12",
         "prettier": "3.9.10",
-        "rulesync": "32.0.0",
+        "rulesync": "33.0.0",
         "textlint": "15.8.0",
         "textlint-filter-rule-comments": "1.3.0",
         "textlint-rule-abbr-within-parentheses": "1.0.2",
@@ -245,7 +245,7 @@
 
     "@toon-format/toon": ["@toon-format/toon@4.1.1", "https://npm.flatt.tech/@toon-format/toon/-/toon-4.1.1.tgz", {}, "sha512-SGCkS7IjVpwRmGPgnY8ENKpAf0EdAnZDOQkvFW0d2cgOpdn9FEFl7sTgryESyypXrWr0YajHGpwsAUX4zw9ZvA=="],
 
-    "@types/bun": ["@types/bun@1.4.2", "https://npm.flatt.tech/@types/bun/-/bun-1.4.2.tgz", { "dependencies": { "bun-types": "1.4.2" } }, "sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ=="],
+    "@types/bun": ["@types/bun@1.4.3", "https://npm.flatt.tech/@types/bun/-/bun-1.4.3.tgz", { "dependencies": { "bun-types": "1.4.3" } }, "sha512-N67Pqy8JXbAY/j0tNraS3V5mubGvc6rrrNDmDCtZLlFzccbUJPDb0tvgUBC5q4m8ybkP93Jcn1QB+RYQ6PvBhw=="],
 
     "@types/debug": ["@types/debug@0.0.30", "https://npm.flatt.tech/@types/debug/-/debug-0.0.30.tgz", {}, "sha512-orGL5LXERPYsLov6CWs3Fh6203+dXzJkR7OnddIr2514Hsecwc8xRpzCapshBbKFImCsvS/mk6+FWiN5LyZJAQ=="],
 
@@ -399,7 +399,7 @@
 
     "buffers": ["buffers@0.1.1", "https://npm.flatt.tech/buffers/-/buffers-0.1.1.tgz", {}, "sha512-9q/rDEGSb/Qsvv2qvzIzdluL5k7AaJOTrw23z9reQthrbF7is4CtlT0DXyO1oei2DCp4uojjzQ7igaSHp1kAEQ=="],
 
-    "bun-types": ["bun-types@1.4.2", "https://npm.flatt.tech/bun-types/-/bun-types-1.4.2.tgz", { "dependencies": { "@types/node": "*" } }, "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w=="],
+    "bun-types": ["bun-types@1.4.3", "https://npm.flatt.tech/bun-types/-/bun-types-1.4.3.tgz", { "dependencies": { "@types/node": "*", "undici-types": "*" } }, "sha512-tinRJNGOmUN+tEAsn2y2e942n9JHRHR42iUYzDH75NmhJqVBokGSQkkfSFdNWwsANIdrK6ACH9t01M452YyTwg=="],
 
     "bytes": ["bytes@3.1.2", "https://npm.flatt.tech/bytes/-/bytes-3.1.2.tgz", {}, "sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg=="],
 
@@ -1135,7 +1135,7 @@
 
     "router": ["router@2.2.0", "https://npm.flatt.tech/router/-/router-2.2.0.tgz", { "dependencies": { "debug": "^4.4.0", "depd": "^2.0.0", "is-promise": "^4.0.0", "parseurl": "^1.3.3", "path-to-regexp": "^8.0.0" } }, "sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ=="],
 
-    "rulesync": ["rulesync@32.0.0", "https://npm.flatt.tech/rulesync/-/rulesync-32.0.0.tgz", { "dependencies": { "@inquirer/checkbox": "5.2.5", "@modelcontextprotocol/sdk": "1.31.0", "@octokit/request-error": "7.1.2", "@octokit/rest": "22.0.1", "@toon-format/toon": "4.1.1", "@valibot/to-json-schema": "1.8.0", "chokidar": "5.0.0", "commander": "15.0.0", "effect": "3.22.2", "es-toolkit": "1.52.0", "fastmcp": "4.22.1", "globby": "16.2.4", "gray-matter": "4.0.3", "js-yaml": "5.4.2", "jsonc-parser": "3.3.1", "minisearch": "7.2.0", "smol-toml": "1.9.0", "sury": "10.0.4", "zod": "4.6.5" }, "bin": { "rulesync": "dist/cli/index.js" } }, "sha512-MvYcQVGCJvlqBfYGjJ97/3jlFe8yuDOskx2GTwyqQNV20evOh3gmTi/C90tsGLLqnKpjV76HjOME+Q85L43oNA=="],
+    "rulesync": ["rulesync@33.0.0", "https://npm.flatt.tech/rulesync/-/rulesync-33.0.0.tgz", { "dependencies": { "@inquirer/checkbox": "5.2.5", "@modelcontextprotocol/sdk": "1.31.0", "@octokit/request-error": "7.1.2", "@octokit/rest": "22.0.1", "@toon-format/toon": "4.1.1", "@valibot/to-json-schema": "1.8.0", "chokidar": "5.0.0", "commander": "15.0.0", "effect": "3.22.2", "es-toolkit": "1.52.0", "fastmcp": "4.22.1", "globby": "16.2.4", "gray-matter": "4.0.3", "js-yaml": "5.4.2", "jsonc-parser": "3.3.1", "minisearch": "7.2.0", "smol-toml": "1.9.0", "sury": "10.0.4", "zod": "4.6.5" }, "bin": { "rulesync": "dist/cli/index.js" } }, "sha512-W/b35EK+WcQ9wwbuCObSkTLr9cjGOQdtSpkgmuJ7vmsL6k2MfxJAahZ0E8QXUS5o12DE3UKT3vDIiNpaA+ONxQ=="],
 
     "run-parallel": ["run-parallel@1.2.0", "https://npm.flatt.tech/run-parallel/-/run-parallel-1.2.0.tgz", { "dependencies": { "queue-microtask": "^1.2.2" } }, "sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA=="],
 
