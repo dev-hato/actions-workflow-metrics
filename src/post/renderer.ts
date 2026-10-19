@@ -37,10 +37,25 @@ ${charts}`;
       .join("\n");
   }
 
+  // Step names can contain untrusted text (e.g. PR titles via expressions),
+  // so keep them inside a single-line code span that they cannot break out of
+  private formatCodeSpan(text: string): string {
+    const singleLine: string = text.replace(/[\r\n]+/g, " ");
+    const fence: string = "`".repeat(
+      Math.max(
+        0,
+        ...(singleLine.match(/`+/g) ?? []).map((s: string): number => s.length),
+      ) + 1,
+    );
+    const padding: string =
+      singleLine.startsWith("`") || singleLine.endsWith("`") ? " " : "";
+    return `${fence}${padding}${singleLine}${padding}${fence}`;
+  }
+
   private formatChartHeader(stepName?: string): string {
     return stepName === undefined
       ? "#### All"
-      : `#### Step \`${stepName}\`
+      : `#### Step ${this.formatCodeSpan(stepName)}
 
 <details>
 <summary>Chart</summary>`;
