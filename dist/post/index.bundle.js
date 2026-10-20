@@ -121414,7 +121414,7 @@ ${content.join(`
 var version3 = {
   major: 4,
   minor: 6,
-  patch: 6
+  patch: 7
 };
 
 // node_modules/zod/v4/core/schemas.js
@@ -126051,5 +126051,5 @@ async function index() {
 }
 await index();
 
-//# debugId=C41DAC640C75E5A564756E2164756E21
+//# debugId=2A9BD58A75D16F5764756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
