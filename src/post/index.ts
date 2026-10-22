@@ -1,13 +1,13 @@
-import { promises as fs } from "node:fs";
+import { tmpdir } from "node:os";
 import { DefaultArtifactClient } from "@actions/artifact";
 import { info, setFailed, summary, warning } from "@actions/core";
 import { context } from "@actions/github";
 import { Octokit } from "@octokit/action";
-import { getMetricsData, render } from "./lib";
-import { serverPort } from "../lib";
+import { getMetricsData, render, writeMetricsFile } from "./lib";
+import { serverHost, serverPort } from "../lib";
 import type { components } from "@octokit/openapi-types";
 import type { z } from "zod";
-import type { metricsDataWithStepsSchema } from "./lib";
+import type { MetricsFile, metricsDataWithStepsSchema } from "./lib";
 
 function reportError(
   error: unknown,
@@ -67,8 +67,11 @@ async function index(): Promise<void> {
     }
 
     const fileBaseName: string = "workflow_metrics";
-    const fileName: string = `${fileBaseName}.json`;
-    await fs.writeFile(fileName, JSON.stringify(metricsData));
+    const { rootDirectory, fileName }: MetricsFile = await writeMetricsFile({
+      metricsData,
+      fileBaseName,
+      tempDirectory: process.env.RUNNER_TEMP || tmpdir(),
+    });
     let metricsID: string = "";
 
     for (let i = 0; i < maxRetryCount; i++) {
@@ -79,7 +82,7 @@ async function index(): Promise<void> {
         await client.uploadArtifact(
           [fileBaseName, metricsID].join("_"),
           [fileName],
-          ".",
+          rootDirectory,
         );
         break;
       } catch (error) {
@@ -108,7 +111,7 @@ async function index(): Promise<void> {
     // Stop the metrics server
     try {
       const res: Response = await fetch(
-        `http://localhost:${serverPort}/finish`,
+        `http://${serverHost}:${serverPort}/finish`,
         {
           signal: controller.signal,
         },

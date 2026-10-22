@@ -494,6 +494,32 @@ describe("Renderer", () => {
     expect(result).toContain("</details>");
   });
 
+  it("should keep untrusted step names inside a single-line code span", (): void => {
+    const renderer: Renderer = new Renderer();
+    const render: (stepName: string) => string = (stepName: string): string =>
+      renderer.render(
+        [
+          {
+            title: "Step Escape",
+            legends: singleCpuLegends,
+            data: [
+              {
+                stepName,
+                stackedBarData: [[15]],
+                times: [threeTimes[0]],
+                yAxis: { title: "%" },
+              },
+            ],
+          },
+        ],
+        testMetricsID,
+      );
+
+    expect(render("a`b")).toContain("#### Step ``a`b``");
+    expect(render("`x")).toContain("#### Step `` `x ``");
+    expect(render("a\n<img src=x>")).toContain("#### Step `a <img src=x>`");
+  });
+
   it("should limit visible time labels when times are long", () => {
     const renderer: Renderer = new Renderer();
     const startTime: number = Date.parse("2024-01-01T00:00:00Z");

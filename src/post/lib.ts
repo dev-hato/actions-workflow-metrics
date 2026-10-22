@@ -1,6 +1,8 @@
+import { promises as fs } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
 import { Renderer } from "./renderer";
-import { serverPort } from "../lib";
+import { serverHost, serverPort } from "../lib";
 import { metricsDataSchema } from "../type";
 import type { components } from "@octokit/openapi-types";
 import type {
@@ -14,6 +16,9 @@ type GitHubJobStep = {
   started_at?: string | null;
   completed_at?: string | null;
 };
+
+// Location of the metrics file written for artifact upload
+export type MetricsFile = { rootDirectory: string; fileName: string };
 
 export const legendSchema = z.object({
   color: z.string(),
@@ -100,7 +105,7 @@ export async function getMetricsData(
   const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
   try {
     const res: Response = await fetch(
-      `http://localhost:${serverPort}/metrics`,
+      `http://${serverHost}:${serverPort}/metrics`,
       {
         signal: controller.signal,
       },
@@ -242,4 +247,23 @@ export function render(
     ]),
     metricsID,
   );
+}
+
+// Write to a fresh temporary directory instead of the workspace,
+// so a file or symlink planted in the checked-out repository cannot be overwritten
+export async function writeMetricsFile({
+  metricsData,
+  fileBaseName,
+  tempDirectory,
+}: {
+  metricsData: z.output<typeof metricsDataWithStepsSchema>;
+  fileBaseName: string;
+  tempDirectory: string;
+}): Promise<MetricsFile> {
+  const rootDirectory: string = await fs.mkdtemp(
+    join(tempDirectory, `${fileBaseName}_`),
+  );
+  const fileName: string = join(rootDirectory, `${fileBaseName}.json`);
+  await fs.writeFile(fileName, JSON.stringify(metricsData), { flag: "wx" });
+  return { rootDirectory, fileName };
 }
