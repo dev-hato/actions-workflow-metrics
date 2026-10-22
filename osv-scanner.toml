@@ -1,0 +1,15 @@
+# Applies to the root bun.lock. Keep exceptions limited to individual advisories.
+# Reviewed on 2026-10-20; reassess if runtime dependencies or glob inputs change.
+
+# braces: https://github.com/advisories/GHSA-vfj7-8cjw-p6xm
+# https://github.com/micromatch/braces/issues/70
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2027-01-20
+reason = "braces is a transitive dependency of build/lint tools and is absent from the shipped action bundles. Current tooling uses repository-defined glob patterns, with no action input or metrics API accepting external glob patterns. Reassess this development-tool DoS exception before expiry."
+
+# sprintf-js: https://github.com/advisories/GHSA-hp3w-g68c-fv3c
+# https://github.com/CVEProject/cvelistV5/blob/main/cves/2026/97xxx/CVE-2026-97058.json
+[[IgnoredVulns]]
+id = "GHSA-hp3w-g68c-fv3c"
+reason = "CVE-2026-97058 was rejected by its assigning CVE Numbering Authority on 2026-10-12, while the corresponding GHSA/OSV advisory still reports it. sprintf-js is also a transitive development dependency and is absent from the shipped action bundles."
