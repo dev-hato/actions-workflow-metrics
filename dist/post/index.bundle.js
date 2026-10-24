@@ -26604,7 +26604,7 @@ GFS4: `);
   }
 });
 
-// node_modules/archiver-utils/node_modules/is-stream/index.js
+// node_modules/is-stream/index.js
 var require_is_stream = __commonJS(function(exports, module) {
   var isStream = (stream) => stream !== null && typeof stream === "object" && typeof stream.pipe === "function";
   isStream.writable = (stream) => isStream(stream) && stream.writable !== false && typeof stream._write === "function" && typeof stream._writableState === "object";
@@ -43460,21 +43460,11 @@ var require_zip_archive_entry = __commonJS(function(exports, module) {
   };
 });
 
-// node_modules/compress-commons/node_modules/is-stream/index.js
-var require_is_stream2 = __commonJS(function(exports, module) {
-  var isStream = (stream) => stream !== null && typeof stream === "object" && typeof stream.pipe === "function";
-  isStream.writable = (stream) => isStream(stream) && stream.writable !== false && typeof stream._write === "function" && typeof stream._writableState === "object";
-  isStream.readable = (stream) => isStream(stream) && stream.readable !== false && typeof stream._read === "function" && typeof stream._readableState === "object";
-  isStream.duplex = (stream) => isStream.writable(stream) && isStream.readable(stream);
-  isStream.transform = (stream) => isStream.duplex(stream) && typeof stream._transform === "function";
-  module.exports = isStream;
-});
-
 // node_modules/compress-commons/lib/util/index.js
 var require_util12 = __commonJS(function(exports, module) {
   var Stream = __require("stream").Stream;
   var PassThrough = require_ours().PassThrough;
-  var isStream = require_is_stream2();
+  var isStream = require_is_stream();
   var util = module.exports = {};
   util.normalizeInputSource = function(source) {
     if (source === null) {
@@ -43493,7 +43483,7 @@ var require_util12 = __commonJS(function(exports, module) {
 // node_modules/compress-commons/lib/archivers/archive-output-stream.js
 var require_archive_output_stream = __commonJS(function(exports, module) {
   var inherits = __require("util").inherits;
-  var isStream = require_is_stream2();
+  var isStream = require_is_stream();
   var Transform = require_ours().Transform;
   var ArchiveEntry = require_archive_entry();
   var util = require_util12();
@@ -126051,5 +126041,5 @@ async function index() {
 }
 await index();
 
-//# debugId=2A9BD58A75D16F5764756E2164756E21
+//# debugId=304F597FAD273AB764756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
