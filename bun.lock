@@ -233,7 +233,7 @@
 
     "@types/mdast": ["@types/mdast@3.0.15", "https://npm.flatt.tech/@types/mdast/-/mdast-3.0.15.tgz", { "dependencies": { "@types/unist": "^2" } }, "sha512-LnwD+mUEfxWMa1QpDraczIn6k0Ee3SMicuYSSzS6ZYl2gKS09EClnJYGd8Du6rfc5r/GZEk5o1mRb8TaTj03sQ=="],
 
-    "@types/minimatch": ["c@6.0.0", "https://npm.flatt.tech/@types/minimatch/-/minimatch-6.0.0.tgz", { "dependencies": { "minimatch": "*" } }, "sha512-zmPitbQ8+6zNutpwgcQuLcsEpn/Cj54Kbn7L5pX0Os5kdWplB7xPgEh/g+SWOB/qmows2gpuCaPyduq8ZZRnxA=="],
+    "@types/minimatch": ["@types/minimatch@6.0.0", "https://npm.flatt.tech/@types/minimatch/-/minimatch-6.0.0.tgz", { "dependencies": { "minimatch": "*" } }, "sha512-zmPitbQ8+6zNutpwgcQuLcsEpn/Cj54Kbn7L5pX0Os5kdWplB7xPgEh/g+SWOB/qmows2gpuCaPyduq8ZZRnxA=="],
 
     "@types/mocha": ["@types/mocha@10.0.10", "https://npm.flatt.tech/@types/mocha/-/mocha-10.0.10.tgz", {}, "sha512-xPyYSz1cMPnJQhl0CLMH68j3gprKZaTjG3s5Vi+fDgx+uhG9NOXwbVt52eFS8ECyXhyKcjDLCBEqBExKuiZb7Q=="],
 
