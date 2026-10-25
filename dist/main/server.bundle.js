@@ -17785,7 +17785,7 @@ var require_undici = __commonJS(function(exports, module) {
 var require_package = __commonJS(function(exports, module) {
   module.exports = {
     name: "systeminformation",
-    version: "5.33.15",
+    version: "5.33.16",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -18528,7 +18528,7 @@ var require_util9 = __commonJS(function(exports) {
     const l = mathMin(s.length, 2000);
     for (let i = 0;i <= l; i++) {
       if (!(s[i] === undefined || s[i] === ">" || s[i] === "<" || s[i] === "*" || s[i] === "?" || s[i] === "[" || s[i] === "]" || s[i] === "|" || s[i] === "˚" || s[i] === "$" || s[i] === ";" || s[i] === "&" || s[i] === "]" || s[i] === "#" || s[i] === "%" || s[i] === "!" || s[i] === "^" || s[i] === "\\" || s[i] === "\t" || s[i] === `
-` || s[i] === "\r" || s[i] === "'" || s[i] === "`" || s[i] === '"' || s[i].length > 1 || strict && s[i] === "(" || strict && s[i] === ")" || strict && s[i] === "@" || strict && s[i] === " " || strict && s[i] === "{" || strict && s[i] === ";" || strict && s[i] === "}")) {
+` || s[i] === "\r" || s[i] === "'" || s[i] === "`" || s[i] === '"' || s[i] >= "‘" && s[i] <= "„" || s[i] >= "–" && s[i] <= "―" || s[i].length > 1 || strict && s[i] === "(" || strict && s[i] === ")" || strict && s[i] === "@" || strict && s[i] === " " || strict && s[i] === "{" || strict && s[i] === ";" || strict && s[i] === "}")) {
         result = result + s[i];
       }
     }
@@ -31130,7 +31130,7 @@ var require_processes = __commonJS(function(exports) {
   };
   function parseTimeUnix(time) {
     let result = time;
-    let parts = time.replace(/ +/g, " ").split(" ");
+    const parts = time.replace(/ +/g, " ").split(" ");
     if (parts.length === 5) {
       result = parts[4] + "-" + ("0" + ("JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC".indexOf(parts[1].toUpperCase()) / 3 + 1)).slice(-2) + "-" + ("0" + parts[2]).slice(-2) + " " + parts[3];
     }
@@ -31198,8 +31198,8 @@ var require_processes = __commonJS(function(exports) {
             srvString = "------";
           }
           let srvs = srvString.split("|");
-          let result = [];
-          let dataSrv = [];
+          const result = [];
+          const dataSrv = [];
           if (_linux || _freebsd || _openbsd || _netbsd || _darwin) {
             if ((_linux || _freebsd || _openbsd || _netbsd) && srvString === "*") {
               try {
@@ -31257,18 +31257,14 @@ var require_processes = __commonJS(function(exports) {
             if (srvString !== "" && srvs.length > 0) {
               util.execSafe("ps", args).then((stdout) => {
                 if (stdout) {
-                  let lines = stdout.replace(/ +/g, " ").replace(/,+/g, ".").split(`
+                  const lines = stdout.replace(/ +/g, " ").replace(/,+/g, ".").split(`
 `);
-                  srvs.forEach(function(srv) {
+                  srvs.forEach((srv) => {
                     let ps;
                     if (_darwin) {
-                      ps = lines.filter(function(e) {
-                        return e.toLowerCase().indexOf(srv) !== -1;
-                      });
+                      ps = lines.filter((e) => e.toLowerCase().indexOf(srv) !== -1);
                     } else {
-                      ps = lines.filter(function(e) {
-                        return e.toLowerCase().indexOf(" " + srv.toLowerCase() + ":") !== -1 || e.toLowerCase().indexOf("(" + srv.toLowerCase() + " ") !== -1 || e.toLowerCase().indexOf("(" + srv.toLowerCase() + ")") !== -1 || e.toLowerCase().indexOf(" " + srv.toLowerCase().replace(/[0-9.]/g, "") + ":") !== -1 || e.toLowerCase().indexOf("/" + srv.toLowerCase()) !== -1;
-                      });
+                      ps = lines.filter((e) => e.toLowerCase().indexOf(" " + srv.toLowerCase() + ":") !== -1 || e.toLowerCase().indexOf("(" + srv.toLowerCase() + " ") !== -1 || e.toLowerCase().indexOf("(" + srv.toLowerCase() + ")") !== -1 || e.toLowerCase().indexOf(" " + srv.toLowerCase().replace(/[0-9.]/g, "") + ":") !== -1 || e.toLowerCase().indexOf("/" + srv.toLowerCase()) !== -1);
                     }
                     const pids = [];
                     for (const p of ps) {
@@ -31282,12 +31278,8 @@ var require_processes = __commonJS(function(exports) {
                       running: ps.length > 0,
                       startmode: "",
                       pids,
-                      cpu: parseFloat(ps.reduce(function(pv, cv) {
-                        return pv + parseFloat(cv.trim().split(" ")[0]);
-                      }, 0).toFixed(2)),
-                      mem: parseFloat(ps.reduce(function(pv, cv) {
-                        return pv + parseFloat(cv.trim().split(" ")[1]);
-                      }, 0).toFixed(2))
+                      cpu: parseFloat(ps.reduce((pv, cv) => pv + parseFloat(cv.trim().split(" ")[0]), 0).toFixed(2)),
+                      mem: parseFloat(ps.reduce((pv, cv) => pv + parseFloat(cv.trim().split(" ")[1]), 0).toFixed(2))
                     });
                   });
                   if (_linux) {
@@ -31295,24 +31287,24 @@ var require_processes = __commonJS(function(exports) {
                       item.cpu = 0;
                     });
                     let cmd = 'cat /proc/stat | grep "cpu "';
-                    for (let i in result) {
-                      for (let j in result[i].pids) {
+                    for (const i in result) {
+                      for (const j in result[i].pids) {
                         cmd += ";cat /proc/" + result[i].pids[j] + "/stat";
                       }
                     }
                     const cpuBaseline = Object.assign({}, _services_cpu);
-                    exec(cmd, { maxBuffer: 1024 * 102400 }, function(error, stdout) {
-                      let curr_processes = stdout.toString().split(`
+                    exec(cmd, { maxBuffer: 1024 * 102400 }, (error, stdout) => {
+                      const curr_processes = stdout.toString().split(`
 `);
-                      let all = parseProcStat(curr_processes.shift());
-                      let list_new = {};
+                      const all = parseProcStat(curr_processes.shift());
+                      const list_new = {};
                       let resultProcess = {};
                       curr_processes.forEach((element) => {
                         resultProcess = calcProcStatLinux(element, all, cpuBaseline);
                         if (resultProcess.pid) {
                           let listPos = -1;
-                          for (let i in result) {
-                            for (let j in result[i].pids) {
+                          for (const i in result) {
+                            for (const j in result[i].pids) {
                               if (parseInt(result[i].pids[j]) === parseInt(resultProcess.pid)) {
                                 listPos = i;
                               }
@@ -31348,12 +31340,10 @@ var require_processes = __commonJS(function(exports) {
                   args = ["-o", "comm"];
                   util.execSafe("ps", args).then((stdout) => {
                     if (stdout) {
-                      let lines = stdout.replace(/ +/g, " ").replace(/,+/g, ".").split(`
+                      const lines = stdout.replace(/ +/g, " ").replace(/,+/g, ".").split(`
 `);
-                      srvs.forEach(function(srv) {
-                        let ps = lines.filter(function(e) {
-                          return e.indexOf(srv) !== -1;
-                        });
+                      srvs.forEach((srv) => {
+                        const ps = lines.filter((e) => e.indexOf(srv) !== -1);
                         result.push({
                           name: srv,
                           running: ps.length > 0,
@@ -31367,7 +31357,7 @@ var require_processes = __commonJS(function(exports) {
                       }
                       resolve(result);
                     } else {
-                      srvs.forEach(function(srv) {
+                      srvs.forEach((srv) => {
                         result.push({
                           name: srv,
                           running: false,
@@ -31396,23 +31386,23 @@ var require_processes = __commonJS(function(exports) {
               if (srvs[0] !== "*") {
                 wincommand += ' -Filter "';
                 srvs.forEach((srv) => {
-                  wincommand += `Name='${srv}' or `;
+                  wincommand += `Name='${srv.replace(/[^a-zA-Z0-9 _.\-@]/g, "")}' or `;
                 });
                 wincommand = `${wincommand.slice(0, -4)}"`;
               }
               wincommand += " | select Name,Caption,Started,StartMode,ProcessId | fl";
               util.powerShell(wincommand).then((stdout, error) => {
                 if (!error) {
-                  let serviceSections = stdout.split(/\n\s*\n/);
+                  const serviceSections = stdout.split(/\n\s*\n/);
                   serviceSections.forEach((element) => {
                     if (element.trim() !== "") {
-                      let lines = element.trim().split(`\r
+                      const lines = element.trim().split(`\r
 `);
-                      let srvName = util.getValue(lines, "Name", ":", true).toLowerCase();
-                      let srvCaption = util.getValue(lines, "Caption", ":", true).toLowerCase();
-                      let started = util.getValue(lines, "Started", ":", true);
-                      let startMode = util.getValue(lines, "StartMode", ":", true);
-                      let pid = util.getValue(lines, "ProcessId", ":", true);
+                      const srvName = util.getValue(lines, "Name", ":", true).toLowerCase();
+                      const srvCaption = util.getValue(lines, "Caption", ":", true).toLowerCase();
+                      const started = util.getValue(lines, "Started", ":", true);
+                      const startMode = util.getValue(lines, "StartMode", ":", true);
+                      const pid = util.getValue(lines, "ProcessId", ":", true);
                       if (srvString === "*" || srvs.indexOf(srvName) >= 0 || srvs.indexOf(srvCaption) >= 0) {
                         result.push({
                           name: srvName,
@@ -31511,13 +31501,13 @@ var require_processes = __commonJS(function(exports) {
     return { cpuu, cpus };
   }
   function calcProcStatLinux(line, all, _cpu_old) {
-    let statparts = line.replace(/ +/g, " ").split(")");
+    const statparts = line.replace(/ +/g, " ").split(")");
     if (statparts.length >= 2) {
-      let parts = statparts[1].split(" ");
+      const parts = statparts[1].split(" ");
       if (parts.length >= 16) {
-        let pid = parseInt(statparts[0].split(" ")[0]);
-        let utime = parseInt(parts[12]);
-        let stime = parseInt(parts[13]);
+        const pid = parseInt(statparts[0].split(" ")[0]);
+        const utime = parseInt(parts[12]);
+        const stime = parseInt(parts[13]);
         let cpuu = 0;
         let cpus = 0;
         if (_cpu_old.all > 0 && _cpu_old.list[pid]) {
@@ -31584,7 +31574,7 @@ var require_processes = __commonJS(function(exports) {
         result = result.substr(0, result.length - 1);
       }
       if (result.substr(0, 1) !== "[") {
-        let parts = result.split("/");
+        const parts = result.split("/");
         if (isNaN(parseInt(parts[parts.length - 1]))) {
           result = parts[parts.length - 1];
         } else {
@@ -31711,9 +31701,9 @@ var require_processes = __commonJS(function(exports) {
       };
     }
     function parseProcesses(lines) {
-      let result = [];
+      const result = [];
       if (lines.length > 1) {
-        let head = lines[0];
+        const head = lines[0];
         parsedhead = util.parseHead(head, 8);
         lines.shift();
         lines.forEach((line) => {
@@ -31759,7 +31749,7 @@ var require_processes = __commonJS(function(exports) {
         }
         return started;
       }
-      let result = [];
+      const result = [];
       lines.forEach((line) => {
         if (line.trim() !== "") {
           line = line.trim().replace(/ +/g, " ").replace(/,+/g, ".");
@@ -31791,7 +31781,7 @@ var require_processes = __commonJS(function(exports) {
     }
     return new Promise((resolve) => {
       process.nextTick(() => {
-        let result = {
+        const result = {
           all: 0,
           running: 0,
           blocked: 0,
@@ -31836,15 +31826,15 @@ var require_processes = __commonJS(function(exports) {
                     });
                     const cpuBaseline = Object.assign({}, _processes_cpu);
                     exec(cmd, { maxBuffer: 1024 * 102400 }, (error, stdout) => {
-                      let curr_processes = stdout.toString().split(`
+                      const curr_processes = stdout.toString().split(`
 `);
-                      let all = parseProcStat(curr_processes.shift());
-                      let list_new = {};
+                      const all = parseProcStat(curr_processes.shift());
+                      const list_new = {};
                       let resultProcess = {};
                       curr_processes.forEach((element) => {
                         resultProcess = calcProcStatLinux(element, all, cpuBaseline);
                         if (resultProcess.pid) {
-                          let listPos = result.list.map((e) => {
+                          const listPos = result.list.map((e) => {
                             return e.pid;
                           }).indexOf(resultProcess.pid);
                           if (listPos >= 0) {
@@ -31882,7 +31872,7 @@ var require_processes = __commonJS(function(exports) {
                   }
                   exec(cmd, { maxBuffer: 1024 * 102400 }, (error, stdout) => {
                     if (!error) {
-                      let lines = stdout.toString().split(`
+                      const lines = stdout.toString().split(`
 `);
                       lines.shift();
                       result.list = parseProcesses2(lines).slice();
@@ -31989,8 +31979,8 @@ var require_processes = __commonJS(function(exports) {
                   result.sleeping = result.all - result.running - result.blocked - result.unknown;
                   result.list = procs;
                   procStats.forEach((element) => {
-                    let resultProcess = calcProcStatWin(element, allcpuu + allcpus, cpuBaseline);
-                    let listPos = result.list.map((e) => e.pid).indexOf(resultProcess.pid);
+                    const resultProcess = calcProcStatWin(element, allcpuu + allcpus, cpuBaseline);
+                    const listPos = result.list.map((e) => e.pid).indexOf(resultProcess.pid);
                     if (listPos >= 0) {
                       result.list[listPos].cpu = resultProcess.cpuu + resultProcess.cpus;
                       result.list[listPos].cpuu = resultProcess.cpuu;
@@ -32077,8 +32067,8 @@ var require_processes = __commonJS(function(exports) {
         if (util.isPrototypePolluted() && processesString !== "*") {
           processesString = "------";
         }
-        let processes = processesString.split("|");
-        let result = [];
+        const processes = processesString.split("|");
+        const result = [];
         const procSanitized = util.isPrototypePolluted() ? "" : util.sanitizeShellString(proc) || "*";
         if (procSanitized && processes.length && processes[0] !== "------") {
           if (_windows) {
@@ -32146,7 +32136,7 @@ var require_processes = __commonJS(function(exports) {
                     }
                   });
                   if (processesString !== "*") {
-                    let processesMissing = processes.filter((name) => procStats.filter((item) => item.name.toLowerCase().indexOf(name) >= 0).length === 0);
+                    const processesMissing = processes.filter((name) => procStats.filter((item) => item.name.toLowerCase().indexOf(name) >= 0).length === 0);
                     processesMissing.forEach((procName) => {
                       result.push({
                         proc: procName,
@@ -32158,7 +32148,7 @@ var require_processes = __commonJS(function(exports) {
                     });
                   }
                   procStats.forEach((element) => {
-                    let resultProcess = calcProcStatWin(element, allcpuu + allcpus, cpuBaseline);
+                    const resultProcess = calcProcStatWin(element, allcpuu + allcpus, cpuBaseline);
                     let listPos = -1;
                     for (let j = 0;j < result.length; j++) {
                       if (result[j].pid === resultProcess.pid || result[j].pids.indexOf(resultProcess.pid) >= 0) {
@@ -32266,7 +32256,7 @@ var require_processes = __commonJS(function(exports) {
                   }
                 });
                 if (processesString !== "*") {
-                  let processesMissing = processes.filter((name) => {
+                  const processesMissing = processes.filter((name) => {
                     return procStats.filter((item) => {
                       return item.name.toLowerCase().indexOf(name) >= 0;
                     }).length === 0;
@@ -32286,23 +32276,23 @@ var require_processes = __commonJS(function(exports) {
                     item.cpu = 0;
                   });
                   let cmd = 'cat /proc/stat | grep "cpu "';
-                  for (let i in result) {
-                    for (let j in result[i].pids) {
+                  for (const i in result) {
+                    for (const j in result[i].pids) {
                       cmd += ";cat /proc/" + result[i].pids[j] + "/stat";
                     }
                   }
                   const cpuBaseline = Object.assign({}, _process_cpu);
                   exec(cmd, { maxBuffer: 1024 * 102400 }, (error, stdout) => {
-                    let curr_processes = stdout.toString().split(`
+                    const curr_processes = stdout.toString().split(`
 `);
-                    let all = parseProcStat(curr_processes.shift());
-                    let list_new = {};
+                    const all = parseProcStat(curr_processes.shift());
+                    const list_new = {};
                     let resultProcess = {};
                     curr_processes.forEach((element) => {
                       resultProcess = calcProcStatLinux(element, all, cpuBaseline);
                       if (resultProcess.pid) {
                         let resultItemId = -1;
-                        for (let i in result) {
+                        for (const i in result) {
                           if (result[i].pids.indexOf(resultProcess.pid) >= 0) {
                             resultItemId = i;
                           }
@@ -37477,5 +37467,5 @@ async function server() {
 }
 await server();
 
-//# debugId=6ADABDDFA28CA89F64756E2164756E21
+//# debugId=BCDD8D625C67AE5364756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
