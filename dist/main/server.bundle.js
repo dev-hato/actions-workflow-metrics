@@ -17785,7 +17785,7 @@ var require_undici = __commonJS(function(exports, module) {
 var require_package = __commonJS(function(exports, module) {
   module.exports = {
     name: "systeminformation",
-    version: "5.33.16",
+    version: "5.33.19",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -17960,8 +17960,7 @@ var require_util9 = __commonJS(function(exports) {
   var stringStartWith = new String().startsWith;
   var mathMin = Math.min;
   function isFunction(functionToCheck) {
-    const getType = {};
-    return functionToCheck && getType.toString.call(functionToCheck) === "[object Function]";
+    return typeof functionToCheck === "function";
   }
   function unique(obj) {
     const uniques = [];
@@ -20468,32 +20467,41 @@ var require_util9 = __commonJS(function(exports) {
     const http = url.startsWith("https:") || url.indexOf(":443/") > 0 || url.indexOf(":8443/") > 0 ? __require("https") : __require("http");
     const t = Date.now();
     return new Promise((resolve) => {
-      const request = http.get(url, (res) => {
-        res.on("data", () => {});
-        res.on("end", () => {
+      try {
+        const request = http.get(url, (res) => {
+          res.on("data", () => {});
+          res.on("end", () => {
+            resolve({
+              url,
+              statusCode: res.statusCode,
+              message: res.statusMessage,
+              time: Date.now() - t
+            });
+          });
+        }).on("error", (e) => {
           resolve({
             url,
-            statusCode: res.statusCode,
-            message: res.statusMessage,
+            statusCode: 404,
+            message: e.message,
+            time: Date.now() - t
+          });
+        }).setTimeout(timeout, () => {
+          request.destroy();
+          resolve({
+            url,
+            statusCode: 408,
+            message: "Request Timeout",
             time: Date.now() - t
           });
         });
-      }).on("error", (e) => {
+      } catch (e) {
         resolve({
           url,
           statusCode: 404,
           message: e.message,
           time: Date.now() - t
         });
-      }).setTimeout(timeout, () => {
-        request.destroy();
-        resolve({
-          url,
-          statusCode: 408,
-          message: "Request Timeout",
-          time: Date.now() - t
-        });
-      });
+      }
     });
   }
   function cleanString(str) {
@@ -20587,6 +20595,7 @@ var require_system = __commonJS(function(exports) {
   var _netbsd = _platform === "netbsd";
   var _sunos = _platform === "sunos";
   function system(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = {
@@ -20943,6 +20952,7 @@ var require_system = __commonJS(function(exports) {
     return "";
   }
   function bios(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = {
@@ -21065,6 +21075,7 @@ var require_system = __commonJS(function(exports) {
   }
   exports.bios = bios;
   function baseboard(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         const result = {
@@ -21230,6 +21241,7 @@ var require_system = __commonJS(function(exports) {
     return "Other";
   }
   function chassis(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     const chassisTypes = [
       "Other",
       "Unknown",
@@ -21392,7 +21404,7 @@ var require_network = __commonJS(function(exports) {
     try {
       const ifaces = os.networkInterfaces();
       let scopeid = 9999;
-      for (let dev in ifaces) {
+      for (const dev in ifaces) {
         if ({}.hasOwnProperty.call(ifaces, dev)) {
           ifaces[dev].forEach((details) => {
             if (details && details.internal === false) {
@@ -21421,7 +21433,7 @@ var require_network = __commonJS(function(exports) {
           }
         });
         if (defaultIp) {
-          for (let dev in ifaces) {
+          for (const dev in ifaces) {
             if ({}.hasOwnProperty.call(ifaces, dev)) {
               ifaces[dev].forEach((details) => {
                 if (details && details.address && details.address === defaultIp) {
@@ -21546,6 +21558,7 @@ var require_network = __commonJS(function(exports) {
   }
   exports.getMacAddresses = getMacAddresses;
   function networkInterfaceDefault(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         const result = getDefaultNetworkInterface();
@@ -21559,7 +21572,7 @@ var require_network = __commonJS(function(exports) {
   exports.networkInterfaceDefault = networkInterfaceDefault;
   function parseLinesWindowsNics(sections, nconfigsections) {
     const nics = [];
-    for (let i in sections) {
+    for (const i in sections) {
       try {
         if ({}.hasOwnProperty.call(sections, i)) {
           if (sections[i].trim() !== "") {
@@ -21919,7 +21932,7 @@ Profile on interface`);
         if (lines && lines.length) {
           const parts = lines[0].split(":");
           if (parts.length > 2) {
-            for (let line of lines) {
+            for (const line of lines) {
               if (line.indexOf(" inet ") >= 0 && line.indexOf(" dynamic ") >= 0) {
                 const parts2 = line.split(" ");
                 const nic = parts2[parts2.length - 1].trim();
@@ -22054,11 +22067,11 @@ Profile on interface`);
       callback = null;
       defaultString = "";
     }
+    callback = util.isFunction(callback) ? callback : null;
     if (typeof rescan === "undefined") {
       rescan = true;
     }
-    defaultString = defaultString || "";
-    defaultString = "" + defaultString;
+    defaultString = typeof defaultString === "string" ? defaultString : "";
     return new Promise((resolve) => {
       process.nextTick(() => {
         const ifaces = os.networkInterfaces();
@@ -22166,7 +22179,7 @@ Profile on interface`);
             _ifaces = JSON.parse(JSON.stringify(ifaces));
             _dhcpNics = getLinuxDHCPNics();
             const defaultInterface = getDefaultNetworkInterface();
-            for (let dev in ifaces) {
+            for (const dev in ifaces) {
               let ip4 = "";
               let ip4subnet = "";
               let ip6 = "";
@@ -22352,7 +22365,7 @@ Profile on interface`);
               });
               nics8021xInfo = getWindowsWiredProfilesInformation();
               dnsSuffixes = getWindowsDNSsuffixes();
-              for (let dev in ifaces) {
+              for (const dev in ifaces) {
                 const ifaceSanitized = util.sanitizeString(dev);
                 let iface = dev;
                 let ip4 = "";
@@ -22360,10 +22373,10 @@ Profile on interface`);
                 let ip6 = "";
                 let ip6subnet = "";
                 let mac = "";
-                let duplex = "";
-                let mtu = "";
+                const duplex = "";
+                const mtu = "";
                 let speed = null;
-                let carrierChanges = 0;
+                const carrierChanges = 0;
                 let operstate = "down";
                 let dhcp = false;
                 let dnsSuffix = "";
@@ -22500,6 +22513,7 @@ Profile on interface`);
     return result;
   }
   function networkStats(ifaces, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     let ifacesArray = [];
     return new Promise((resolve) => {
       process.nextTick(() => {
@@ -22533,7 +22547,7 @@ Profile on interface`);
         if (ifacesArray.length && ifacesArray[0].trim() === "*") {
           ifacesArray = [];
           networkInterfaces(false).then((allIFaces) => {
-            for (let iface of allIFaces) {
+            for (const iface of allIFaces) {
               ifacesArray.push(iface.iface);
             }
             networkStats(ifacesArray.join(",")).then((result) => {
@@ -22544,7 +22558,7 @@ Profile on interface`);
             });
           });
         } else {
-          for (let iface of ifacesArray) {
+          for (const iface of ifacesArray) {
             workload.push(networkStatsSingle(iface.trim()));
           }
           if (workload.length) {
@@ -22567,7 +22581,7 @@ Profile on interface`);
   function networkStatsSingle(iface) {
     function parseLinesWindowsPerfData(sections) {
       const perfData = [];
-      for (let i in sections) {
+      for (const i in sections) {
         if ({}.hasOwnProperty.call(sections, i)) {
           if (sections[i].trim() !== "") {
             const lines = sections[i].trim().split(`\r
@@ -22759,6 +22773,7 @@ Profile on interface`);
     return cmd;
   }
   function networkConnections(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         const result = [];
@@ -22768,7 +22783,7 @@ Profile on interface`);
             cmd = 'export LC_ALL=C; netstat -na | grep "ESTABLISHED\\|SYN_SENT\\|SYN_RECV\\|FIN_WAIT1\\|FIN_WAIT2\\|TIME_WAIT\\|CLOSE\\|CLOSE_WAIT\\|LAST_ACK\\|LISTEN\\|CLOSING\\|UNKNOWN"; unset LC_ALL';
           }
           exec(cmd, { maxBuffer: 1024 * 102400 }, (error, stdout) => {
-            let lines = stdout.toString().split(`
+            const lines = stdout.toString().split(`
 `);
             if (!error && (lines.length > 1 || lines[0] !== "")) {
               lines.forEach((line) => {
@@ -22955,11 +22970,11 @@ Profile on interface`);
           });
         }
         if (_windows) {
-          let cmd = "netstat -nao";
+          const cmd = "netstat -nao";
           try {
             exec(cmd, util.execOptsWin, (error, stdout) => {
               if (!error) {
-                let lines = stdout.toString().split(`\r
+                const lines = stdout.toString().split(`\r
 `);
                 lines.forEach((line) => {
                   line = line.trim().replace(/ +/g, " ").split(" ");
@@ -23059,6 +23074,7 @@ Profile on interface`);
   }
   exports.networkConnections = networkConnections;
   function networkGatewayDefault(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = "";
@@ -23067,7 +23083,7 @@ Profile on interface`);
           try {
             exec(cmd, { maxBuffer: 1024 * 102400 }, (error, stdout) => {
               if (!error) {
-                let lines = stdout.toString().split(`
+                const lines = stdout.toString().split(`
 `);
                 const line = lines && lines[0] ? lines[0] : "";
                 let parts = line.split(" via ");
@@ -23142,7 +23158,7 @@ Profile on interface`);
               });
               if (!result) {
                 util.powerShell("Get-CimInstance -ClassName Win32_IP4RouteTable | Where-Object { $_.Destination -eq '0.0.0.0' -and $_.Mask -eq '0.0.0.0' }").then((data) => {
-                  let lines = data.toString().split(`\r
+                  const lines = data.toString().split(`\r
 `);
                   if (lines.length > 1 && !result) {
                     result = util.getValue(lines, "NextHop");
@@ -23362,6 +23378,7 @@ var require_osinfo = __commonJS(function(exports) {
     return fqdn;
   }
   function osInfo(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = {
@@ -23587,6 +23604,7 @@ var require_osinfo = __commonJS(function(exports) {
     });
   }
   function versions(apps, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     let versionObject = {
       kernel: os.release(),
       apache: "",
@@ -24281,6 +24299,7 @@ var require_osinfo = __commonJS(function(exports) {
   }
   exports.versions = versions;
   function shell(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         if (_windows) {
@@ -24363,6 +24382,7 @@ var require_osinfo = __commonJS(function(exports) {
     return macs;
   }
   function uuid(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = {
@@ -25583,6 +25603,7 @@ var require_cpu = __commonJS(function(exports) {
     });
   }
   function cpu(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         getCpu().then((result) => {
@@ -25654,6 +25675,7 @@ var require_cpu = __commonJS(function(exports) {
     }
   }
   function cpuCurrentSpeed(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = getCpuCurrentSpeedSync();
@@ -25675,6 +25697,7 @@ var require_cpu = __commonJS(function(exports) {
   }
   exports.cpuCurrentSpeed = cpuCurrentSpeed;
   function cpuTemperature(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = {
@@ -25994,6 +26017,7 @@ var require_cpu = __commonJS(function(exports) {
   }
   exports.cpuTemperature = cpuTemperature;
   function cpuFlags(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = "";
@@ -26142,6 +26166,7 @@ var require_cpu = __commonJS(function(exports) {
   }
   exports.cpuFlags = cpuFlags;
   function cpuCache(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = {
@@ -26526,6 +26551,7 @@ var require_cpu = __commonJS(function(exports) {
     });
   }
   function currentLoad(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         if (_current_cpu.ms === 0) {
@@ -26578,6 +26604,7 @@ var require_cpu = __commonJS(function(exports) {
     });
   }
   function fullLoad(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         getFullLoad().then((result) => {
@@ -26637,6 +26664,7 @@ var require_memory = __commonJS(function(exports) {
     QIMONDA: "Qimonda AG i. In."
   };
   function mem(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = {
@@ -26831,6 +26859,7 @@ var require_memory = __commonJS(function(exports) {
   }
   exports.mem = mem;
   function memLayout(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     function getManufacturer(manId) {
       const manIdSearch = manId.replace("0x", "").toUpperCase();
       if (manIdSearch.length >= 4 && {}.hasOwnProperty.call(RAM_manufacturers, manIdSearch)) {
@@ -27125,7 +27154,7 @@ var require_battery = __commonJS(function(exports, module) {
     }
     return result;
   }
-  module.exports = (callback) => new Promise((resolve) => {
+  var battery = (callback) => new Promise((resolve) => {
     process.nextTick(() => {
       let result = {
         hasBattery: false,
@@ -27388,6 +27417,7 @@ var require_battery = __commonJS(function(exports, module) {
       }
     });
   });
+  module.exports = (callback) => battery(util.isFunction(callback) ? callback : null);
 });
 
 // node_modules/systeminformation/lib/graphics.js
@@ -27513,6 +27543,7 @@ var require_graphics = __commonJS(function(exports) {
     return families[id] || "";
   }
   function graphics(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     function parseLinesDarwin(graphicsArr) {
       const res = {
         controllers: [],
@@ -28554,6 +28585,7 @@ var require_filesystem = __commonJS(function(exports) {
   var _fs_speed = {};
   var _disk_io = {};
   function fsSize(drive, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     if (util.isFunction(drive)) {
       callback = drive;
       drive = "";
@@ -28745,7 +28777,7 @@ var require_filesystem = __commonJS(function(exports) {
             data = parseDf(lines);
             if (drive) {
               data = data.filter((item) => {
-                return item.fs.toLowerCase().indexOf(drive.toLowerCase()) >= 0 || item.mount.toLowerCase().indexOf(drive.toLowerCase()) >= 0;
+                return typeof drive === "string" && (item.fs.toLowerCase().indexOf(drive.toLowerCase()) >= 0 || item.mount.toLowerCase().indexOf(drive.toLowerCase()) >= 0);
               });
             }
             if ((!error || data.length) && stdout.toString().trim() !== "") {
@@ -28821,6 +28853,7 @@ var require_filesystem = __commonJS(function(exports) {
   }
   exports.fsSize = fsSize;
   function fsOpenFiles(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         const result = {
@@ -29156,6 +29189,7 @@ var require_filesystem = __commonJS(function(exports) {
 `);
   }
   function blockDevices(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let data = [];
@@ -29323,6 +29357,7 @@ var require_filesystem = __commonJS(function(exports) {
     return result;
   }
   function fsStats(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         if (_windows || _freebsd || _openbsd || _netbsd || _sunos) {
@@ -29507,6 +29542,7 @@ var require_filesystem = __commonJS(function(exports) {
     return result;
   }
   function disksIO(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         if (_windows) {
@@ -29612,6 +29648,7 @@ var require_filesystem = __commonJS(function(exports) {
   }
   exports.disksIO = disksIO;
   function diskLayout(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     function getVendorFromModel(model) {
       const diskManufacturers = [
         { pattern: "WESTERN.*", manufacturer: "Western Digital" },
@@ -30675,6 +30712,7 @@ Interface `);
     }
   }
   function wifiNetworks(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = [];
@@ -30822,6 +30860,7 @@ Interface `);
     return result;
   }
   function wifiConnections(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         const result = [];
@@ -30975,6 +31014,7 @@ Interface `);
   }
   exports.wifiConnections = wifiConnections;
   function wifiInterfaces(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         const result = [];
@@ -31158,6 +31198,7 @@ var require_processes = __commonJS(function(exports) {
     return result;
   }
   function services(srv, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     if (util.isFunction(srv) && !callback) {
       callback = srv;
       srv = "";
@@ -31566,6 +31607,7 @@ var require_processes = __commonJS(function(exports) {
     };
   }
   function processes(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     let parsedhead = [];
     function getName(command) {
       command = command || "";
@@ -32028,6 +32070,7 @@ var require_processes = __commonJS(function(exports) {
   }
   exports.processes = processes;
   function processLoad(proc, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     if (util.isFunction(proc) && !callback) {
       callback = proc;
       proc = "";
@@ -32487,6 +32530,7 @@ var require_users = __commonJS(function(exports) {
     return result;
   }
   function users(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = [];
@@ -32731,6 +32775,7 @@ var require_internet = __commonJS(function(exports) {
   var _netbsd = _platform === "netbsd";
   var _sunos = _platform === "sunos";
   function inetChecksite(url, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = {
@@ -32801,6 +32846,7 @@ var require_internet = __commonJS(function(exports) {
   }
   exports.inetChecksite = inetChecksite;
   function inetLatency(host, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     if (util.isFunction(host) && !callback) {
       callback = host;
       host = "";
@@ -33042,6 +33088,7 @@ var require_docker = __commonJS(function(exports) {
   var _docker_cpu_last_read = {};
   var _docker_socket;
   function dockerInfo(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         if (!_docker_socket) {
@@ -33105,6 +33152,7 @@ var require_docker = __commonJS(function(exports) {
   }
   exports.dockerInfo = dockerInfo;
   function dockerImages(all, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     if (util.isFunction(all) && !callback) {
       callback = all;
       all = false;
@@ -33116,7 +33164,7 @@ var require_docker = __commonJS(function(exports) {
       all = false;
     }
     all = all || false;
-    let result = [];
+    const result = [];
     return new Promise((resolve) => {
       process.nextTick(() => {
         if (!_docker_socket) {
@@ -33211,6 +33259,7 @@ var require_docker = __commonJS(function(exports) {
   }
   exports.dockerImages = dockerImages;
   function dockerContainers(all, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     function inContainers(containers, id) {
       return containers.some((obj) => obj.Id && obj.Id.indexOf(id) === 0);
     }
@@ -33225,7 +33274,7 @@ var require_docker = __commonJS(function(exports) {
       all = false;
     }
     all = all || false;
-    let result = [];
+    const result = [];
     return new Promise((resolve) => {
       process.nextTick(() => {
         if (!_docker_socket) {
@@ -33237,7 +33286,7 @@ var require_docker = __commonJS(function(exports) {
           try {
             docker_containers = data;
             if (docker_containers && Object.prototype.toString.call(docker_containers) === "[object Array]" && docker_containers.length > 0) {
-              for (let key in _docker_cpu_last_read) {
+              for (const key in _docker_cpu_last_read) {
                 if ({}.hasOwnProperty.call(_docker_cpu_last_read, key)) {
                   if (!inContainers(docker_containers, key)) {
                     delete _docker_cpu_last_read[key];
@@ -33362,7 +33411,7 @@ var require_docker = __commonJS(function(exports) {
   function docker_calcNetworkIO(networks) {
     let rx = 0;
     let wx = 0;
-    for (let key in networks) {
+    for (const key in networks) {
       if (!{}.hasOwnProperty.call(networks, key)) {
         continue;
       }
@@ -33376,7 +33425,7 @@ var require_docker = __commonJS(function(exports) {
     };
   }
   function docker_calcBlockIO(blkio_stats) {
-    let result = {
+    const result = {
       r: 0,
       w: 0
     };
@@ -33393,6 +33442,7 @@ var require_docker = __commonJS(function(exports) {
     return result;
   }
   function dockerContainerStats(containerIDs, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     let containerArray = [];
     return new Promise((resolve) => {
       process.nextTick(() => {
@@ -33430,7 +33480,7 @@ var require_docker = __commonJS(function(exports) {
         if (containerArray.length && containerArray[0].trim() === "*") {
           containerArray = [];
           dockerContainers().then((allContainers) => {
-            for (let container of (allContainers || []).filter(Boolean)) {
+            for (const container of (allContainers || []).filter(Boolean)) {
               if (container.id) {
                 containerArray.push(container.id.substring(0, 12));
               }
@@ -33450,7 +33500,7 @@ var require_docker = __commonJS(function(exports) {
             }
           });
         } else {
-          for (let containerID of containerArray) {
+          for (const containerID of containerArray) {
             workload.push(dockerContainerStatsSingle(containerID.trim()));
           }
           if (workload.length) {
@@ -33503,7 +33553,7 @@ var require_docker = __commonJS(function(exports) {
             try {
               _docker_socket.getStats(containerID, (data) => {
                 try {
-                  let stats = data;
+                  const stats = data;
                   if (!stats.message) {
                     if (data.id) {
                       result.id = data.id;
@@ -33542,11 +33592,19 @@ var require_docker = __commonJS(function(exports) {
   }
   exports.dockerContainerStats = dockerContainerStats;
   function dockerContainerProcesses(containerID, callback) {
-    let result = [];
+    callback = util.isFunction(callback) ? callback : null;
+    if (util.isFunction(containerID) && !callback) {
+      callback = containerID;
+      containerID = "";
+    }
+    const result = [];
     return new Promise((resolve) => {
       process.nextTick(() => {
         containerID = containerID || "";
         if (typeof containerID !== "string") {
+          if (callback) {
+            callback(result);
+          }
           return resolve(result);
         }
         const containerIdSanitized = util.isPrototypePolluted() ? "" : util.sanitizeContainerID(containerID);
@@ -33557,23 +33615,21 @@ var require_docker = __commonJS(function(exports) {
           _docker_socket.getProcesses(containerIdSanitized, (data) => {
             try {
               if (data && data.Titles && data.Processes) {
-                let titles = data.Titles.map(function(value) {
-                  return value.toUpperCase();
-                });
-                let pos_pid = titles.indexOf("PID");
-                let pos_ppid = titles.indexOf("PPID");
-                let pos_pgid = titles.indexOf("PGID");
-                let pos_vsz = titles.indexOf("VSZ");
-                let pos_time = titles.indexOf("TIME");
-                let pos_elapsed = titles.indexOf("ELAPSED");
-                let pos_ni = titles.indexOf("NI");
-                let pos_ruser = titles.indexOf("RUSER");
-                let pos_user = titles.indexOf("USER");
-                let pos_rgroup = titles.indexOf("RGROUP");
-                let pos_group = titles.indexOf("GROUP");
-                let pos_stat = titles.indexOf("STAT");
-                let pos_rss = titles.indexOf("RSS");
-                let pos_command = titles.indexOf("COMMAND");
+                const titles = data.Titles.map((value) => value.toUpperCase());
+                const pos_pid = titles.indexOf("PID");
+                const pos_ppid = titles.indexOf("PPID");
+                const pos_pgid = titles.indexOf("PGID");
+                const pos_vsz = titles.indexOf("VSZ");
+                const pos_time = titles.indexOf("TIME");
+                const pos_elapsed = titles.indexOf("ELAPSED");
+                const pos_ni = titles.indexOf("NI");
+                const pos_ruser = titles.indexOf("RUSER");
+                const pos_user = titles.indexOf("USER");
+                const pos_rgroup = titles.indexOf("RGROUP");
+                const pos_group = titles.indexOf("GROUP");
+                const pos_stat = titles.indexOf("STAT");
+                const pos_rss = titles.indexOf("RSS");
+                const pos_command = titles.indexOf("COMMAND");
                 data.Processes.forEach((process2) => {
                   result.push({
                     pidHost: pos_pid >= 0 ? process2[pos_pid] : "",
@@ -33612,7 +33668,8 @@ var require_docker = __commonJS(function(exports) {
   }
   exports.dockerContainerProcesses = dockerContainerProcesses;
   function dockerVolumes(callback) {
-    let result = [];
+    callback = util.isFunction(callback) ? callback : null;
+    const result = [];
     return new Promise((resolve) => {
       process.nextTick(() => {
         if (!_docker_socket) {
@@ -33656,6 +33713,7 @@ var require_docker = __commonJS(function(exports) {
   }
   exports.dockerVolumes = dockerVolumes;
   function dockerAll(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         dockerContainers(true).then((result) => {
@@ -33663,17 +33721,19 @@ var require_docker = __commonJS(function(exports) {
             let l = result.length;
             result.forEach((element) => {
               dockerContainerStats(element.id).then((res) => {
-                element.memUsage = res[0].memUsage;
-                element.memLimit = res[0].memLimit;
-                element.memPercent = res[0].memPercent;
-                element.cpuPercent = res[0].cpuPercent;
-                element.pids = res[0].pids;
-                element.netIO = res[0].netIO;
-                element.blockIO = res[0].blockIO;
-                element.cpuStats = res[0].cpuStats;
-                element.precpuStats = res[0].precpuStats;
-                element.memoryStats = res[0].memoryStats;
-                element.networks = res[0].networks;
+                if (res && res[0]) {
+                  element.memUsage = res[0].memUsage;
+                  element.memLimit = res[0].memLimit;
+                  element.memPercent = res[0].memPercent;
+                  element.cpuPercent = res[0].cpuPercent;
+                  element.pids = res[0].pids;
+                  element.netIO = res[0].netIO;
+                  element.blockIO = res[0].blockIO;
+                  element.cpuStats = res[0].cpuStats;
+                  element.precpuStats = res[0].precpuStats;
+                  element.memoryStats = res[0].memoryStats;
+                  element.networks = res[0].networks;
+                }
                 dockerContainerProcesses(element.id).then((processes) => {
                   element.processes = processes;
                   l -= 1;
@@ -33705,6 +33765,7 @@ var require_virtualbox = __commonJS(function(exports) {
   var exec = __require("child_process").exec;
   var util = require_util9();
   function vboxInfo(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     let result = [];
     return new Promise((resolve) => {
       process.nextTick(() => {
@@ -33887,6 +33948,7 @@ var require_printer = __commonJS(function(exports) {
     return result;
   }
   function printer(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = [];
@@ -34197,6 +34259,7 @@ var require_usb = __commonJS(function(exports) {
     }
   }
   function usb(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = [];
@@ -34482,6 +34545,7 @@ var require_audio = __commonJS(function(exports) {
     return result;
   }
   function audio(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         const result = [];
@@ -35841,6 +35905,7 @@ var require_bluetooth = __commonJS(function(exports) {
     return result;
   }
   function bluetoothDevices(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let result = [];
@@ -36002,6 +36067,7 @@ var require_lib = __commonJS(function(exports) {
     return lib_version;
   }
   function getStaticData(callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         const data = {};
@@ -36051,6 +36117,7 @@ var require_lib = __commonJS(function(exports) {
     });
   }
   function getDynamicData(srv, iface, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     if (util.isFunction(iface)) {
       callback = iface;
       iface = "";
@@ -36063,7 +36130,7 @@ var require_lib = __commonJS(function(exports) {
       process.nextTick(() => {
         iface = iface || network.getDefaultNetworkInterface();
         srv = srv || "";
-        let functionProcessed = (() => {
+        const functionProcessed = (() => {
           let totalFunctions = 15;
           if (_windows) {
             totalFunctions = 13;
@@ -36074,7 +36141,7 @@ var require_lib = __commonJS(function(exports) {
           if (_sunos) {
             totalFunctions = 6;
           }
-          return function() {
+          return () => {
             if (--totalFunctions === 0) {
               if (callback) {
                 callback(data);
@@ -36169,6 +36236,7 @@ var require_lib = __commonJS(function(exports) {
     });
   }
   function getAllData(srv, iface, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
         let data = {};
@@ -36184,7 +36252,7 @@ var require_lib = __commonJS(function(exports) {
         getStaticData().then((res) => {
           data = res;
           getDynamicData(srv, iface).then((res) => {
-            for (let key in res) {
+            for (const key in res) {
               if ({}.hasOwnProperty.call(res, key)) {
                 data[key] = res[key];
               }
@@ -36199,24 +36267,26 @@ var require_lib = __commonJS(function(exports) {
     });
   }
   function get(valueObject, callback) {
+    callback = util.isFunction(callback) ? callback : null;
     return new Promise((resolve) => {
       process.nextTick(() => {
+        valueObject = valueObject || {};
         const blocked = ["get", "getStaticData", "getDynamicData", "getAllData", "observe", "powerShellStart", "powerShellRelease"];
         const isGettable = (key) => ({}).hasOwnProperty.call(exports, key) && typeof exports[key] === "function" && typeof valueObject[key] === "string" && blocked.indexOf(key) < 0;
         const allPromises = Object.keys(valueObject).filter((func) => isGettable(func)).map((func) => {
           const params = valueObject[func].substring(valueObject[func].lastIndexOf("(") + 1, valueObject[func].lastIndexOf(")"));
           let funcWithoutParams = func.indexOf(")") >= 0 ? func.split(")")[1].trim() : func;
           funcWithoutParams = func.indexOf("|") >= 0 ? func.split("|")[0].trim() : funcWithoutParams;
-          if (params) {
-            return exports[funcWithoutParams](params);
-          } else {
-            return exports[funcWithoutParams]("");
+          try {
+            return Promise.resolve(exports[funcWithoutParams](params || "")).catch(() => null);
+          } catch {
+            return Promise.resolve(null);
           }
         });
         Promise.all(allPromises).then((data) => {
           const result = {};
           let i = 0;
-          for (let key in valueObject) {
+          for (const key in valueObject) {
             if ({}.hasOwnProperty.call(valueObject, key) && isGettable(key) && data.length > i) {
               if (valueObject[key] === "*" || valueObject[key] === "all") {
                 result[key] = data[i];
@@ -36290,6 +36360,11 @@ var require_lib = __commonJS(function(exports) {
     });
   }
   function observe(valueObject, interval, callback) {
+    callback = util.isFunction(callback) ? callback : null;
+    if (!callback) {
+      return null;
+    }
+    interval = Math.min(Math.max(Number(interval) || 0, 500), 2147483647);
     let _data = null;
     const result = setInterval(() => {
       get(valueObject).then((data) => {
@@ -37467,5 +37542,5 @@ async function server() {
 }
 await server();
 
-//# debugId=BCDD8D625C67AE5364756E2164756E21
+//# debugId=043F2AB9FF1B00B964756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
