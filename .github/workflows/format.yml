@@ -15,6 +15,7 @@ permissions:
   pull-requests: write
 jobs:
   format:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     # jscpd:ignore-start
     steps:
