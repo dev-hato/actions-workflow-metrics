@@ -19,7 +19,7 @@ workflows:
         - 'oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6'
     '.github/workflows/github-actions-cache-cleaner.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'dev-hato/github-actions-cache-cleaner@eeffae7426abfb434e4d1238e28c3a7cb9d9e411'
+        - 'dev-hato/github-actions-cache-cleaner@88d68a261462dd5f6f6632adec3fa5cf5466c865'
     '.github/workflows/osv-scanner.yml': []
     '.github/workflows/super-linter.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
@@ -81,9 +81,9 @@ dependencies:
         repo_id: 512097687
         uses:
             - 'dev-hato/actions-diff-pr-management@a3c6f1d6cb3f46d2f48ac3856ef603ef2e508061'
-    'dev-hato/github-actions-cache-cleaner@eeffae7426abfb434e4d1238e28c3a7cb9d9e411':
-        ref: 'v0.0.95'
-        commit: 'sha1-eeffae7426abfb434e4d1238e28c3a7cb9d9e411'
+    'dev-hato/github-actions-cache-cleaner@88d68a261462dd5f6f6632adec3fa5cf5466c865':
+        ref: 'v0.0.97'
+        commit: 'sha1-88d68a261462dd5f6f6632adec3fa5cf5466c865'
         owner_id: 68012105
         repo_id: 575637822
         uses:
