@@ -28,7 +28,7 @@ workflows:
         - 'super-linter/super-linter@2da136927bd4a73596db63044b504547c62cb854'
     '.github/workflows/update-gitleaks.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'dev-hato/actions-update-gitleaks@50a915d846e327b2712061d34fb1fdad2b7691aa'
+        - 'dev-hato/actions-update-gitleaks@91a057e9974efd9a908f2e5bc1bc0ab98846e0cf'
     '.github/workflows/verify-lockfile.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
 dependencies:
@@ -74,9 +74,9 @@ dependencies:
         repo_id: 515961063
         uses:
             - 'dev-hato/actions-diff-pr-management@a3c6f1d6cb3f46d2f48ac3856ef603ef2e508061'
-    'dev-hato/actions-update-gitleaks@50a915d846e327b2712061d34fb1fdad2b7691aa':
-        ref: 'v0.0.115'
-        commit: 'sha1-50a915d846e327b2712061d34fb1fdad2b7691aa'
+    'dev-hato/actions-update-gitleaks@91a057e9974efd9a908f2e5bc1bc0ab98846e0cf':
+        ref: 'v0.0.116'
+        commit: 'sha1-91a057e9974efd9a908f2e5bc1bc0ab98846e0cf'
         owner_id: 68012105
         repo_id: 512097687
         uses:
