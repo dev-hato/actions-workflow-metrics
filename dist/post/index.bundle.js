@@ -23856,9 +23856,25 @@ var require_commonjs6 = __commonJS(function(exports) {
     if (!options.nocomment && pattern.charAt(0) === "#") {
       return false;
     }
-    return new Minimatch(pattern, options).match(p);
+    return cachedMinimatch(pattern, options).match(p);
   };
   exports.minimatch = minimatch;
+  var cache = new Map;
+  var cacheMax = 256;
+  var cachedMinimatch = (pattern, options) => {
+    const key = pattern + "\x00" + JSON.stringify(options);
+    let mm = cache.get(key);
+    if (mm) {
+      cache.delete(key);
+    } else {
+      mm = new Minimatch(pattern, { ...options });
+      if (cache.size >= cacheMax) {
+        cache.delete(cache.keys().next().value);
+      }
+    }
+    cache.set(key, mm);
+    return mm;
+  };
   var defaultPlatform = typeof process === "object" && process ? process.env?.__MINIMATCH_TESTING_PLATFORM__ || process.platform : "posix";
   var path = {
     win32: { sep: "\\" },
@@ -24034,6 +24050,7 @@ var require_commonjs6 = __commonJS(function(exports) {
     return s === -1 ? b : b === -1 ? s : Math.min(s, b);
   };
   var lastSep = (f, from, sep) => sep !== "both" ? f.lastIndexOf(sep, from) : Math.max(f.lastIndexOf("/", from), f.lastIndexOf("\\", from));
+  var PENDING = {};
 
   class Minimatch {
     options;
@@ -24061,6 +24078,7 @@ var require_commonjs6 = __commonJS(function(exports) {
     #shapes = [];
     #endRows = [];
     #matchers = new Map;
+    #pending = false;
     #globstarParts = new WeakMap;
     constructor(pattern, options = {}) {
       (0, assert_valid_pattern_js_1.assertValidPattern)(pattern);
@@ -24160,6 +24178,7 @@ var require_commonjs6 = __commonJS(function(exports) {
       this.globSet = [...new Set(this.braceExpand())];
       const rawGlobParts = this.globSet.map((s) => this.#slashSplit(s));
       this.globParts = this.preprocess(rawGlobParts);
+      this.#pending = true;
       let set = this.globParts.map((s, _2, __) => {
         if (this.isWindows && this.windowsNoMagicRoot) {
           const n = s[2] === "?" && isLongUNC(s[3]) ? 6 : 4;
@@ -24192,6 +24211,14 @@ var require_commonjs6 = __commonJS(function(exports) {
       }
       if (!options.noext)
         this.mergeRows();
+      this.#pending = false;
+      this.set.forEach((row, i) => {
+        for (let k = 0;k < row.length; k++) {
+          if (row[k] === PENDING) {
+            row[k] = this.parse(this.globParts[i][k]);
+          }
+        }
+      });
     }
     mergeRows() {
       let merged = true;
@@ -24201,7 +24228,7 @@ var require_commonjs6 = __commonJS(function(exports) {
         for (let k = 0;k < len; k++) {
           const groups = new Map;
           this.set.forEach((row, i) => {
-            if (!(row[k] instanceof nonrecursive_glob_match_1.Matcher) || !extSafe(this.globParts[i][k])) {
+            if (!(row[k] instanceof nonrecursive_glob_match_1.Matcher || row[k] === PENDING) || !extSafe(this.globParts[i][k])) {
               return;
             }
             const parts = [...this.globParts[i]];
@@ -24787,6 +24814,8 @@ var require_commonjs6 = __commonJS(function(exports) {
       if (lit !== undefined && !(nocase && !nocaseMagicOnly && pattern.toUpperCase() !== pattern.toLowerCase())) {
         return this.#norm(lit);
       }
+      if (this.#pending)
+        return PENDING;
       let m = this.#matchers.get(pattern);
       if (!m) {
         m = new nonrecursive_glob_match_1.Matcher(pattern, { nocase, noext, dot, normalize });
@@ -125144,5 +125173,5 @@ async function index() {
 }
 await index();
 
-//# debugId=506DF9A2BC0C169864756E2164756E21
+//# debugId=B7EAD7A6881C30CD64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

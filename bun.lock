@@ -40,7 +40,7 @@
   },
   "overrides": {
     "glob": "14.0.2",
-    "minimatch": "11.0.2",
+    "minimatch": "11.0.3",
   },
   "packages": {
     "@actions/artifact": ["@actions/artifact@6.3.1", "https://npm.flatt.tech/@actions/artifact/-/artifact-6.3.1.tgz", { "dependencies": { "@actions/core": "^3.0.1", "@actions/github": "^9.1.1", "@actions/http-client": "^4.0.1", "@azure/storage-blob": "^12.31.0", "@octokit/core": "^7.0.6", "@octokit/plugin-request-log": "^6.0.0", "@octokit/plugin-retry": "^8.1.0", "@octokit/request": "^10.0.8", "@octokit/request-error": "^7.1.0", "@protobuf-ts/runtime": "^2.11.1", "@protobuf-ts/runtime-rpc": "^2.11.1", "archiver": "^7.0.1", "jwt-decode": "^4.0.0", "unzip-stream": "^0.3.1" } }, "sha512-DBXgdB9T4yj2KSe0tFg+MTi9T5se+16bdrFQh+3Y6Nq1lZ3gYQk1BjHoTof+7Zf36bEAlfVMf+8ifRKeyGJugQ=="],
@@ -851,7 +851,7 @@
 
     "mimic-function": ["mimic-function@5.0.1", "https://npm.flatt.tech/mimic-function/-/mimic-function-5.0.1.tgz", {}, "sha512-VP79XUPxV2CigYP3jWwAUFSku2aKqBH7uTAapFWCBqutsbmDo96KY5o8uh6U+/YSIn5OxJnXp73beVkpqMIGhA=="],
 
-    "minimatch": ["minimatch@11.0.2", "https://npm.flatt.tech/minimatch/-/minimatch-11.0.2.tgz", { "dependencies": { "@isaacs/nonrecursive-glob-match": "^1.0.2", "brace-expansion": "^5.0.12" } }, "sha512-pWTgz5CN3tjqyZNSK2tePlSmu9IwM41q8yn8Usdqqwe9TIHh+9dEpLLjF4uApsfPEAZY71qtSiA2B2APEr+1Yw=="],
+    "minimatch": ["minimatch@11.0.3", "https://npm.flatt.tech/minimatch/-/minimatch-11.0.3.tgz", { "dependencies": { "@isaacs/nonrecursive-glob-match": "^1.0.3", "brace-expansion": "^5.0.12" } }, "sha512-iny/40PEGkNJQ5/Pv6z3nm6FbRAby32GeZRjCUJk2WnNDbgPSTcdI+DDvLqsgBdD4cD5sMtMheqPPnehCCa8Nw=="],
 
     "minimist": ["minimist@1.2.8", "https://npm.flatt.tech/minimist/-/minimist-1.2.8.tgz", {}, "sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA=="],
 
