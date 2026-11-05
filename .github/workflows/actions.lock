@@ -5,13 +5,13 @@ version: 'v0.0.3'
 workflows:
     '.github/workflows/add-to-task-list.yml':
         - 'actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510'
-        - 'dev-hato/actions-add-to-projects@68fe0371ddf7f3192888f4a166bc13f528ae49e5'
+        - 'dev-hato/actions-add-to-projects@8c1169d928e375602b9f6f5061fe490f21672ffb'
     '.github/workflows/codeql.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
         - 'github/codeql-action@9b3254085494b55a0f7c4c2b3d2d52cc712ce370'
     '.github/workflows/format-json-yml.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'dev-hato/actions-format-json-yml@8159684fbca33674ff3fe02cae360f4432f9bbcc'
+        - 'dev-hato/actions-format-json-yml@dccf143ab2b235b2d1716a88a1daa2b10c250d44'
     '.github/workflows/format.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
         - 'dev-hato/actions-diff-pr-management@a3c6f1d6cb3f46d2f48ac3856ef603ef2e508061'
@@ -28,7 +28,7 @@ workflows:
         - 'super-linter/super-linter@2da136927bd4a73596db63044b504547c62cb854'
     '.github/workflows/update-gitleaks.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'dev-hato/actions-update-gitleaks@9ce6c610215914b4f28829b30e7227cb6eeaab8e'
+        - 'dev-hato/actions-update-gitleaks@5fbeca35da4358ea40890fdf5bc3c38c08bdfd20'
     '.github/workflows/verify-lockfile.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
 dependencies:
@@ -52,9 +52,9 @@ dependencies:
         commit: 'sha1-3a2844b7e9c422d3c10d287c895573f7108da1b3'
         owner_id: 44036562
         repo_id: 205262760
-    'dev-hato/actions-add-to-projects@68fe0371ddf7f3192888f4a166bc13f528ae49e5':
-        ref: 'v1.0.11'
-        commit: 'sha1-68fe0371ddf7f3192888f4a166bc13f528ae49e5'
+    'dev-hato/actions-add-to-projects@8c1169d928e375602b9f6f5061fe490f21672ffb':
+        ref: 'v1.0.12'
+        commit: 'sha1-8c1169d928e375602b9f6f5061fe490f21672ffb'
         owner_id: 68012105
         repo_id: 526394375
         uses:
@@ -67,16 +67,16 @@ dependencies:
         repo_id: 350720117
         uses:
             - 'actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3'
-    'dev-hato/actions-format-json-yml@8159684fbca33674ff3fe02cae360f4432f9bbcc':
-        ref: 'v0.0.108'
-        commit: 'sha1-8159684fbca33674ff3fe02cae360f4432f9bbcc'
+    'dev-hato/actions-format-json-yml@dccf143ab2b235b2d1716a88a1daa2b10c250d44':
+        ref: 'v0.0.109'
+        commit: 'sha1-dccf143ab2b235b2d1716a88a1daa2b10c250d44'
         owner_id: 68012105
         repo_id: 515961063
         uses:
             - 'dev-hato/actions-diff-pr-management@a3c6f1d6cb3f46d2f48ac3856ef603ef2e508061'
-    'dev-hato/actions-update-gitleaks@9ce6c610215914b4f28829b30e7227cb6eeaab8e':
-        ref: 'v0.0.113'
-        commit: 'sha1-9ce6c610215914b4f28829b30e7227cb6eeaab8e'
+    'dev-hato/actions-update-gitleaks@5fbeca35da4358ea40890fdf5bc3c38c08bdfd20':
+        ref: 'v0.0.114'
+        commit: 'sha1-5fbeca35da4358ea40890fdf5bc3c38c08bdfd20'
         owner_id: 68012105
         repo_id: 512097687
         uses:
