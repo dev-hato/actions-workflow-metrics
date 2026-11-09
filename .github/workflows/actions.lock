@@ -11,7 +11,7 @@ workflows:
         - 'github/codeql-action@9b3254085494b55a0f7c4c2b3d2d52cc712ce370'
     '.github/workflows/format-json-yml.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'dev-hato/actions-format-json-yml@3e2804614c492e381420cb831b5d0e633fb290e6'
+        - 'dev-hato/actions-format-json-yml@6b0c6a884f1d2653ae3502c32317e8a412845acc'
     '.github/workflows/format.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
         - 'dev-hato/actions-diff-pr-management@a3c6f1d6cb3f46d2f48ac3856ef603ef2e508061'
@@ -76,13 +76,13 @@ dependencies:
         repo_id: 350720117
         uses:
             - 'actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3'
-    'dev-hato/actions-format-json-yml@3e2804614c492e381420cb831b5d0e633fb290e6':
-        ref: 'v0.0.111'
-        commit: 'sha1-3e2804614c492e381420cb831b5d0e633fb290e6'
+    'dev-hato/actions-format-json-yml@6b0c6a884f1d2653ae3502c32317e8a412845acc':
+        ref: 'v0.0.112'
+        commit: 'sha1-6b0c6a884f1d2653ae3502c32317e8a412845acc'
         owner_id: 68012105
         repo_id: 515961063
         uses:
-            - 'dev-hato/actions-diff-pr-management@a3c6f1d6cb3f46d2f48ac3856ef603ef2e508061'
+            - 'dev-hato/actions-diff-pr-management@474e401b8a7df75f1c804a60aa987140c1e0548c'
     'dev-hato/actions-update-gitleaks@d33ae3f5380b57036a94ecb1a40344d7cb3f20d6':
         ref: 'v0.0.117'
         commit: 'sha1-d33ae3f5380b57036a94ecb1a40344d7cb3f20d6'
