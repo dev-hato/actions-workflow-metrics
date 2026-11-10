@@ -14,7 +14,7 @@ workflows:
         - 'dev-hato/actions-format-json-yml@6b0c6a884f1d2653ae3502c32317e8a412845acc'
     '.github/workflows/format.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'dev-hato/actions-diff-pr-management@a3c6f1d6cb3f46d2f48ac3856ef603ef2e508061'
+        - 'dev-hato/actions-diff-pr-management@474e401b8a7df75f1c804a60aa987140c1e0548c'
         - 'flatt-security/setup-takumi-guard-npm@14f07d0cbc739b42a1b7c70a04c2b84cd1318ddd'
         - 'oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6'
     '.github/workflows/ghalint.yml':
@@ -65,13 +65,6 @@ dependencies:
     'dev-hato/actions-diff-pr-management@474e401b8a7df75f1c804a60aa987140c1e0548c':
         ref: 'v2.5.0'
         commit: 'sha1-474e401b8a7df75f1c804a60aa987140c1e0548c'
-        owner_id: 68012105
-        repo_id: 350720117
-        uses:
-            - 'actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3'
-    'dev-hato/actions-diff-pr-management@a3c6f1d6cb3f46d2f48ac3856ef603ef2e508061':
-        ref: 'v2.4.0'
-        commit: 'sha1-a3c6f1d6cb3f46d2f48ac3856ef603ef2e508061'
         owner_id: 68012105
         repo_id: 350720117
         uses:
