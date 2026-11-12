@@ -520,6 +520,15 @@ describe("Renderer", () => {
     expect(render("a\n<img src=x>")).toContain("#### Step `a <img src=x>`");
   });
 
+  it("should keep untrusted step names in durations inside a code span", (): void => {
+    const result: string = new Renderer().render([], testMetricsID, [
+      { stepName: "evil`\n# Injected", durationMs: 1000 },
+    ]);
+
+    expect(result).toContain("* ``evil` # Injected``: 1s");
+    expect(result).not.toContain("\n# Injected");
+  });
+
   it("should limit visible time labels when times are long", () => {
     const renderer: Renderer = new Renderer();
     const startTime: number = Date.parse("2024-01-01T00:00:00Z");

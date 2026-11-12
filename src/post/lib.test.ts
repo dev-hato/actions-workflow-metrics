@@ -60,10 +60,18 @@ describe("render", () => {
             },
           },
         ],
+        stepDurations: [
+          { stepName: "Checkout", durationMs: 800 },
+          { stepName: "Build", durationMs: 65_000 },
+          { stepName: "Test", durationMs: 3_725_000 },
+        ],
       },
       testMetricsID,
     );
 
+    expect(result).toContain(
+      "### Step Durations\n\n* `Checkout`: 1s\n* `Build`: 1m 5s\n* `Test`: 1h 2m 5s\n\n### CPU Loads",
+    );
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
 
@@ -81,6 +89,7 @@ describe("render", () => {
       {
         ...sampleMetricsData,
         steps: [],
+        stepDurations: [],
       },
       testMetricsID,
     );
@@ -95,6 +104,7 @@ describe("render", () => {
       cpuLoadPercentages: [],
       memoryUsageMBs: [],
       steps: [],
+      stepDurations: [],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -114,6 +124,7 @@ describe("render", () => {
         { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
       ],
       steps: [],
+      stepDurations: [],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -130,6 +141,7 @@ describe("render", () => {
         { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
       ],
       steps: [],
+      stepDurations: [],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -150,6 +162,7 @@ describe("getMetricsData", () => {
       status: "in_progress",
       runner_name: runnerName,
       steps: [],
+      stepDurations: [],
       ...overrides,
     }) as components["schemas"]["job"];
 
@@ -183,6 +196,7 @@ describe("getMetricsData", () => {
     expect(await getMetricsData([])).toEqual({
       ...sampleMetricsData,
       steps: [],
+      stepDurations: [],
     });
   });
 
@@ -248,6 +262,30 @@ describe("getMetricsData", () => {
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0].stepName).toBe("Build");
     expectOnlyFirstDataPoint(result);
+  });
+
+  it("should return durations of completed steps only", async (): Promise<void> => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([
+        createJob({
+          steps: [
+            buildStep,
+            { ...buildStep, name: "Post", completed_at: null },
+            {
+              ...buildStep,
+              name: "Pending",
+              started_at: null,
+              completed_at: null,
+            },
+          ],
+        }),
+      ]);
+
+    expect(result.stepDurations).toEqual([
+      { stepName: "Build", durationMs: 5000 },
+    ]);
   });
 
   it("should return empty steps when no job matches RUNNER_NAME", async () => {
@@ -440,6 +478,7 @@ describe("writeMetricsFile", (): void => {
   const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
     ...sampleMetricsData,
     steps: [],
+    stepDurations: [],
   };
   let tempDirectory: string;
 

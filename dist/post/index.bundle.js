@@ -120002,7 +120002,7 @@ var createActionAuth = function createActionAuth2() {
 };
 
 // node_modules/@octokit/action/node_modules/undici/index.js
-var __filename = "/home/runner/work/actions-workflow-metrics/actions-workflow-metrics/node_modules/@octokit/action/node_modules/undici/index.js";
+var __filename = "/Users/alldmeat/Developer/actions-workflow-metrics/node_modules/@octokit/action/node_modules/undici/index.js";
 var Client = require_client2();
 var Dispatcher = require_dispatcher2();
 var Pool = require_pool2();
@@ -125806,8 +125806,8 @@ class TimeLabelFormatter {
 
 // src/post/renderer.ts
 class Renderer {
-  render(renderParamsList, metricsID) {
-    return this.renderMetrics(this.renderSections(renderParamsList), metricsID);
+  render(renderParamsList, metricsID, stepDurations = []) {
+    return this.renderMetrics(this.renderStepDurations(stepDurations) + this.renderSections(renderParamsList), metricsID);
   }
   renderMetrics(charts, metricsID) {
     return `## Workflow Metrics
@@ -125817,6 +125817,32 @@ class Renderer {
 ${metricsID}
 
 ${charts}`;
+  }
+  formatDuration(durationMs) {
+    const totalSeconds = Math.round(durationMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor(totalSeconds % 3600 / 60);
+    const seconds = totalSeconds % 60;
+    return [
+      hours > 0 ? `${hours}h` : "",
+      hours > 0 || minutes > 0 ? `${minutes}m` : "",
+      `${seconds}s`
+    ].filter((part) => part !== "").join(" ");
+  }
+  renderStepDurations(stepDurations) {
+    if (stepDurations.length === 0) {
+      return "";
+    }
+    const lines = stepDurations.map(({
+      stepName,
+      durationMs
+    }) => `* ${this.formatCodeSpan(stepName)}: ${this.formatDuration(durationMs)}`).join(`
+`);
+    return `### Step Durations
+
+${lines}
+
+`;
   }
   formatLegends(legends) {
     return legends.map((l) => `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`).join(`
@@ -125952,8 +125978,13 @@ var stepSchema = object({
   data: metricsDataSchema
 });
 var stepsSchema = array(stepSchema);
+var stepDurationSchema = object({
+  stepName: string2(),
+  durationMs: number2().nonnegative()
+});
 var metricsDataWithStepsSchema = metricsDataSchema.extend({
-  steps: stepsSchema
+  steps: stepsSchema,
+  stepDurations: array(stepDurationSchema)
 });
 function isCurrentRunnerJob(job) {
   return job.status === "in_progress" && job.runner_name === process.env.RUNNER_NAME;
@@ -125972,6 +126003,21 @@ function filterMetricsByStep(workflowStep, metricsData) {
     }
   };
 }
+function toStepDurations({
+  name,
+  started_at,
+  completed_at
+}) {
+  if (started_at == null || completed_at == null) {
+    return [];
+  }
+  return [
+    {
+      stepName: name,
+      durationMs: Math.max(0, new Date(completed_at).getTime() - new Date(started_at).getTime())
+    }
+  ];
+}
 function hasMetricsData({ data }) {
   return data.cpuLoadPercentages.length > 0 && data.memoryUsageMBs.length > 0;
 }
@@ -125986,9 +126032,11 @@ async function getMetricsData(jobs) {
       throw new Error(`Failed to fetch metrics: ${res.status} ${res.statusText}`);
     }
     const metricsData = metricsDataSchema.parse(await res.json());
+    const workflowSteps = jobs.find(isCurrentRunnerJob)?.steps ?? [];
     return {
       ...metricsData,
-      steps: (jobs.find(isCurrentRunnerJob)?.steps ?? []).map((s) => filterMetricsByStep(s, metricsData)).filter(hasMetricsData)
+      steps: workflowSteps.map((s) => filterMetricsByStep(s, metricsData)).filter(hasMetricsData),
+      stepDurations: workflowSteps.flatMap(toStepDurations)
     };
   } finally {
     clearTimeout(timer);
@@ -126075,7 +126123,7 @@ function render(metricsData, metricsID) {
       ],
       data: toRenderData(metricsData, mapMemoryUsageToChartParams)
     }
-  ]), metricsID);
+  ]), metricsID, metricsData.stepDurations);
 }
 async function writeMetricsFile({
   metricsData,
@@ -126172,5 +126220,5 @@ async function index() {
 }
 await index();
 
-//# debugId=865BA4FAC794990864756E2164756E21
+//# debugId=73722BAA168E449C64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

@@ -50,8 +50,13 @@ const stepSchema = z.object({
   data: metricsDataSchema,
 });
 const stepsSchema = z.array(stepSchema);
+export const stepDurationSchema = z.object({
+  stepName: z.string(),
+  durationMs: z.number().nonnegative(),
+});
 export const metricsDataWithStepsSchema = metricsDataSchema.extend({
   steps: stepsSchema,
+  stepDurations: z.array(stepDurationSchema),
 });
 
 function isCurrentRunnerJob(job: components["schemas"]["job"]): boolean {
@@ -94,6 +99,27 @@ function filterMetricsByStep(
   };
 }
 
+// Steps still running (e.g. this post step) have no completed_at and are skipped
+function toStepDurations({
+  name,
+  started_at,
+  completed_at,
+}: GitHubJobStep): z.TypeOf<typeof stepDurationSchema>[] {
+  if (started_at == null || completed_at == null) {
+    return [];
+  }
+
+  return [
+    {
+      stepName: name,
+      durationMs: Math.max(
+        0,
+        new Date(completed_at).getTime() - new Date(started_at).getTime(),
+      ),
+    },
+  ];
+}
+
 function hasMetricsData({ data }: z.TypeOf<typeof stepSchema>): boolean {
   return data.cpuLoadPercentages.length > 0 && data.memoryUsageMBs.length > 0;
 }
@@ -119,13 +145,16 @@ export async function getMetricsData(
 
     const metricsData: z.TypeOf<typeof metricsDataSchema> =
       metricsDataSchema.parse(await res.json());
+    const workflowSteps: GitHubJobStep[] =
+      jobs.find(isCurrentRunnerJob)?.steps ?? [];
     return {
       ...metricsData,
-      steps: (jobs.find(isCurrentRunnerJob)?.steps ?? [])
+      steps: workflowSteps
         .map((s: GitHubJobStep): z.TypeOf<typeof stepSchema> =>
           filterMetricsByStep(s, metricsData),
         )
         .filter(hasMetricsData),
+      stepDurations: workflowSteps.flatMap(toStepDurations),
     };
   } finally {
     clearTimeout(timer);
@@ -246,6 +275,7 @@ export function render(
       },
     ]),
     metricsID,
+    metricsData.stepDurations,
   );
 }
 

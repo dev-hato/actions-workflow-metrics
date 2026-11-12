@@ -6,6 +6,7 @@ import type {
   renderParamsListSchema,
   renderParamsSchema,
   stackedBarDataSchema,
+  stepDurationSchema,
   timesSchema,
 } from "./lib";
 import { TimeLabelFormatter } from "./timeLabels";
@@ -14,8 +15,13 @@ export class Renderer {
   render(
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
     metricsID: string,
+    stepDurations: z.TypeOf<typeof stepDurationSchema>[] = [],
   ): string {
-    return this.renderMetrics(this.renderSections(renderParamsList), metricsID);
+    return this.renderMetrics(
+      this.renderStepDurations(stepDurations) +
+        this.renderSections(renderParamsList),
+      metricsID,
+    );
   }
 
   private renderMetrics(charts: string, metricsID: string): string {
@@ -26,6 +32,43 @@ export class Renderer {
 ${metricsID}
 
 ${charts}`;
+  }
+
+  private formatDuration(durationMs: number): string {
+    const totalSeconds: number = Math.round(durationMs / 1000);
+    const hours: number = Math.floor(totalSeconds / 3600);
+    const minutes: number = Math.floor((totalSeconds % 3600) / 60);
+    const seconds: number = totalSeconds % 60;
+    return [
+      hours > 0 ? `${hours}h` : "",
+      hours > 0 || minutes > 0 ? `${minutes}m` : "",
+      `${seconds}s`,
+    ]
+      .filter((part: string): boolean => part !== "")
+      .join(" ");
+  }
+
+  private renderStepDurations(
+    stepDurations: z.TypeOf<typeof stepDurationSchema>[],
+  ): string {
+    if (stepDurations.length === 0) {
+      return "";
+    }
+
+    const lines: string = stepDurations
+      .map(
+        ({
+          stepName,
+          durationMs,
+        }: z.TypeOf<typeof stepDurationSchema>): string =>
+          `* ${this.formatCodeSpan(stepName)}: ${this.formatDuration(durationMs)}`,
+      )
+      .join("\n");
+    return `### Step Durations
+
+${lines}
+
+`;
   }
 
   private formatLegends(legends: z.TypeOf<typeof legendsSchema>): string {
