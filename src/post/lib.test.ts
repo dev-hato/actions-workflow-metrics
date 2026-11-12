@@ -97,6 +97,7 @@ describe("render", () => {
     expect(result).toContain("### CPU Loads");
     expect(result).toContain("### Memory Usages");
     expect(result).toContain("#### All");
+    expect(result).not.toContain("### Step Durations");
   });
 
   it("should handle empty metrics data", () => {
