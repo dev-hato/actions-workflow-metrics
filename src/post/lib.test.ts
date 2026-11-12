@@ -115,6 +115,15 @@ describe("render", () => {
     expect(typeof result).toBe("string");
   });
 
+  const expectNonEmptyRender = (
+    metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>,
+  ): void => {
+    const result: string = render(metricsData, testMetricsID);
+
+    expect(result).toBeTruthy();
+    expect(result.length).toBeGreaterThan(0);
+  };
+
   it("should correctly map CPU load percentages", () => {
     const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
       cpuLoadPercentages: [
@@ -129,10 +138,7 @@ describe("render", () => {
       stepDurations: [],
     };
 
-    const result: string = render(metricsData, testMetricsID);
-
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
+    expectNonEmptyRender(metricsData);
   });
 
   it("should correctly map memory usage data", () => {
@@ -146,10 +152,7 @@ describe("render", () => {
       stepDurations: [],
     };
 
-    const result: string = render(metricsData, testMetricsID);
-
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
+    expectNonEmptyRender(metricsData);
   });
 });
 
