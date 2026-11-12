@@ -162,7 +162,6 @@ describe("getMetricsData", () => {
       status: "in_progress",
       runner_name: runnerName,
       steps: [],
-      stepDurations: [],
       ...overrides,
     }) as components["schemas"]["job"];
 
@@ -279,12 +278,19 @@ describe("getMetricsData", () => {
               started_at: null,
               completed_at: null,
             },
+            {
+              ...buildStep,
+              name: "Clock skew",
+              started_at: "2024-01-01T00:00:05.000Z",
+              completed_at: "2024-01-01T00:00:00.000Z",
+            },
           ],
         }),
       ]);
 
     expect(result.stepDurations).toEqual([
       { stepName: "Build", durationMs: 5000 },
+      { stepName: "Clock skew", durationMs: 0 },
     ]);
   });
 

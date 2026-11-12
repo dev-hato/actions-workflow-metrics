@@ -16,6 +16,10 @@ A GitHub Actions for collecting system metrics during workflows and outputting M
 
 The following charts and data are output.
 
+### Step Durations
+
+List of how long each completed step took, e.g. `` `Build`: 1m 5s ``.
+
 ### CPU Loads
 
 Stacked bar chart of system/user CPU load.
@@ -30,7 +34,7 @@ Stacked bar chart of active/available memory.
 
 ### Artifacts
 
-JSON data of CPU Loads and Memory Usages.
+JSON data of CPU Loads, Memory Usages and Step Durations.
 
 ![Artifacts](images/artifact_example.png)
 

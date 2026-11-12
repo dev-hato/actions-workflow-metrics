@@ -20,6 +20,10 @@
 
 次のようなチャートやデータが出力されます。
 
+### Step Durations
+
+完了した各ステップの所要時間の一覧です（例: `` `Build`: 1m 5s ``）。
+
 ### CPU Loads
 
 システム/ユーザーCPU負荷の積み上げ棒グラフです。
@@ -34,7 +38,7 @@
 
 ### Artifacts
 
-CPU LoadsやMemory UsagesのJSONデータです。
+CPU Loads、Memory Usages、Step DurationsのJSONデータです。
 
 ![Artifacts](images/artifact_example.png)
 
