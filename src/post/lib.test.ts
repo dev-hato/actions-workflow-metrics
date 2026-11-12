@@ -64,13 +64,14 @@ describe("render", () => {
           { stepName: "Checkout", durationMs: 800 },
           { stepName: "Build", durationMs: 65_000 },
           { stepName: "Test", durationMs: 3_725_000 },
+          { stepName: "Deploy", durationMs: 3_605_000 },
         ],
       },
       testMetricsID,
     );
 
     expect(result).toContain(
-      "### Step Durations\n\n* `Checkout`: 1s\n* `Build`: 1m 5s\n* `Test`: 1h 2m 5s\n\n### CPU Loads",
+      "### Step Durations\n\n* `Checkout`: 1s\n* `Build`: 1m 5s\n* `Test`: 1h 2m 5s\n* `Deploy`: 1h 0m 5s\n\n### CPU Loads",
     );
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
