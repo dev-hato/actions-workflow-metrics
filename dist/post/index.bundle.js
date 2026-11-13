@@ -126068,11 +126068,15 @@ function toStepDurations({
     return [];
   }
   const startedAtUnixTimeMs = new Date(started_at).getTime();
+  const completedAtUnixTimeMs = new Date(completed_at).getTime();
+  if (!Number.isFinite(startedAtUnixTimeMs) || !Number.isFinite(completedAtUnixTimeMs)) {
+    return [];
+  }
   return [
     {
       stepName: name,
       startedAtUnixTimeMs,
-      durationMs: Math.max(0, new Date(completed_at).getTime() - startedAtUnixTimeMs)
+      durationMs: Math.max(0, completedAtUnixTimeMs - startedAtUnixTimeMs)
     }
   ];
 }
@@ -126278,5 +126282,5 @@ async function index() {
 }
 await index();
 
-//# debugId=B82E6DD2AB4AFB4E64756E2164756E21
+//# debugId=2F00AC6206367E2864756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
