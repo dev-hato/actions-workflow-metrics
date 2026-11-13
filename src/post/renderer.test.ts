@@ -520,6 +520,23 @@ describe("Renderer", () => {
     expect(render("a\n<img src=x>")).toContain("#### Step `a <img src=x>`");
   });
 
+  it("should keep untrusted step names in durations inside one Gantt task", (): void => {
+    const result: string = new Renderer().render([], testMetricsID, [
+      {
+        stepName: "evil```\n# Injected: 1, 2\nsection x;%%y",
+        startedAtUnixTimeMs: 0,
+        completedAtUnixTimeMs: 1000,
+        durationMs: 1000,
+      },
+    ]);
+
+    expect(result).toContain(
+      "```mermaid\ngantt\ndateFormat x\naxisFormat %H:%M:%S\n1. evil Injected 1, 2 section x y (1s) :0, 1000\n```",
+    );
+    expect(result).not.toContain("\n# Injected");
+    expect(result).not.toContain("\nsection");
+  });
+
   it("should limit visible time labels when times are long", () => {
     const renderer: Renderer = new Renderer();
     const startTime: number = Date.parse("2024-01-01T00:00:00Z");

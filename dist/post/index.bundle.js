@@ -125852,8 +125852,8 @@ class TimeLabelFormatter {
 
 // src/post/renderer.ts
 class Renderer {
-  render(renderParamsList, metricsID) {
-    return this.renderMetrics(this.renderSections(renderParamsList), metricsID);
+  render(renderParamsList, metricsID, stepDurations = []) {
+    return this.renderMetrics(this.renderStepDurations(stepDurations) + this.renderSections(renderParamsList), metricsID);
   }
   renderMetrics(charts, metricsID) {
     return `## Workflow Metrics
@@ -125863,6 +125863,44 @@ class Renderer {
 ${metricsID}
 
 ${charts}`;
+  }
+  formatDuration(durationMs) {
+    const totalSeconds = Math.round(durationMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor(totalSeconds % 3600 / 60);
+    const seconds = totalSeconds % 60;
+    return [
+      hours > 0 ? `${hours}h` : "",
+      hours > 0 || minutes > 0 ? `${minutes}m` : "",
+      `${seconds}s`
+    ].filter((part) => part !== "").join(" ");
+  }
+  renderStepDurations(stepDurations) {
+    if (stepDurations.length === 0) {
+      return "";
+    }
+    return `### Step Durations
+
+\`\`\`mermaid
+gantt
+dateFormat x
+axisFormat %H:%M:%S
+${this.formatGanttTasks(stepDurations)}
+\`\`\`
+
+`;
+  }
+  formatGanttTasks(stepDurations) {
+    return stepDurations.map(({
+      stepName,
+      startedAtUnixTimeMs,
+      completedAtUnixTimeMs,
+      durationMs
+    }, index) => `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${completedAtUnixTimeMs}`).join(`
+`);
+  }
+  formatGanttTaskName(text) {
+    return text.replace(/[\s:;#%`]+/g, " ").trim();
   }
   formatLegends(legends) {
     return legends.map((l) => `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`).join(`
@@ -125998,8 +126036,15 @@ var stepSchema = object({
   data: metricsDataSchema
 });
 var stepsSchema = array(stepSchema);
+var stepDurationSchema = object({
+  stepName: string2(),
+  startedAtUnixTimeMs: number2(),
+  completedAtUnixTimeMs: number2(),
+  durationMs: number2().nonnegative()
+});
 var metricsDataWithStepsSchema = metricsDataSchema.extend({
-  steps: stepsSchema
+  steps: stepsSchema,
+  stepDurations: array(stepDurationSchema)
 });
 function isCurrentRunnerJob(job) {
   return job.status === "in_progress" && job.runner_name === process.env.RUNNER_NAME;
@@ -126018,6 +126063,29 @@ function filterMetricsByStep(workflowStep, metricsData) {
     }
   };
 }
+function toStepDurations({
+  name,
+  started_at,
+  completed_at
+}) {
+  if (started_at == null || completed_at == null) {
+    return [];
+  }
+  const startedAtUnixTimeMs = new Date(started_at).getTime();
+  const completedAtUnixTimeMs = new Date(completed_at).getTime();
+  if (!Number.isFinite(startedAtUnixTimeMs) || !Number.isFinite(completedAtUnixTimeMs)) {
+    return [];
+  }
+  const clampedCompletedAtUnixTimeMs = Math.max(startedAtUnixTimeMs, completedAtUnixTimeMs);
+  return [
+    {
+      stepName: name,
+      startedAtUnixTimeMs,
+      completedAtUnixTimeMs: clampedCompletedAtUnixTimeMs,
+      durationMs: clampedCompletedAtUnixTimeMs - startedAtUnixTimeMs
+    }
+  ];
+}
 function hasMetricsData({ data }) {
   return data.cpuLoadPercentages.length > 0 && data.memoryUsageMBs.length > 0;
 }
@@ -126032,9 +126100,11 @@ async function getMetricsData(jobs) {
       throw new Error(`Failed to fetch metrics: ${res.status} ${res.statusText}`);
     }
     const metricsData = metricsDataSchema.parse(await res.json());
+    const workflowSteps = jobs.find(isCurrentRunnerJob)?.steps ?? [];
     return {
       ...metricsData,
-      steps: (jobs.find(isCurrentRunnerJob)?.steps ?? []).map((s) => filterMetricsByStep(s, metricsData)).filter(hasMetricsData)
+      steps: workflowSteps.map((s) => filterMetricsByStep(s, metricsData)).filter(hasMetricsData),
+      stepDurations: workflowSteps.flatMap(toStepDurations)
     };
   } finally {
     clearTimeout(timer);
@@ -126121,7 +126191,7 @@ function render(metricsData, metricsID) {
       ],
       data: toRenderData(metricsData, mapMemoryUsageToChartParams)
     }
-  ]), metricsID);
+  ]), metricsID, metricsData.stepDurations);
 }
 async function writeMetricsFile({
   metricsData,
@@ -126218,5 +126288,5 @@ async function index() {
 }
 await index();
 
-//# debugId=EF029F373B723EFD64756E2164756E21
+//# debugId=550C8ED107BB1E6D64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map

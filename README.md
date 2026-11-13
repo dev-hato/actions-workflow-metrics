@@ -8,12 +8,17 @@ A GitHub Actions for collecting system metrics during workflows and outputting M
 
 - **System Metrics Collection**: Collects CPU load and memory usage in real-time during workflow execution
 - **Per-Step Metrics**: Breaks down metrics for each workflow step using the GitHub API
+- **Per-Step Durations**: Shows completed workflow steps as a Gantt chart, using the GitHub API
 - **Mermaid Chart Generation**: Visualizes collected metrics as Mermaid stacked bar charts
 - **Job Summary Output**: Automatically displays charts in GitHub Actions job summary
 
 ## Output Example
 
 The following charts and data are output.
+
+### Step Durations
+
+Mermaid Gantt chart of when each completed step started and how long it took.
 
 ### CPU Loads
 
@@ -29,7 +34,7 @@ Stacked bar chart of active/available memory.
 
 ### Artifacts
 
-JSON data of CPU Loads and Memory Usages.
+JSON data of CPU Loads, Memory Usages and Step Durations.
 
 ![Artifacts](images/artifact_example.png)
 

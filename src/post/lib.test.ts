@@ -60,10 +60,39 @@ describe("render", () => {
             },
           },
         ],
+        stepDurations: [
+          {
+            stepName: "Checkout",
+            startedAtUnixTimeMs: 1704067200000,
+            completedAtUnixTimeMs: 1704067200800,
+            durationMs: 800,
+          },
+          {
+            stepName: "Build",
+            startedAtUnixTimeMs: 1704067201000,
+            completedAtUnixTimeMs: 1704067266000,
+            durationMs: 65_000,
+          },
+          {
+            stepName: "Test",
+            startedAtUnixTimeMs: 1704067266000,
+            completedAtUnixTimeMs: 1704070991000,
+            durationMs: 3_725_000,
+          },
+          {
+            stepName: "Deploy",
+            startedAtUnixTimeMs: 1704070991000,
+            completedAtUnixTimeMs: 1704074596000,
+            durationMs: 3_605_000,
+          },
+        ],
       },
       testMetricsID,
     );
 
+    expect(result).toContain(
+      "### Step Durations\n\n```mermaid\ngantt\ndateFormat x\naxisFormat %H:%M:%S\n1. Checkout (1s) :1704067200000, 1704067200800\n2. Build (1m 5s) :1704067201000, 1704067266000\n3. Test (1h 2m 5s) :1704067266000, 1704070991000\n4. Deploy (1h 0m 5s) :1704070991000, 1704074596000\n```\n\n### CPU Loads",
+    );
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
 
@@ -81,6 +110,7 @@ describe("render", () => {
       {
         ...sampleMetricsData,
         steps: [],
+        stepDurations: [],
       },
       testMetricsID,
     );
@@ -88,6 +118,7 @@ describe("render", () => {
     expect(result).toContain("### CPU Loads");
     expect(result).toContain("### Memory Usages");
     expect(result).toContain("#### All");
+    expect(result).not.toContain("### Step Durations");
   });
 
   it("should handle empty metrics data", () => {
@@ -95,6 +126,7 @@ describe("render", () => {
       cpuLoadPercentages: [],
       memoryUsageMBs: [],
       steps: [],
+      stepDurations: [],
     };
 
     const result: string = render(metricsData, testMetricsID);
@@ -102,6 +134,15 @@ describe("render", () => {
     // Empty data results in empty string (no charts to render)
     expect(typeof result).toBe("string");
   });
+
+  const expectNonEmptyRender = (
+    metricsData: z.output<typeof metricsDataWithStepsSchema>,
+  ): void => {
+    const result: string = render(metricsData, testMetricsID);
+
+    expect(result).toBeTruthy();
+    expect(result.length).toBeGreaterThan(0);
+  };
 
   it("should correctly map CPU load percentages", () => {
     const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
@@ -114,12 +155,10 @@ describe("render", () => {
         { unixTimeMs: 1704067205000, used: 4100, free: 7900 },
       ],
       steps: [],
+      stepDurations: [],
     };
 
-    const result: string = render(metricsData, testMetricsID);
-
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
+    expectNonEmptyRender(metricsData);
   });
 
   it("should correctly map memory usage data", () => {
@@ -130,12 +169,10 @@ describe("render", () => {
         { unixTimeMs: 1704067205000, used: 5500, free: 9500 },
       ],
       steps: [],
+      stepDurations: [],
     };
 
-    const result: string = render(metricsData, testMetricsID);
-
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
+    expectNonEmptyRender(metricsData);
   });
 });
 
@@ -183,6 +220,7 @@ describe("getMetricsData", () => {
     expect(await getMetricsData([])).toEqual({
       ...sampleMetricsData,
       steps: [],
+      stepDurations: [],
     });
   });
 
@@ -248,6 +286,63 @@ describe("getMetricsData", () => {
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0].stepName).toBe("Build");
     expectOnlyFirstDataPoint(result);
+  });
+
+  it("should return durations of completed steps only", async (): Promise<void> => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.output<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([
+        createJob({
+          steps: [
+            buildStep,
+            { ...buildStep, name: "Post", completed_at: null },
+            {
+              ...buildStep,
+              name: "Pending",
+              started_at: null,
+              completed_at: null,
+            },
+            {
+              ...buildStep,
+              name: "Clock skew",
+              started_at: "2024-01-01T00:00:05.000Z",
+              completed_at: "2024-01-01T00:00:00.000Z",
+            },
+          ],
+        }),
+      ]);
+
+    expect(result.stepDurations).toEqual([
+      {
+        stepName: "Build",
+        startedAtUnixTimeMs: 1704067200000,
+        completedAtUnixTimeMs: 1704067205000,
+        durationMs: 5000,
+      },
+      {
+        stepName: "Clock skew",
+        startedAtUnixTimeMs: 1704067205000,
+        completedAtUnixTimeMs: 1704067205000,
+        durationMs: 0,
+      },
+    ]);
+  });
+
+  it("should skip steps with malformed timestamps", async (): Promise<void> => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.output<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([
+        createJob({
+          steps: [
+            { ...buildStep, name: "Empty start", started_at: "" },
+            { ...buildStep, name: "Bad end", completed_at: "not a date" },
+          ],
+        }),
+      ]);
+
+    expect(result.stepDurations).toEqual([]);
   });
 
   it("should return empty steps when no job matches RUNNER_NAME", async () => {
@@ -440,6 +535,7 @@ describe("writeMetricsFile", (): void => {
   const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
     ...sampleMetricsData,
     steps: [],
+    stepDurations: [],
   };
   let tempDirectory: string;
 

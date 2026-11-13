@@ -50,8 +50,15 @@ const stepSchema = z.object({
   data: metricsDataSchema,
 });
 const stepsSchema = z.array(stepSchema);
+export const stepDurationSchema = z.object({
+  stepName: z.string(),
+  startedAtUnixTimeMs: z.number(),
+  completedAtUnixTimeMs: z.number(),
+  durationMs: z.number().nonnegative(),
+});
 export const metricsDataWithStepsSchema = metricsDataSchema.extend({
   steps: stepsSchema,
+  stepDurations: z.array(stepDurationSchema),
 });
 
 function isCurrentRunnerJob(job: components["schemas"]["job"]): boolean {
@@ -94,6 +101,41 @@ function filterMetricsByStep(
   };
 }
 
+function toStepDurations({
+  name,
+  started_at,
+  completed_at,
+}: GitHubJobStep): z.output<typeof stepDurationSchema>[] {
+  // Steps still running (e.g. this post step) have no completed_at and are skipped
+  if (started_at == null || completed_at == null) {
+    return [];
+  }
+
+  const startedAtUnixTimeMs: number = new Date(started_at).getTime();
+  const completedAtUnixTimeMs: number = new Date(completed_at).getTime();
+  // Malformed timestamps parse to NaN, which would break the Gantt chart and the artifact
+  if (
+    !Number.isFinite(startedAtUnixTimeMs) ||
+    !Number.isFinite(completedAtUnixTimeMs)
+  ) {
+    return [];
+  }
+
+  // Clock skew can put the completion before the start, so the step ends no earlier than it starts
+  const clampedCompletedAtUnixTimeMs: number = Math.max(
+    startedAtUnixTimeMs,
+    completedAtUnixTimeMs,
+  );
+  return [
+    {
+      stepName: name,
+      startedAtUnixTimeMs,
+      completedAtUnixTimeMs: clampedCompletedAtUnixTimeMs,
+      durationMs: clampedCompletedAtUnixTimeMs - startedAtUnixTimeMs,
+    },
+  ];
+}
+
 function hasMetricsData({ data }: z.TypeOf<typeof stepSchema>): boolean {
   return data.cpuLoadPercentages.length > 0 && data.memoryUsageMBs.length > 0;
 }
@@ -119,13 +161,16 @@ export async function getMetricsData(
 
     const metricsData: z.TypeOf<typeof metricsDataSchema> =
       metricsDataSchema.parse(await res.json());
+    const workflowSteps: GitHubJobStep[] =
+      jobs.find(isCurrentRunnerJob)?.steps ?? [];
     return {
       ...metricsData,
-      steps: (jobs.find(isCurrentRunnerJob)?.steps ?? [])
+      steps: workflowSteps
         .map((s: GitHubJobStep): z.TypeOf<typeof stepSchema> =>
           filterMetricsByStep(s, metricsData),
         )
         .filter(hasMetricsData),
+      stepDurations: workflowSteps.flatMap(toStepDurations),
     };
   } finally {
     clearTimeout(timer);
@@ -246,6 +291,7 @@ export function render(
       },
     ]),
     metricsID,
+    metricsData.stepDurations,
   );
 }
 

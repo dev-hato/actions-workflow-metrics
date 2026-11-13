@@ -12,12 +12,17 @@
 
 - **システムメトリクス収集**: ワークフロー実行中のCPU負荷とメモリ使用量をリアルタイムで収集
 - **ステップ別メトリクス**: GitHub APIを使用してワークフローの各ステップごとにメトリクスを分割
+- **ステップ別所要時間**: GitHub APIを使用して完了した各ステップの所要時間をガントチャートで表示
 - **Mermaidチャート生成**: 収集したメトリクスをMermaid形式の積み上げ棒グラフとして可視化
 - **ジョブサマリー出力**: GitHub Actionsのジョブサマリーに自動的にチャートを表示
 
 ## 出力例
 
 次のようなチャートやデータが出力されます。
+
+### Step Durations
+
+完了した各ステップの開始時刻と所要時間を示すMermaidのガントチャートです。
 
 ### CPU Loads
 
@@ -33,7 +38,7 @@
 
 ### Artifacts
 
-CPU LoadsやMemory UsagesのJSONデータです。
+CPU Loads、Memory Usages、Step DurationsのJSONデータです。
 
 ![Artifacts](images/artifact_example.png)
 

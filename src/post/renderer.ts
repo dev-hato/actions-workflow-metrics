@@ -6,6 +6,7 @@ import type {
   renderParamsListSchema,
   renderParamsSchema,
   stackedBarDataSchema,
+  stepDurationSchema,
   timesSchema,
 } from "./lib";
 import { TimeLabelFormatter } from "./timeLabels";
@@ -14,8 +15,13 @@ export class Renderer {
   render(
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
     metricsID: string,
+    stepDurations: z.output<typeof stepDurationSchema>[] = [],
   ): string {
-    return this.renderMetrics(this.renderSections(renderParamsList), metricsID);
+    return this.renderMetrics(
+      this.renderStepDurations(stepDurations) +
+        this.renderSections(renderParamsList),
+      metricsID,
+    );
   }
 
   private renderMetrics(charts: string, metricsID: string): string {
@@ -26,6 +32,65 @@ export class Renderer {
 ${metricsID}
 
 ${charts}`;
+  }
+
+  private formatDuration(durationMs: number): string {
+    const totalSeconds: number = Math.round(durationMs / 1000);
+    const hours: number = Math.floor(totalSeconds / 3600);
+    const minutes: number = Math.floor((totalSeconds % 3600) / 60);
+    const seconds: number = totalSeconds % 60;
+    return [
+      hours > 0 ? `${hours}h` : "",
+      hours > 0 || minutes > 0 ? `${minutes}m` : "",
+      `${seconds}s`,
+    ]
+      .filter((part: string): boolean => part !== "")
+      .join(" ");
+  }
+
+  private renderStepDurations(
+    stepDurations: z.output<typeof stepDurationSchema>[],
+  ): string {
+    if (stepDurations.length === 0) {
+      return "";
+    }
+
+    return `### Step Durations
+
+\`\`\`mermaid
+gantt
+dateFormat x
+axisFormat %H:%M:%S
+${this.formatGanttTasks(stepDurations)}
+\`\`\`
+
+`;
+  }
+
+  private formatGanttTasks(
+    stepDurations: z.output<typeof stepDurationSchema>[],
+  ): string {
+    // The index prefix keeps a step name from being read as a Gantt keyword such as "section"
+    return stepDurations
+      .map(
+        (
+          {
+            stepName,
+            startedAtUnixTimeMs,
+            completedAtUnixTimeMs,
+            durationMs,
+          }: z.output<typeof stepDurationSchema>,
+          index: number,
+        ): string =>
+          `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${completedAtUnixTimeMs}`,
+      )
+      .join("\n");
+  }
+
+  // Step names can contain untrusted text (e.g. PR titles via expressions),
+  // so drop characters that end a Gantt task name, start a comment or close the code fence
+  private formatGanttTaskName(text: string): string {
+    return text.replace(/[\s:;#%`]+/g, " ").trim();
   }
 
   private formatLegends(legends: z.TypeOf<typeof legendsSchema>): string {
