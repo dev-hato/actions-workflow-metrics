@@ -62,11 +62,12 @@ ${charts}`;
           {
             stepName,
             startedAtUnixTimeMs,
+            completedAtUnixTimeMs,
             durationMs,
           }: z.output<typeof stepDurationSchema>,
           index: number,
         ): string =>
-          `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${startedAtUnixTimeMs + durationMs}`,
+          `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${completedAtUnixTimeMs}`,
       )
       .join("\n");
     return `### Step Durations

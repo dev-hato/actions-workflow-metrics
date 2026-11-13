@@ -53,6 +53,7 @@ const stepsSchema = z.array(stepSchema);
 export const stepDurationSchema = z.object({
   stepName: z.string(),
   startedAtUnixTimeMs: z.number(),
+  completedAtUnixTimeMs: z.number(),
   durationMs: z.number().nonnegative(),
 });
 export const metricsDataWithStepsSchema = metricsDataSchema.extend({
@@ -120,11 +121,17 @@ function toStepDurations({
     return [];
   }
 
+  // Clock skew can put the completion before the start, so the step ends no earlier than it starts
+  const clampedCompletedAtUnixTimeMs: number = Math.max(
+    startedAtUnixTimeMs,
+    completedAtUnixTimeMs,
+  );
   return [
     {
       stepName: name,
       startedAtUnixTimeMs,
-      durationMs: Math.max(0, completedAtUnixTimeMs - startedAtUnixTimeMs),
+      completedAtUnixTimeMs: clampedCompletedAtUnixTimeMs,
+      durationMs: clampedCompletedAtUnixTimeMs - startedAtUnixTimeMs,
     },
   ];
 }

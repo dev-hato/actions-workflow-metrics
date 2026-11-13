@@ -525,6 +525,7 @@ describe("Renderer", () => {
       {
         stepName: "evil```\n# Injected: 1, 2\nsection x;%%y",
         startedAtUnixTimeMs: 0,
+        completedAtUnixTimeMs: 1000,
         durationMs: 1000,
       },
     ]);

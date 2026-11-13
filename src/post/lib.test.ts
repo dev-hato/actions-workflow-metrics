@@ -64,21 +64,25 @@ describe("render", () => {
           {
             stepName: "Checkout",
             startedAtUnixTimeMs: 1704067200000,
+            completedAtUnixTimeMs: 1704067200800,
             durationMs: 800,
           },
           {
             stepName: "Build",
             startedAtUnixTimeMs: 1704067201000,
+            completedAtUnixTimeMs: 1704067266000,
             durationMs: 65_000,
           },
           {
             stepName: "Test",
             startedAtUnixTimeMs: 1704067266000,
+            completedAtUnixTimeMs: 1704070991000,
             durationMs: 3_725_000,
           },
           {
             stepName: "Deploy",
             startedAtUnixTimeMs: 1704070991000,
+            completedAtUnixTimeMs: 1704074596000,
             durationMs: 3_605_000,
           },
         ],
@@ -313,11 +317,13 @@ describe("getMetricsData", () => {
       {
         stepName: "Build",
         startedAtUnixTimeMs: 1704067200000,
+        completedAtUnixTimeMs: 1704067205000,
         durationMs: 5000,
       },
       {
         stepName: "Clock skew",
         startedAtUnixTimeMs: 1704067205000,
+        completedAtUnixTimeMs: 1704067205000,
         durationMs: 0,
       },
     ]);
