@@ -58,16 +58,22 @@ A weakness here can affect every user of the action.
   Do not use `z.TypeOf`, which is deprecated in Zod v4.
 - **Comment placement**: Put a comment directly above the line or block it explains.
   When code moves, move its comment with it.
-- **No round-trip calculations**: If a value is already known (e.g. an end timestamp), store and pass it directly.
-  Do not derive it again from other fields (e.g. `start + duration` after computing `duration = end - start`).
-  Keep derived fields such as durations only when they are useful to consumers (e.g. in the artifact).
-- **Consistent clamping and validation**: When a value is clamped or validated (e.g. negative durations due to clock skew, non-finite timestamps),
-  apply the same rule to every related value so they stay consistent (e.g. clamp the end time to be no earlier than the start time, and compute the duration from the clamped values).
-- **Renderer method roles**: In `src/post/renderer.ts`, `format*` methods build fragments (e.g. `formatLegends`, `formatTimes`),
-  and `render*` methods assemble sections by calling `format*` methods inside template literals (e.g. `renderChart`, `renderSection`).
+- **No round-trip calculations**: If a value is already known (e.g. an end timestamp), pass it directly.
+  Do not derive it again from other fields.
+  For example, do not compute `start + duration` after computing `duration = end - start`.
+  Keep derived fields such as durations only when consumers need them (e.g. in the artifact).
+- **Consistent clamping and validation**: Apply the same clamping or validation to every related value.
+  This keeps them consistent (e.g. for clock skew or non-finite timestamps).
+  For example, clamp the end time to be no earlier than the start time.
+  Then compute the duration from the clamped values.
+- **Renderer method roles**: In `src/post/renderer.ts`, `format*` methods build fragments.
+  Examples are `formatLegends` and `formatTimes`.
+  `render*` methods assemble sections by calling `format*` methods inside template literals.
+  Examples are `renderChart` and `renderSection`.
   Keep each method to one of these roles; split a method that does both.
 
 ## Pull Requests
 
 - Keep the PR title and description in sync with the actual changes.
-  When the implementation changes during review (e.g. output format, new artifact fields), update the description too.
+  When the implementation changes during review, update the description too.
+  This includes changes to the output format and new artifact fields.
