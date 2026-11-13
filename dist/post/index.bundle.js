@@ -125882,8 +125882,9 @@ ${charts}`;
     const tasks = stepDurations.map(({
       stepName,
       startedAtUnixTimeMs,
+      completedAtUnixTimeMs,
       durationMs
-    }, index) => `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${startedAtUnixTimeMs + durationMs}`).join(`
+    }, index) => `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${completedAtUnixTimeMs}`).join(`
 `);
     return `### Step Durations
 
@@ -126036,6 +126037,7 @@ var stepsSchema = array(stepSchema);
 var stepDurationSchema = object({
   stepName: string2(),
   startedAtUnixTimeMs: number2(),
+  completedAtUnixTimeMs: number2(),
   durationMs: number2().nonnegative()
 });
 var metricsDataWithStepsSchema = metricsDataSchema.extend({
@@ -126072,11 +126074,13 @@ function toStepDurations({
   if (!Number.isFinite(startedAtUnixTimeMs) || !Number.isFinite(completedAtUnixTimeMs)) {
     return [];
   }
+  const clampedCompletedAtUnixTimeMs = Math.max(startedAtUnixTimeMs, completedAtUnixTimeMs);
   return [
     {
       stepName: name,
       startedAtUnixTimeMs,
-      durationMs: Math.max(0, completedAtUnixTimeMs - startedAtUnixTimeMs)
+      completedAtUnixTimeMs: clampedCompletedAtUnixTimeMs,
+      durationMs: clampedCompletedAtUnixTimeMs - startedAtUnixTimeMs
     }
   ];
 }
@@ -126282,5 +126286,5 @@ async function index() {
 }
 await index();
 
-//# debugId=2F00AC6206367E2864756E2164756E21
+//# debugId=8C8CD90FEE610F0B64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
