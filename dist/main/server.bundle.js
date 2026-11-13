@@ -17785,7 +17785,7 @@ var require_undici = __commonJS(function(exports, module) {
 var require_package = __commonJS(function(exports, module) {
   module.exports = {
     name: "systeminformation",
-    version: "5.33.19",
+    version: "5.33.21",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -21492,10 +21492,10 @@ var require_network = __commonJS(function(exports) {
     if (_linux || _freebsd || _openbsd || _netbsd) {
       if (typeof pathToIp === "undefined") {
         try {
-          const lines = execSync("which ip", util.execOptsLinux).toString().split(`
-`);
-          if (lines.length && lines[0].indexOf(":") === -1 && lines[0].indexOf("/") === 0) {
-            pathToIp = lines[0];
+          const ipPath = execSync("which ip", util.execOptsLinux).toString().split(`
+`)[0].trim();
+          if (/^\/[A-Za-z0-9/_.+-]+$/.test(ipPath)) {
+            pathToIp = ipPath;
           } else {
             pathToIp = "";
           }
@@ -21511,7 +21511,7 @@ var require_network = __commonJS(function(exports) {
         for (let i = 0;i < lines.length; i++) {
           if (lines[i] && lines[i][0] !== " ") {
             if (pathToIp) {
-              const nextline = lines[i + 1].trim().split(" ");
+              const nextline = (lines[i + 1] || "").trim().split(" ");
               if (nextline[0] === "link/ether") {
                 iface = lines[i].split(" ")[1];
                 iface = iface.slice(0, iface.length - 1);
@@ -29376,7 +29376,7 @@ var require_filesystem = __commonJS(function(exports) {
         let wx = 0;
         if (_fs_speed && !_fs_speed.ms || _fs_speed && _fs_speed.ms && Date.now() - _fs_speed.ms >= 500) {
           if (_linux) {
-            const procLsblk = exec("lsblk -r 2>/dev/null | grep /", { maxBuffer: 1024 * 1024 }, (error, stdout) => {
+            const procLsblk = exec('lsblk -rno KNAME,FSTYPE,MOUNTPOINT 2>/dev/null | grep -E "/| zfs_member( |$)" | grep -vE "^zd[0-9]+"', { maxBuffer: 1024 * 1024 }, (error, stdout) => {
               if (!error) {
                 const lines = stdout.toString().split(`
 `);
@@ -29390,8 +29390,7 @@ var require_filesystem = __commonJS(function(exports) {
                     }
                   }
                 });
-                const output = fs_filter.join("|");
-                const procCat = exec('cat /proc/diskstats | egrep "' + output + '"', { maxBuffer: 1024 * 1024 }, (error, stdout) => {
+                const procCat = exec("cat /proc/diskstats", { maxBuffer: 1024 * 1024 }, (error, stdout) => {
                   if (!error) {
                     const lines = stdout.toString().split(`
 `);
@@ -29399,6 +29398,9 @@ var require_filesystem = __commonJS(function(exports) {
                       line = line.trim();
                       if (line !== "") {
                         line = line.replace(/ +/g, " ").split(" ");
+                        if (fs_filter.indexOf(line[2]) === -1) {
+                          return;
+                        }
                         rx += parseInt(line[5], 10) * 512;
                         wx += parseInt(line[9], 10) * 512;
                       }
@@ -29573,7 +29575,7 @@ var require_filesystem = __commonJS(function(exports) {
         let tWaitTime = 0;
         if (_disk_io && !_disk_io.ms || _disk_io && _disk_io.ms && Date.now() - _disk_io.ms >= 500) {
           if (_linux || _freebsd || _openbsd || _netbsd) {
-            const cmd = 'for mount in `lsblk 2>/dev/null | grep " disk " | sed "s/[│└─├]//g" | awk \'{$1=$1};1\' | cut -d " " -f 1 | sort -u`; do cat /sys/block/$mount/stat | sed -r "s/ +/;/g" | sed -r "s/^;//"; done';
+            const cmd = 'for mount in `lsblk 2>/dev/null | grep " disk " | sed "s/[│└─├]//g" | awk \'{$1=$1};1\' | grep -vE "^(zd|nbd|fd|zram)[0-9]+ " | cut -d " " -f 1 | sort -u`; do cat /sys/block/$mount/stat | sed -r "s/ +/;/g" | sed -r "s/^;//"; done';
             exec(cmd, { maxBuffer: 1024 * 1024 }, (error, stdout) => {
               if (!error) {
                 const lines = stdout.split(`
@@ -37542,5 +37544,5 @@ async function server() {
 }
 await server();
 
-//# debugId=043F2AB9FF1B00B964756E2164756E21
+//# debugId=7142DCACCC7ED34A64756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
