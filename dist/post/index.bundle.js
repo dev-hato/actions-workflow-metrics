@@ -126131,8 +126131,9 @@ ${this.formatGanttTasks(stepDurations)}
   formatYAxisRange(range) {
     return range ? ` ${range}` : "";
   }
-  accumulateStackedData(accumulated, barData, index) {
-    accumulated.push(barData.map((v, c) => v + accumulated[index][c]));
+  accumulateStackedData(accumulated, barData) {
+    const previous = accumulated[accumulated.length - 1];
+    accumulated.push(barData.map((v, c) => v + previous[c]));
     return accumulated;
   }
   calculateStackedBars(stackedBarData) {
@@ -126492,5 +126493,5 @@ async function index() {
 }
 await index();
 
-//# debugId=019D5E13E07E7A5B64756E2164756E21
+//# debugId=32979E329614207F64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
