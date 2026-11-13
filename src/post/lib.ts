@@ -52,6 +52,7 @@ const stepSchema = z.object({
 const stepsSchema = z.array(stepSchema);
 export const stepDurationSchema = z.object({
   stepName: z.string(),
+  startedAtUnixTimeMs: z.number(),
   durationMs: z.number().nonnegative(),
 });
 export const metricsDataWithStepsSchema = metricsDataSchema.extend({
@@ -109,12 +110,14 @@ function toStepDurations({
     return [];
   }
 
+  const startedAtUnixTimeMs: number = new Date(started_at).getTime();
   return [
     {
       stepName: name,
+      startedAtUnixTimeMs,
       durationMs: Math.max(
         0,
-        new Date(completed_at).getTime() - new Date(started_at).getTime(),
+        new Date(completed_at).getTime() - startedAtUnixTimeMs,
       ),
     },
   ];

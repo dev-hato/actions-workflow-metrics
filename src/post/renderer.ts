@@ -55,20 +55,36 @@ ${charts}`;
       return "";
     }
 
-    const lines: string = stepDurations
+    // The index prefix keeps a step name from being read as a Gantt keyword such as "section"
+    const tasks: string = stepDurations
       .map(
-        ({
-          stepName,
-          durationMs,
-        }: z.TypeOf<typeof stepDurationSchema>): string =>
-          `* ${this.formatCodeSpan(stepName)}: ${this.formatDuration(durationMs)}`,
+        (
+          {
+            stepName,
+            startedAtUnixTimeMs,
+            durationMs,
+          }: z.TypeOf<typeof stepDurationSchema>,
+          index: number,
+        ): string =>
+          `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${startedAtUnixTimeMs + durationMs}`,
       )
       .join("\n");
     return `### Step Durations
 
-${lines}
+\`\`\`mermaid
+gantt
+dateFormat x
+axisFormat %H:%M:%S
+${tasks}
+\`\`\`
 
 `;
+  }
+
+  // Step names can contain untrusted text (e.g. PR titles via expressions),
+  // so drop characters that end a Gantt task name, start a comment or close the code fence
+  private formatGanttTaskName(text: string): string {
+    return text.replace(/[\s:;#%`]+/g, " ").trim();
   }
 
   private formatLegends(legends: z.TypeOf<typeof legendsSchema>): string {
