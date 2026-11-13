@@ -125879,23 +125879,25 @@ ${charts}`;
     if (stepDurations.length === 0) {
       return "";
     }
-    const tasks = stepDurations.map(({
-      stepName,
-      startedAtUnixTimeMs,
-      completedAtUnixTimeMs,
-      durationMs
-    }, index) => `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${completedAtUnixTimeMs}`).join(`
-`);
     return `### Step Durations
 
 \`\`\`mermaid
 gantt
 dateFormat x
 axisFormat %H:%M:%S
-${tasks}
+${this.formatGanttTasks(stepDurations)}
 \`\`\`
 
 `;
+  }
+  formatGanttTasks(stepDurations) {
+    return stepDurations.map(({
+      stepName,
+      startedAtUnixTimeMs,
+      completedAtUnixTimeMs,
+      durationMs
+    }, index) => `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${completedAtUnixTimeMs}`).join(`
+`);
   }
   formatGanttTaskName(text) {
     return text.replace(/[\s:;#%`]+/g, " ").trim();
@@ -126286,5 +126288,5 @@ async function index() {
 }
 await index();
 
-//# debugId=8C8CD90FEE610F0B64756E2164756E21
+//# debugId=550C8ED107BB1E6D64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
