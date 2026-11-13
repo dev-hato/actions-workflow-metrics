@@ -100,12 +100,12 @@ function filterMetricsByStep(
   };
 }
 
-// Steps still running (e.g. this post step) have no completed_at and are skipped
 function toStepDurations({
   name,
   started_at,
   completed_at,
 }: GitHubJobStep): z.TypeOf<typeof stepDurationSchema>[] {
+  // Steps still running (e.g. this post step) have no completed_at and are skipped
   if (started_at == null || completed_at == null) {
     return [];
   }
