@@ -55,8 +55,23 @@ ${charts}`;
       return "";
     }
 
+    return `### Step Durations
+
+\`\`\`mermaid
+gantt
+dateFormat x
+axisFormat %H:%M:%S
+${this.formatGanttTasks(stepDurations)}
+\`\`\`
+
+`;
+  }
+
+  private formatGanttTasks(
+    stepDurations: z.output<typeof stepDurationSchema>[],
+  ): string {
     // The index prefix keeps a step name from being read as a Gantt keyword such as "section"
-    const tasks: string = stepDurations
+    return stepDurations
       .map(
         (
           {
@@ -70,16 +85,6 @@ ${charts}`;
           `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${completedAtUnixTimeMs}`,
       )
       .join("\n");
-    return `### Step Durations
-
-\`\`\`mermaid
-gantt
-dateFormat x
-axisFormat %H:%M:%S
-${tasks}
-\`\`\`
-
-`;
   }
 
   // Step names can contain untrusted text (e.g. PR titles via expressions),
