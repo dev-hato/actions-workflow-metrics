@@ -15,7 +15,7 @@ export class Renderer {
   render(
     renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
     metricsID: string,
-    stepDurations: z.TypeOf<typeof stepDurationSchema>[] = [],
+    stepDurations: z.output<typeof stepDurationSchema>[] = [],
   ): string {
     return this.renderMetrics(
       this.renderStepDurations(stepDurations) +
@@ -49,7 +49,7 @@ ${charts}`;
   }
 
   private renderStepDurations(
-    stepDurations: z.TypeOf<typeof stepDurationSchema>[],
+    stepDurations: z.output<typeof stepDurationSchema>[],
   ): string {
     if (stepDurations.length === 0) {
       return "";
@@ -63,7 +63,7 @@ ${charts}`;
             stepName,
             startedAtUnixTimeMs,
             durationMs,
-          }: z.TypeOf<typeof stepDurationSchema>,
+          }: z.output<typeof stepDurationSchema>,
           index: number,
         ): string =>
           `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${startedAtUnixTimeMs + durationMs}`,

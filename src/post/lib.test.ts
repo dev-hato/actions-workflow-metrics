@@ -132,7 +132,7 @@ describe("render", () => {
   });
 
   const expectNonEmptyRender = (
-    metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>,
+    metricsData: z.output<typeof metricsDataWithStepsSchema>,
   ): void => {
     const result: string = render(metricsData, testMetricsID);
 
@@ -287,7 +287,7 @@ describe("getMetricsData", () => {
   it("should return durations of completed steps only", async (): Promise<void> => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
-    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+    const result: z.output<typeof metricsDataWithStepsSchema> =
       await getMetricsData([
         createJob({
           steps: [
