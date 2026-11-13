@@ -111,14 +111,20 @@ function toStepDurations({
   }
 
   const startedAtUnixTimeMs: number = new Date(started_at).getTime();
+  const completedAtUnixTimeMs: number = new Date(completed_at).getTime();
+  // Malformed timestamps parse to NaN, which would break the Gantt chart and the artifact
+  if (
+    !Number.isFinite(startedAtUnixTimeMs) ||
+    !Number.isFinite(completedAtUnixTimeMs)
+  ) {
+    return [];
+  }
+
   return [
     {
       stepName: name,
       startedAtUnixTimeMs,
-      durationMs: Math.max(
-        0,
-        new Date(completed_at).getTime() - startedAtUnixTimeMs,
-      ),
+      durationMs: Math.max(0, completedAtUnixTimeMs - startedAtUnixTimeMs),
     },
   ];
 }

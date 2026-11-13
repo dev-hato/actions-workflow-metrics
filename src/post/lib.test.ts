@@ -323,6 +323,22 @@ describe("getMetricsData", () => {
     ]);
   });
 
+  it("should skip steps with malformed timestamps", async (): Promise<void> => {
+    globalThis.fetch = createMockFetch(sampleMetricsData);
+
+    const result: z.output<typeof metricsDataWithStepsSchema> =
+      await getMetricsData([
+        createJob({
+          steps: [
+            { ...buildStep, name: "Empty start", started_at: "" },
+            { ...buildStep, name: "Bad end", completed_at: "not a date" },
+          ],
+        }),
+      ]);
+
+    expect(result.stepDurations).toEqual([]);
+  });
+
   it("should return empty steps when no job matches RUNNER_NAME", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
