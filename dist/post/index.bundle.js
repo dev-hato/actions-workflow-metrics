@@ -125879,16 +125879,25 @@ ${charts}`;
     if (stepDurations.length === 0) {
       return "";
     }
-    const lines = stepDurations.map(({
+    const tasks = stepDurations.map(({
       stepName,
+      startedAtUnixTimeMs,
       durationMs
-    }) => `* ${this.formatCodeSpan(stepName)}: ${this.formatDuration(durationMs)}`).join(`
+    }, index) => `${index + 1}. ${this.formatGanttTaskName(stepName)} (${this.formatDuration(durationMs)}) :${startedAtUnixTimeMs}, ${startedAtUnixTimeMs + durationMs}`).join(`
 `);
     return `### Step Durations
 
-${lines}
+\`\`\`mermaid
+gantt
+dateFormat x
+axisFormat %H:%M:%S
+${tasks}
+\`\`\`
 
 `;
+  }
+  formatGanttTaskName(text) {
+    return text.replace(/[\s:;#%`]+/g, " ").trim();
   }
   formatLegends(legends) {
     return legends.map((l) => `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`).join(`
@@ -126026,6 +126035,7 @@ var stepSchema = object({
 var stepsSchema = array(stepSchema);
 var stepDurationSchema = object({
   stepName: string2(),
+  startedAtUnixTimeMs: number2(),
   durationMs: number2().nonnegative()
 });
 var metricsDataWithStepsSchema = metricsDataSchema.extend({
@@ -126057,10 +126067,12 @@ function toStepDurations({
   if (started_at == null || completed_at == null) {
     return [];
   }
+  const startedAtUnixTimeMs = new Date(started_at).getTime();
   return [
     {
       stepName: name,
-      durationMs: Math.max(0, new Date(completed_at).getTime() - new Date(started_at).getTime())
+      startedAtUnixTimeMs,
+      durationMs: Math.max(0, new Date(completed_at).getTime() - startedAtUnixTimeMs)
     }
   ];
 }
@@ -126266,5 +126278,5 @@ async function index() {
 }
 await index();
 
-//# debugId=313A04339601278464756E2164756E21
+//# debugId=B82E6DD2AB4AFB4E64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
