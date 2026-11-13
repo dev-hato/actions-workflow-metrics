@@ -23397,6 +23397,8 @@ var require_commonjs6 = __commonJS(function(exports) {
   };
   exports.braceExpand = braceExpand;
   exports.minimatch.braceExpand = exports.braceExpand;
+  var RANGE_MIN = 100;
+  var rangeRe = /(?<![\\$])\{(-?\d+)\.\.(-?\d+)\}/g;
   var match = (list, pattern, options = {}) => {
     const mm = new Minimatch(pattern, options);
     list = list.filter((f) => mm.match(f));
@@ -23552,6 +23554,7 @@ var require_commonjs6 = __commonJS(function(exports) {
     #endRows = [];
     #matchers = new Map;
     #pending = false;
+    #rangeMark;
     #globstarParts = new WeakMap;
     constructor(pattern, options = {}) {
       (0, assert_valid_pattern_js_1.assertValidPattern)(pattern);
@@ -23648,7 +23651,7 @@ var require_commonjs6 = __commonJS(function(exports) {
         return;
       }
       this.parseNegate();
-      this.globSet = [...new Set(this.braceExpand())];
+      this.globSet = [...new Set(this.#expandBraces())];
       const rawGlobParts = this.globSet.map((s) => this.#slashSplit(s));
       this.globParts = this.preprocess(rawGlobParts);
       this.#pending = true;
@@ -23966,6 +23969,8 @@ var require_commonjs6 = __commonJS(function(exports) {
     }
     firstPhasePreProcess(globParts) {
       const { braceExpandMax = 1e5 } = this.options;
+      let splitCells = 0;
+      const maxSplitCells = 1e6;
       let didSomething = false;
       do {
         didSomething = false;
@@ -23984,13 +23989,18 @@ var require_commonjs6 = __commonJS(function(exports) {
             const p2 = parts[gs + 3];
             if (next !== "..")
               continue;
-            if (!p || p === "." || p === ".." || !p2 || p2 === "." || p2 === ".." || globParts.length >= braceExpandMax) {
+            if (!p || p === "." || p === ".." || !p2 || p2 === "." || p2 === "..") {
               continue;
+            }
+            const addedCells = parts.length - 1;
+            if (globParts.length >= braceExpandMax || splitCells + addedCells > maxSplitCells) {
+              throw new RangeError(`optimizationLevel 2: too many patterns from '**/..'`);
             }
             didSomething = true;
             parts.splice(gs, 1);
             const other = parts.slice(0);
             other[gs] = "**";
+            splitCells += addedCells;
             globParts.push(other);
             gs--;
           }
@@ -24029,55 +24039,50 @@ var require_commonjs6 = __commonJS(function(exports) {
       return globParts;
     }
     secondPhasePreProcess(globParts) {
-      if (globParts.length > 1000)
-        return globParts;
-      for (let i = 0;i < globParts.length - 1; i++) {
-        for (let j = i + 1;j < globParts.length; j++) {
-          const matched = this.partsMatch(globParts[i], globParts[j], !this.preserveMultipleSlashes);
-          if (matched) {
-            globParts[i] = [];
-            globParts[j] = matched;
-            break;
-          }
-        }
-      }
-      return globParts.filter((gs) => gs.length);
-    }
-    partsMatch(a, b, emptyGSMatch = false) {
-      let ai = 0;
-      let bi = 0;
-      let result = [];
-      let which = "";
-      while (ai < a.length && bi < b.length) {
-        if (a[ai] === b[bi]) {
-          result.push(which === "b" ? b[bi] : a[ai]);
-          ai++;
-          bi++;
-        } else if (emptyGSMatch && a[ai] === "**" && b[bi] === a[ai + 1]) {
-          result.push(a[ai]);
-          ai++;
-        } else if (emptyGSMatch && b[bi] === "**" && a[ai] === b[bi + 1]) {
-          result.push(b[bi]);
-          bi++;
-        } else if (a[ai] === "*" && b[bi] && (this.options.dot || !b[bi].startsWith(".")) && b[bi] !== "**") {
-          if (which === "b")
-            return false;
-          which = "a";
-          result.push(a[ai]);
-          ai++;
-          bi++;
-        } else if (b[bi] === "*" && a[ai] && (this.options.dot || !a[ai].startsWith(".")) && a[ai] !== "**") {
-          if (which === "a")
-            return false;
-          which = "b";
-          result.push(b[bi]);
-          ai++;
-          bi++;
-        } else {
+      const keys = new Set;
+      const rows = globParts.filter((parts) => {
+        const key = parts.join("/");
+        if (keys.has(key))
           return false;
+        keys.add(key);
+        return true;
+      });
+      const stars = new Map;
+      for (const parts of rows) {
+        const s = [];
+        for (let i = 0;i < parts.length; i++) {
+          if (parts[i] === "*")
+            s.push(i);
         }
+        if (s.length)
+          stars.set(s.join(","), s);
       }
-      return a.length === b.length && result;
+      if (!stars.size || rows.length * stars.size > 1e5)
+        return rows;
+      const { dot } = this.options;
+      return rows.filter((parts) => {
+        for (const s of stars.values()) {
+          if (s[s.length - 1] >= parts.length)
+            continue;
+          const c = [...parts];
+          let ok = true;
+          let changed = false;
+          for (const i of s) {
+            const p = parts[i];
+            if (p === "*")
+              continue;
+            if (!p || p === "**" || !dot && p.startsWith(".")) {
+              ok = false;
+              break;
+            }
+            c[i] = "*";
+            changed = true;
+          }
+          if (ok && changed && keys.has(c.join("/")))
+            return false;
+        }
+        return true;
+      });
     }
     parseNegate() {
       if (this.nonegate)
@@ -24275,6 +24280,40 @@ var require_commonjs6 = __commonJS(function(exports) {
     braceExpand() {
       return (0, exports.braceExpand)(this.pattern, this.options);
     }
+    #expandBraces() {
+      const { pattern } = this;
+      if (this.options.nobrace)
+        return this.braceExpand();
+      let code = 57344;
+      while (pattern.includes(String.fromCharCode(code))) {
+        if (++code > 63743)
+          return this.braceExpand();
+      }
+      const mark = String.fromCharCode(code);
+      let found = false;
+      const marked = pattern.replace(rangeRe, (m, lo, hi) => {
+        const a = Number(lo);
+        const b = Number(hi);
+        if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b) || Math.abs(a - b) + 1 < RANGE_MIN) {
+          return m;
+        }
+        found = true;
+        return `${mark}${lo}..${hi}${mark}`;
+      });
+      if (!found)
+        return this.braceExpand();
+      const set = (0, exports.braceExpand)(marked, this.options);
+      for (const p of set) {
+        for (const portion of p.split("/")) {
+          const c = portion.indexOf("[");
+          if (c !== -1 && c < portion.lastIndexOf(mark)) {
+            return this.braceExpand();
+          }
+        }
+      }
+      this.#rangeMark = mark;
+      return set;
+    }
     parse(pattern) {
       (0, assert_valid_pattern_js_1.assertValidPattern)(pattern);
       const options = this.options;
@@ -24283,7 +24322,8 @@ var require_commonjs6 = __commonJS(function(exports) {
       if (pattern === "")
         return "";
       const { nocase, nocaseMagicOnly, noext = false, dot, normalize } = options;
-      const lit = literal(pattern, noext);
+      const rangeMark = this.#rangeMark;
+      const lit = rangeMark && pattern.includes(rangeMark) ? undefined : literal(pattern, noext);
       if (lit !== undefined && !(nocase && !nocaseMagicOnly && pattern.toUpperCase() !== pattern.toLowerCase())) {
         return this.#norm(lit);
       }
@@ -24291,7 +24331,13 @@ var require_commonjs6 = __commonJS(function(exports) {
         return PENDING;
       let m = this.#matchers.get(pattern);
       if (!m) {
-        m = new nonrecursive_glob_match_1.Matcher(pattern, { nocase, noext, dot, normalize });
+        m = new nonrecursive_glob_match_1.Matcher(pattern, {
+          nocase,
+          noext,
+          dot,
+          normalize,
+          ...rangeMark && { rangeMark }
+        });
         this.#matchers.set(pattern, m);
       }
       return m;
@@ -125806,8 +125852,8 @@ class TimeLabelFormatter {
 
 // src/post/renderer.ts
 class Renderer {
-  render(renderParamsList, metricsID, stepDurations = []) {
-    return this.renderMetrics(this.renderStepDurations(stepDurations) + this.renderSections(renderParamsList), metricsID);
+  render(renderParamsList, metricsID) {
+    return this.renderMetrics(this.renderSections(renderParamsList), metricsID);
   }
   renderMetrics(charts, metricsID) {
     return `## Workflow Metrics
@@ -125817,32 +125863,6 @@ class Renderer {
 ${metricsID}
 
 ${charts}`;
-  }
-  formatDuration(durationMs) {
-    const totalSeconds = Math.round(durationMs / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor(totalSeconds % 3600 / 60);
-    const seconds = totalSeconds % 60;
-    return [
-      hours > 0 ? `${hours}h` : "",
-      hours > 0 || minutes > 0 ? `${minutes}m` : "",
-      `${seconds}s`
-    ].filter((part) => part !== "").join(" ");
-  }
-  renderStepDurations(stepDurations) {
-    if (stepDurations.length === 0) {
-      return "";
-    }
-    const lines = stepDurations.map(({
-      stepName,
-      durationMs
-    }) => `* ${this.formatCodeSpan(stepName)}: ${this.formatDuration(durationMs)}`).join(`
-`);
-    return `### Step Durations
-
-${lines}
-
-`;
   }
   formatLegends(legends) {
     return legends.map((l) => `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`).join(`
@@ -125978,13 +125998,8 @@ var stepSchema = object({
   data: metricsDataSchema
 });
 var stepsSchema = array(stepSchema);
-var stepDurationSchema = object({
-  stepName: string2(),
-  durationMs: number2().nonnegative()
-});
 var metricsDataWithStepsSchema = metricsDataSchema.extend({
-  steps: stepsSchema,
-  stepDurations: array(stepDurationSchema)
+  steps: stepsSchema
 });
 function isCurrentRunnerJob(job) {
   return job.status === "in_progress" && job.runner_name === process.env.RUNNER_NAME;
@@ -126003,21 +126018,6 @@ function filterMetricsByStep(workflowStep, metricsData) {
     }
   };
 }
-function toStepDurations({
-  name,
-  started_at,
-  completed_at
-}) {
-  if (started_at == null || completed_at == null) {
-    return [];
-  }
-  return [
-    {
-      stepName: name,
-      durationMs: Math.max(0, new Date(completed_at).getTime() - new Date(started_at).getTime())
-    }
-  ];
-}
 function hasMetricsData({ data }) {
   return data.cpuLoadPercentages.length > 0 && data.memoryUsageMBs.length > 0;
 }
@@ -126032,11 +126032,9 @@ async function getMetricsData(jobs) {
       throw new Error(`Failed to fetch metrics: ${res.status} ${res.statusText}`);
     }
     const metricsData = metricsDataSchema.parse(await res.json());
-    const workflowSteps = jobs.find(isCurrentRunnerJob)?.steps ?? [];
     return {
       ...metricsData,
-      steps: workflowSteps.map((s) => filterMetricsByStep(s, metricsData)).filter(hasMetricsData),
-      stepDurations: workflowSteps.flatMap(toStepDurations)
+      steps: (jobs.find(isCurrentRunnerJob)?.steps ?? []).map((s) => filterMetricsByStep(s, metricsData)).filter(hasMetricsData)
     };
   } finally {
     clearTimeout(timer);
@@ -126123,7 +126121,7 @@ function render(metricsData, metricsID) {
       ],
       data: toRenderData(metricsData, mapMemoryUsageToChartParams)
     }
-  ]), metricsID, metricsData.stepDurations);
+  ]), metricsID);
 }
 async function writeMetricsFile({
   metricsData,
@@ -126220,5 +126218,5 @@ async function index() {
 }
 await index();
 
-//# debugId=0242D0EFAB4B03C464756E2164756E21
+//# debugId=EF029F373B723EFD64756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
