@@ -41,7 +41,7 @@
     "node": "26.13.1"
   },
   "resolutions": {
-    "glob": "14.0.3",
+    "glob": "14.0.4",
     "minimatch": "11.0.5"
   }
 }
