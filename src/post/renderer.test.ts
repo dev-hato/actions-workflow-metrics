@@ -15,7 +15,7 @@ describe("Renderer", () => {
     new Date("2024-01-01T00:00:05Z"),
     new Date("2024-01-01T00:00:10Z"),
   ];
-  const singleCpuLegends: z.TypeOf<typeof legendsSchema> = [
+  const singleCpuLegends: z.output<typeof legendsSchema> = [
     { color: "Red", name: "User CPU" },
   ];
 

@@ -33,14 +33,14 @@ describe("Metrics", () => {
     const result: string = metrics.get();
 
     expect(typeof result).toBe("string");
-    expect((): z.TypeOf<typeof metricsDataSchema> =>
+    expect((): z.output<typeof metricsDataSchema> =>
       JSON.parse(result),
     ).not.toThrow();
   });
 
   it("should initialize with empty data arrays", () => {
     const metrics: Metrics = new Metrics();
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+    const data: z.output<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
     expect(data).toHaveProperty("cpuLoadPercentages");
     expect(data).toHaveProperty("memoryUsageMBs");
@@ -54,7 +54,7 @@ describe("Metrics", () => {
     // Wait for async processing to complete
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+    const data: z.output<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
     // Verify CPU metrics are collected
     expect(data.cpuLoadPercentages.length).toBeGreaterThan(0);
@@ -75,7 +75,7 @@ describe("Metrics", () => {
     // Wait for async processing to complete
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const cpuData: z.TypeOf<typeof cpuLoadPercentageSchema> = JSON.parse(
+    const cpuData: z.output<typeof cpuLoadPercentageSchema> = JSON.parse(
       metrics.get(),
     ).cpuLoadPercentages[0];
 
@@ -92,7 +92,7 @@ describe("Metrics", () => {
     // Wait for async processing to complete
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const memData: z.TypeOf<typeof memoryUsageMBSchema> = JSON.parse(
+    const memData: z.output<typeof memoryUsageMBSchema> = JSON.parse(
       metrics.get(),
     ).memoryUsageMBs[0];
 
@@ -111,7 +111,7 @@ describe("Metrics", () => {
     // Wait for initial data collection
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const initialData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
+    const initialData: z.output<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),
     );
     const initialCpuCount: number = initialData.cpuLoadPercentages.length;
@@ -125,7 +125,7 @@ describe("Metrics", () => {
     // append is called at 5-second intervals
     await new Promise((resolve) => setTimeout(resolve, 5100));
 
-    const updatedData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
+    const updatedData: z.output<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),
     );
     const updatedCpuCount: number = updatedData.cpuLoadPercentages.length;
@@ -147,7 +147,7 @@ describe("Metrics", () => {
     // Wait for second data point to be added after 5 seconds
     await new Promise((resolve) => setTimeout(resolve, 5100));
 
-    const data: z.TypeOf<typeof metricsDataSchema> = JSON.parse(metrics.get());
+    const data: z.output<typeof metricsDataSchema> = JSON.parse(metrics.get());
 
     // Verify at least 2 data points exist
     expect(data.cpuLoadPercentages.length).toBeGreaterThanOrEqual(2);
@@ -179,7 +179,7 @@ describe("Metrics", () => {
     // Verify data increases after 10 seconds (2 append calls)
     await new Promise((resolve) => setTimeout(resolve, 10100));
 
-    const finalData: z.TypeOf<typeof metricsDataSchema> = JSON.parse(
+    const finalData: z.output<typeof metricsDataSchema> = JSON.parse(
       metrics.get(),
     );
 

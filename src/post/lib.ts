@@ -84,17 +84,17 @@ function filter(unixTimeMs: number, workflowStep: GitHubJobStep): boolean {
 
 function filterMetricsByStep(
   workflowStep: GitHubJobStep,
-  metricsData: z.TypeOf<typeof metricsDataSchema>,
-): z.TypeOf<typeof stepSchema> {
+  metricsData: z.output<typeof metricsDataSchema>,
+): z.output<typeof stepSchema> {
   return {
     stepName: workflowStep.name,
     data: {
       cpuLoadPercentages: metricsData.cpuLoadPercentages.filter(
-        ({ unixTimeMs }: z.TypeOf<typeof unixTimeMsSchema>): boolean =>
+        ({ unixTimeMs }: z.output<typeof unixTimeMsSchema>): boolean =>
           filter(unixTimeMs, workflowStep),
       ),
       memoryUsageMBs: metricsData.memoryUsageMBs.filter(
-        ({ unixTimeMs }: z.TypeOf<typeof unixTimeMsSchema>): boolean =>
+        ({ unixTimeMs }: z.output<typeof unixTimeMsSchema>): boolean =>
           filter(unixTimeMs, workflowStep),
       ),
     },
@@ -136,13 +136,13 @@ function toStepDurations({
   ];
 }
 
-function hasMetricsData({ data }: z.TypeOf<typeof stepSchema>): boolean {
+function hasMetricsData({ data }: z.output<typeof stepSchema>): boolean {
   return data.cpuLoadPercentages.length > 0 && data.memoryUsageMBs.length > 0;
 }
 
 export async function getMetricsData(
   jobs: components["schemas"]["job"][],
-): Promise<z.TypeOf<typeof metricsDataWithStepsSchema>> {
+): Promise<z.output<typeof metricsDataWithStepsSchema>> {
   const controller: AbortController = new AbortController();
   const timer: Timer = setTimeout(() => controller.abort(), 10 * 1000); // 10 seconds
   try {
@@ -159,14 +159,14 @@ export async function getMetricsData(
       );
     }
 
-    const metricsData: z.TypeOf<typeof metricsDataSchema> =
+    const metricsData: z.output<typeof metricsDataSchema> =
       metricsDataSchema.parse(await res.json());
     const workflowSteps: GitHubJobStep[] =
       jobs.find(isCurrentRunnerJob)?.steps ?? [];
     return {
       ...metricsData,
       steps: workflowSteps
-        .map((s: GitHubJobStep): z.TypeOf<typeof stepSchema> =>
+        .map((s: GitHubJobStep): z.output<typeof stepSchema> =>
           filterMetricsByStep(s, metricsData),
         )
         .filter(hasMetricsData),
@@ -177,16 +177,16 @@ export async function getMetricsData(
   }
 }
 
-function toDate({ unixTimeMs }: z.TypeOf<typeof unixTimeMsSchema>): Date {
+function toDate({ unixTimeMs }: z.output<typeof unixTimeMsSchema>): Date {
   return new Date(unixTimeMs);
 }
 
 function toChartParams(
-  step: z.TypeOf<typeof stepSchema>,
+  step: z.output<typeof stepSchema>,
   mapper: (
-    d: z.TypeOf<typeof metricsDataSchema>,
-  ) => z.TypeOf<typeof baseChartParamsSchema>,
-): z.TypeOf<typeof chartParamsSchema> {
+    d: z.output<typeof metricsDataSchema>,
+  ) => z.output<typeof baseChartParamsSchema>,
+): z.output<typeof chartParamsSchema> {
   return {
     stepName: step.stepName,
     ...mapper(step.data),
@@ -194,12 +194,12 @@ function toChartParams(
 }
 
 function toRenderData(
-  metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>,
+  metricsData: z.output<typeof metricsDataWithStepsSchema>,
   mapper: (
-    d: z.TypeOf<typeof metricsDataSchema>,
-  ) => z.TypeOf<typeof baseChartParamsSchema>,
-): z.TypeOf<typeof chartParamsListSchema> {
-  const steps: z.TypeOf<typeof stepsSchema> = [
+    d: z.output<typeof metricsDataSchema>,
+  ) => z.output<typeof baseChartParamsSchema>,
+): z.output<typeof chartParamsListSchema> {
+  const steps: z.output<typeof stepsSchema> = [
     {
       data: {
         cpuLoadPercentages: metricsData.cpuLoadPercentages,
@@ -209,22 +209,22 @@ function toRenderData(
     ...metricsData.steps,
   ];
   return steps.map(
-    (s: z.TypeOf<typeof stepSchema>): z.TypeOf<typeof chartParamsSchema> =>
+    (s: z.output<typeof stepSchema>): z.output<typeof chartParamsSchema> =>
       toChartParams(s, mapper),
   );
 }
 
 function mapCpuLoadToChartParams({
   cpuLoadPercentages,
-}: z.TypeOf<typeof metricsDataSchema>): z.TypeOf<typeof baseChartParamsSchema> {
+}: z.output<typeof metricsDataSchema>): z.output<typeof baseChartParamsSchema> {
   return {
     stackedBarData: [
       cpuLoadPercentages.map(
-        ({ system }: z.TypeOf<typeof cpuLoadPercentageSchema>): number =>
+        ({ system }: z.output<typeof cpuLoadPercentageSchema>): number =>
           system,
       ),
       cpuLoadPercentages.map(
-        ({ user }: z.TypeOf<typeof cpuLoadPercentageSchema>): number => user,
+        ({ user }: z.output<typeof cpuLoadPercentageSchema>): number => user,
       ),
     ],
     times: cpuLoadPercentages.map(toDate),
@@ -237,14 +237,14 @@ function mapCpuLoadToChartParams({
 
 function mapMemoryUsageToChartParams({
   memoryUsageMBs,
-}: z.TypeOf<typeof metricsDataSchema>): z.TypeOf<typeof baseChartParamsSchema> {
+}: z.output<typeof metricsDataSchema>): z.output<typeof baseChartParamsSchema> {
   return {
     stackedBarData: [
       memoryUsageMBs.map(
-        ({ free }: z.TypeOf<typeof memoryUsageMBSchema>): number => free,
+        ({ free }: z.output<typeof memoryUsageMBSchema>): number => free,
       ),
       memoryUsageMBs.map(
-        ({ used }: z.TypeOf<typeof memoryUsageMBSchema>): number => used,
+        ({ used }: z.output<typeof memoryUsageMBSchema>): number => used,
       ),
     ],
     times: memoryUsageMBs.map(toDate),
@@ -255,7 +255,7 @@ function mapMemoryUsageToChartParams({
 }
 
 export function render(
-  metricsData: z.TypeOf<typeof metricsDataWithStepsSchema>,
+  metricsData: z.output<typeof metricsDataWithStepsSchema>,
   metricsID: string,
 ): string {
   const renderer: Renderer = new Renderer();
