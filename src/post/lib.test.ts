@@ -11,7 +11,7 @@ import type { metricsDataSchema } from "../type";
 /**
  * Sample metrics data for testing.
  */
-const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
+const sampleMetricsData: z.output<typeof metricsDataSchema> = {
   cpuLoadPercentages: [
     { unixTimeMs: 1704067200000, user: 25.5, system: 10.3 },
     { unixTimeMs: 1704067205000, user: 30.2, system: 12.1 },
@@ -26,13 +26,13 @@ const sampleMetricsData: z.TypeOf<typeof metricsDataSchema> = {
  * Creates a mock fetch function that returns the given metrics data.
  */
 function createMockFetch(
-  data: z.TypeOf<typeof metricsDataSchema>,
+  data: z.output<typeof metricsDataSchema>,
 ): typeof fetch {
   return mock(
     async (): Promise<Response> =>
       ({
         ok: true,
-        json: (): Promise<z.TypeOf<typeof metricsDataSchema>> =>
+        json: (): Promise<z.output<typeof metricsDataSchema>> =>
           Promise.resolve(data),
       }) as Response,
   ) as unknown as typeof fetch;
@@ -122,7 +122,7 @@ describe("render", () => {
   });
 
   it("should handle empty metrics data", () => {
-    const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
+    const metricsData: z.output<typeof metricsDataWithStepsSchema> = {
       cpuLoadPercentages: [],
       memoryUsageMBs: [],
       steps: [],
@@ -145,7 +145,7 @@ describe("render", () => {
   };
 
   it("should correctly map CPU load percentages", () => {
-    const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
+    const metricsData: z.output<typeof metricsDataWithStepsSchema> = {
       cpuLoadPercentages: [
         { unixTimeMs: 1704067200000, user: 20, system: 10 },
         { unixTimeMs: 1704067205000, user: 25, system: 15 },
@@ -162,7 +162,7 @@ describe("render", () => {
   });
 
   it("should correctly map memory usage data", () => {
-    const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
+    const metricsData: z.output<typeof metricsDataWithStepsSchema> = {
       cpuLoadPercentages: [{ unixTimeMs: 1704067200000, user: 20, system: 10 }],
       memoryUsageMBs: [
         { unixTimeMs: 1704067200000, used: 5000, free: 10000 },
@@ -199,7 +199,7 @@ describe("getMetricsData", () => {
     completed_at: "2024-01-01T00:00:05.000Z",
   };
   const expectOnlyFirstDataPoint = (
-    result: z.TypeOf<typeof metricsDataWithStepsSchema>,
+    result: z.output<typeof metricsDataWithStepsSchema>,
   ) => {
     expect(result.steps[0].data.cpuLoadPercentages).toEqual([
       sampleMetricsData.cpuLoadPercentages[0],
@@ -276,7 +276,7 @@ describe("getMetricsData", () => {
   it("should return steps with filtered metrics for matching job", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
-    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+    const result: z.output<typeof metricsDataWithStepsSchema> =
       await getMetricsData([
         createJob({
           steps: [{ ...buildStep, completed_at: "2024-01-01T00:00:02.000Z" }],
@@ -348,7 +348,7 @@ describe("getMetricsData", () => {
   it("should return empty steps when no job matches RUNNER_NAME", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
-    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+    const result: z.output<typeof metricsDataWithStepsSchema> =
       await getMetricsData([createJob({ runner_name: "other-runner" })]);
 
     expect(result.steps).toEqual([]);
@@ -357,7 +357,7 @@ describe("getMetricsData", () => {
   it("should return empty steps when no job is in_progress", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
-    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+    const result: z.output<typeof metricsDataWithStepsSchema> =
       await getMetricsData([
         createJob({
           status: "completed",
@@ -380,7 +380,7 @@ describe("getMetricsData", () => {
   it("should filter out steps with empty metrics", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
-    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+    const result: z.output<typeof metricsDataWithStepsSchema> =
       await getMetricsData([
         createJob({
           steps: [
@@ -404,7 +404,7 @@ describe("getMetricsData", () => {
   it("should return empty steps when matching job has no steps", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
-    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+    const result: z.output<typeof metricsDataWithStepsSchema> =
       await getMetricsData([createJob({})]);
 
     expect(result.steps).toEqual([]);
@@ -413,7 +413,7 @@ describe("getMetricsData", () => {
   it("should include all metrics when step has null time bounds", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
-    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+    const result: z.output<typeof metricsDataWithStepsSchema> =
       await getMetricsData([
         createJob({
           steps: [
@@ -441,7 +441,7 @@ describe("getMetricsData", () => {
   it("should filter with only started_at", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
-    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+    const result: z.output<typeof metricsDataWithStepsSchema> =
       await getMetricsData([
         createJob({
           steps: [
@@ -469,7 +469,7 @@ describe("getMetricsData", () => {
   it("should filter with only completed_at", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
-    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+    const result: z.output<typeof metricsDataWithStepsSchema> =
       await getMetricsData([
         createJob({
           steps: [
@@ -492,7 +492,7 @@ describe("getMetricsData", () => {
   it("should handle multiple jobs and select the correct one", async () => {
     globalThis.fetch = createMockFetch(sampleMetricsData);
 
-    const result: z.TypeOf<typeof metricsDataWithStepsSchema> =
+    const result: z.output<typeof metricsDataWithStepsSchema> =
       await getMetricsData([
         createJob({
           id: 1,
@@ -532,7 +532,7 @@ describe("getMetricsData", () => {
 });
 
 describe("writeMetricsFile", (): void => {
-  const metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> = {
+  const metricsData: z.output<typeof metricsDataWithStepsSchema> = {
     ...sampleMetricsData,
     steps: [],
     stepDurations: [],
