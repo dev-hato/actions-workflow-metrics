@@ -26,7 +26,7 @@ export function parseIntervalMs(intervalSecondsInput?: string): number {
 }
 
 export class Metrics {
-  private readonly data: z.TypeOf<typeof metricsDataSchema>;
+  private readonly data: z.output<typeof metricsDataSchema>;
   private readonly intervalMs: number;
 
   constructor() {

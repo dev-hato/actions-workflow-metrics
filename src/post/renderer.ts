@@ -13,7 +13,7 @@ import { TimeLabelFormatter } from "./timeLabels";
 
 export class Renderer {
   render(
-    renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
+    renderParamsList: z.output<typeof renderParamsListSchema>,
     metricsID: string,
     stepDurations: z.output<typeof stepDurationSchema>[] = [],
   ): string {
@@ -93,10 +93,10 @@ ${this.formatGanttTasks(stepDurations)}
     return text.replace(/[\s:;#%`]+/g, " ").trim();
   }
 
-  private formatLegends(legends: z.TypeOf<typeof legendsSchema>): string {
+  private formatLegends(legends: z.output<typeof legendsSchema>): string {
     return legends
       .map(
-        (l: z.TypeOf<typeof legendSchema>): string =>
+        (l: z.output<typeof legendSchema>): string =>
           `* $\${\\color{${l.color}} \\verb|${l.color}: ${l.name}|}$$`,
       )
       .join("\n");
@@ -126,13 +126,13 @@ ${this.formatGanttTasks(stepDurations)}
 <summary>Chart</summary>`;
   }
 
-  private extractColors(legends: z.TypeOf<typeof legendsSchema>): string {
+  private extractColors(legends: z.output<typeof legendsSchema>): string {
     return legends
-      .map(({ color }: z.TypeOf<typeof legendSchema>): string => color)
+      .map(({ color }: z.output<typeof legendSchema>): string => color)
       .join(", ");
   }
 
-  private formatTimes(times: z.TypeOf<typeof timesSchema>): string {
+  private formatTimes(times: z.output<typeof timesSchema>): string {
     return JSON.stringify(TimeLabelFormatter.format(times));
   }
 
@@ -152,7 +152,7 @@ ${this.formatGanttTasks(stepDurations)}
   }
 
   private calculateStackedBars(
-    stackedBarData: z.TypeOf<typeof stackedBarDataSchema>,
+    stackedBarData: z.output<typeof stackedBarDataSchema>,
   ): string {
     return stackedBarData
       .toReversed()
@@ -174,7 +174,7 @@ ${this.formatGanttTasks(stepDurations)}
   }
 
   private renderSection(
-    renderParams: z.TypeOf<typeof renderParamsSchema>,
+    renderParams: z.output<typeof renderParamsSchema>,
   ): string {
     return `### ${renderParams.title}
 
@@ -184,7 +184,7 @@ ${this.formatLegends(renderParams.legends)}${this.renderSectionCharts(renderPara
   }
 
   private renderChart(
-    chartParams: z.TypeOf<typeof chartParamsSchema>,
+    chartParams: z.output<typeof chartParamsSchema>,
     plotColorPalette: string,
   ): string {
     return `
@@ -210,25 +210,25 @@ ${this.calculateStackedBars(chartParams.stackedBarData)}
   }
 
   private renderSectionCharts(
-    renderParams: z.TypeOf<typeof renderParamsSchema>,
+    renderParams: z.output<typeof renderParamsSchema>,
   ): string {
     const plotColorPalette: string = this.extractColors(renderParams.legends);
     return renderParams.data
       .filter(
-        ({ stackedBarData }: z.TypeOf<typeof chartParamsSchema>): boolean =>
+        ({ stackedBarData }: z.output<typeof chartParamsSchema>): boolean =>
           stackedBarData.length > 0,
       )
-      .map((p: z.TypeOf<typeof chartParamsSchema>): string =>
+      .map((p: z.output<typeof chartParamsSchema>): string =>
         this.renderChart(p, plotColorPalette),
       )
       .join("");
   }
 
   private renderSections(
-    renderParamsList: z.TypeOf<typeof renderParamsListSchema>,
+    renderParamsList: z.output<typeof renderParamsListSchema>,
   ): string {
     return renderParamsList
-      .map((p: z.TypeOf<typeof renderParamsSchema>): string =>
+      .map((p: z.output<typeof renderParamsSchema>): string =>
         this.renderSection(p),
       )
       .join("\n\n");
