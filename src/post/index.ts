@@ -43,7 +43,7 @@ async function index(): Promise<void> {
       },
     );
     const maxRetryCount: number = 10;
-    let metricsData: z.TypeOf<typeof metricsDataWithStepsSchema> | undefined;
+    let metricsData: z.output<typeof metricsDataWithStepsSchema> | undefined;
 
     for (let i = 0; i < maxRetryCount; i++) {
       try {
