@@ -11,9 +11,10 @@ on:
   push:
     branches:
       - main
+  merge_group:
+# Writes use a GitHub App token, so GITHUB_TOKEN only has read permission
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 jobs:
   update-gitleaks:
     timeout-minutes: 30
@@ -25,9 +26,21 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: $/
+      # Fix PRs are operated on only for push and pull_request from non-fork repositories. Other events only verify the diff, so no write token is issued
+      # For PRs from forks, this action verifies the diff without operating on fix PRs
+      - name: Generate a token
+        id: generate_token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          client-id: ${{ secrets.PROJECT_AUTOMATION_APP_CLIENT_ID }} # zizmor: ignore[secrets-outside-env]
+          private-key: ${{ secrets.PROJECT_AUTOMATION_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
       - uses: dev-hato/actions-update-gitleaks@d33ae3f5380b57036a94ecb1a40344d7cb3f20d6 # v0.0.117
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.generate_token.outputs.token || github.token }}
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true

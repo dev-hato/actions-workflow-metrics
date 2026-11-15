@@ -1,0 +1,60 @@
+---
+name: update-actions-lock
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - closed
+  merge_group:
+permissions:
+  contents: read
+jobs:
+  update-actions-lock:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name != 'pull_request' || github.event.action != 'closed'
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          persist-credentials: false
+      - uses: $/
+      - name: Install actions-lock
+        if: github.event_name != 'pull_request' || github.event.action != 'closed'
+        run: gh extension install github/gh-actions-lock --pin v0.4.1
+        env:
+          GH_TOKEN: ${{ github.token }}
+      # PRs from forks cannot use secrets, and the merge queue cannot create fix PRs, so only run read-only verification
+      - name: Verify lockfile
+        if: github.event_name == 'merge_group' || (github.event.action != 'closed' && github.event.pull_request.head.repo.full_name != github.repository)
+        run: gh actions-lock --verify --no-narrow
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Relock lockfile
+        if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+        run: gh actions-lock --relock --no-narrow --no-interactive
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Generate a token
+        id: generate_token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        # The token is also needed on closed to close the fix PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          client-id: ${{ secrets.PROJECT_AUTOMATION_APP_CLIENT_ID }} # zizmor: ignore[secrets-outside-env]
+          private-key: ${{ secrets.PROJECT_AUTOMATION_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+      - uses: dev-hato/actions-diff-pr-management@474e401b8a7df75f1c804a60aa987140c1e0548c # v2.5.0
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          github-token: ${{ steps.generate_token.outputs.token }}
+          branch-name-prefix: fix-actions-lock
+          pr-title-prefix: Update actions.lock
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
