@@ -29,6 +29,7 @@ jobs:
         run: aqua update-checksum --prune
         env:
           GITHUB_TOKEN: ${{ github.token }}
+      # jscpd:ignore-start
       - name: Generate a token
         id: generate_token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -39,6 +40,7 @@ jobs:
           private-key: ${{ secrets.PROJECT_AUTOMATION_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
           permission-contents: write
           permission-pull-requests: write
+      # jscpd:ignore-end
       - uses: dev-hato/actions-diff-pr-management@474e401b8a7df75f1c804a60aa987140c1e0548c # v2.5.0
         if: github.event.pull_request.head.repo.full_name == github.repository
         with:
