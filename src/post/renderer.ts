@@ -143,10 +143,10 @@ ${this.formatGanttTasks(stepDurations)}
   private accumulateStackedData(
     accumulated: number[][],
     barData: number[],
-    index: number,
   ): number[][] {
+    const previous: number[] = accumulated[accumulated.length - 1];
     accumulated.push(
-      barData.map((v: number, c: number): number => v + accumulated[index][c]),
+      barData.map((v: number, c: number): number => v + previous[c]),
     );
     return accumulated;
   }
