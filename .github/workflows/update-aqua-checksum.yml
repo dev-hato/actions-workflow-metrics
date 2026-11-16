@@ -7,6 +7,7 @@ on:
       - synchronize
       - reopened
       - closed
+  merge_group:
 permissions:
   contents: read
 jobs:
@@ -18,7 +19,7 @@ jobs:
         if: github.event.action != 'closed'
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: $/
       - uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
@@ -30,11 +31,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
       # jscpd:ignore-start
+      # Fix PRs are operated on only for pull_request from non-fork repositories. Other events only verify the diff, so no write token is issued
+      # For PRs from forks, this action verifies the diff without operating on fix PRs
+      # The token is also needed on closed to close the fix PR
       - name: Generate a token
         id: generate_token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        # The token is also needed on closed to close the fix PR
-        if: github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         with:
           client-id: ${{ secrets.PROJECT_AUTOMATION_APP_CLIENT_ID }} # zizmor: ignore[secrets-outside-env]
           private-key: ${{ secrets.PROJECT_AUTOMATION_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
@@ -42,9 +45,8 @@ jobs:
           permission-pull-requests: write
       # jscpd:ignore-end
       - uses: dev-hato/actions-diff-pr-management@474e401b8a7df75f1c804a60aa987140c1e0548c # v2.5.0
-        if: github.event.pull_request.head.repo.full_name == github.repository
         with:
-          github-token: ${{ steps.generate_token.outputs.token }}
+          github-token: ${{ steps.generate_token.outputs.token || github.token }}
           branch-name-prefix: fix-aqua-checksum
           pr-title-prefix: Update aqua-checksums.json
 concurrency:
