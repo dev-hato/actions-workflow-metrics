@@ -17785,7 +17785,7 @@ var require_undici = __commonJS(function(exports, module) {
 var require_package = __commonJS(function(exports, module) {
   module.exports = {
     name: "systeminformation",
-    version: "5.33.21",
+    version: "5.33.23",
     description: "Advanced, lightweight system and OS information library",
     license: "MIT",
     author: "Sebastian Hildebrandt <hildebrandt@plus-innovations.com> (https://plus-innovations.com)",
@@ -17918,12 +17918,27 @@ var require_util9 = __commonJS(function(exports) {
   var _psError = "--ERROR--";
   var _psCmdSeperator = "--###ENDCMD###--";
   var _psIdSeperator = "--##ID##--";
+  var _winSysDir = WINDIR + "\\system32";
   var execOptsWin = {
     windowsHide: true,
     maxBuffer: 1024 * 102400,
     encoding: "UTF-8",
-    env: Object.assign({}, process.env, { LANG: "en_US.UTF-8" })
+    env: Object.assign({}, process.env, { LANG: "en_US.UTF-8" }),
+    cwd: _windows && fs.existsSync(_winSysDir) ? _winSysDir : undefined
   };
+  function winCwd(options) {
+    if (!execOptsWin.cwd || options && options.cwd) {
+      return options;
+    }
+    return Object.assign({}, options, { cwd: execOptsWin.cwd });
+  }
+  function execCwd(cmd, opts, callback) {
+    if (typeof opts === "function") {
+      callback = opts;
+      opts = undefined;
+    }
+    return exec(cmd, winCwd(opts), callback);
+  }
   var execOptsLinux = {
     maxBuffer: 1024 * 102400,
     encoding: "UTF-8",
@@ -17958,6 +17973,7 @@ var require_util9 = __commonJS(function(exports) {
   var stringSubstring = new String().substring;
   var stringTrim = new String().trim;
   var stringStartWith = new String().startsWith;
+  var stringSplit = new String().split;
   var mathMin = Math.min;
   function isFunction(functionToCheck) {
     return typeof functionToCheck === "function";
@@ -18194,7 +18210,7 @@ var require_util9 = __commonJS(function(exports) {
   }
   function getVboxmanage() {
     const vboxPath = (process.env.VBOX_INSTALL_PATH || process.env.VBOX_MSI_INSTALL_PATH || "").replace(/["%!^&|<>`$;\r\n]/g, "");
-    return _windows ? `"${vboxPath}\\VBoxManage.exe"` : "vboxmanage";
+    return _windows ? vboxPath ? `"${vboxPath}\\VBoxManage.exe"` : "VBoxManage.exe" : "vboxmanage";
   }
   function powerShellProceedResults(data) {
     let id = "";
@@ -18230,7 +18246,8 @@ var require_util9 = __commonJS(function(exports) {
         windowsHide: true,
         maxBuffer: 1024 * 102400,
         encoding: "UTF-8",
-        env: Object.assign({}, process.env, { LANG: "en_US.UTF-8" })
+        env: Object.assign({}, process.env, { LANG: "en_US.UTF-8" }),
+        cwd: execOptsWin.cwd
       });
       if (_psChild && _psChild.pid) {
         _psPersistent = true;
@@ -18307,7 +18324,8 @@ var require_util9 = __commonJS(function(exports) {
               windowsHide: true,
               maxBuffer: 1024 * 102400,
               encoding: "UTF-8",
-              env: Object.assign({}, process.env, { LANG: "en_US.UTF-8" })
+              env: Object.assign({}, process.env, { LANG: "en_US.UTF-8" }),
+              cwd: execOptsWin.cwd
             });
             if (child && !child.pid) {
               child.on("error", () => {
@@ -18352,7 +18370,7 @@ var require_util9 = __commonJS(function(exports) {
   }
   function execSafe(cmd, args, options) {
     let result = "";
-    options = options || {};
+    options = winCwd(options || {});
     return new Promise((resolve) => {
       process.nextTick(() => {
         try {
@@ -18479,7 +18497,7 @@ var require_util9 = __commonJS(function(exports) {
       opts = execOptsWin;
     }
     const newCmd = "chcp 65001 > nul && cmd /C " + cmd + " && chcp " + codepage + " > nul";
-    exec(newCmd, opts, (error, stdout) => {
+    exec(newCmd, winCwd(opts), (error, stdout) => {
       callback(error, stdout);
     });
   }
@@ -18555,6 +18573,7 @@ var require_util9 = __commonJS(function(exports) {
       st.__proto__.toString = stringToString;
       st.__proto__.substr = stringSubstr;
       st.__proto__.substring = stringSubstring;
+      st.__proto__.split = stringSplit;
       st.__proto__.trim = stringTrim;
       st.__proto__.startsWith = stringStartWith;
     } catch (e) {
@@ -20520,6 +20539,7 @@ var require_util9 = __commonJS(function(exports) {
   exports.toInt = toInt;
   exports.splitByNumber = splitByNumber;
   exports.execOptsWin = execOptsWin;
+  exports.execCwd = execCwd;
   exports.execOptsLinux = execOptsLinux;
   exports.getCodepage = getCodepage;
   exports.execWin = execWin;
@@ -20567,6 +20587,7 @@ var require_util9 = __commonJS(function(exports) {
   exports.stringSubstring = stringSubstring;
   exports.stringTrim = stringTrim;
   exports.stringStartWith = stringStartWith;
+  exports.stringSplit = stringSplit;
   exports.mathMin = mathMin;
   exports.WINDIR = WINDIR;
   exports.getFilesInPath = getFilesInPath;
@@ -23193,8 +23214,9 @@ var require_osinfo = __commonJS(function(exports) {
   var os = __require("os");
   var fs = __require("fs");
   var util = require_util9();
-  var exec = __require("child_process").exec;
+  var exec = util.execCwd;
   var execSync = __require("child_process").execSync;
+  var execFile = __require("child_process").execFile;
   var _platform = process.platform;
   var _linux = _platform === "linux" || _platform === "android";
   var _darwin = _platform === "darwin";
@@ -23368,11 +23390,9 @@ var require_osinfo = __commonJS(function(exports) {
       }
     }
     if (_windows) {
-      try {
-        const stdout = execSync("echo %COMPUTERNAME%.%USERDNSDOMAIN%", util.execOptsWin);
-        fqdn = stdout.toString().replace(".%USERDNSDOMAIN%", "").split(os.EOL)[0];
-      } catch {
-        util.noop();
+      const name = process.env.COMPUTERNAME;
+      if (name) {
+        fqdn = process.env.USERDNSDOMAIN ? name + "." + process.env.USERDNSDOMAIN : name;
       }
     }
     return fqdn;
@@ -23581,21 +23601,21 @@ var require_osinfo = __commonJS(function(exports) {
     return new Promise((resolve) => {
       process.nextTick(() => {
         try {
-          exec('findstr /C:"Detected boot environment" "%windir%\\Panther\\setupact.log"', util.execOptsWin, (error, stdout) => {
-            if (!error) {
-              const line = stdout.toString().split(`
-\r`)[0];
-              return resolve(line.toLowerCase().indexOf("efi") >= 0);
-            } else {
-              exec("echo %firmware_type%", util.execOptsWin, (error, stdout) => {
-                if (!error) {
-                  const line = stdout.toString() || "";
-                  return resolve(line.toLowerCase().indexOf("efi") >= 0);
-                } else {
-                  return resolve(false);
-                }
-              });
+          const logFile = util.WINDIR + "\\Panther\\setupact.log";
+          const fwEfi = () => (process.env.firmware_type || "").toLowerCase().indexOf("efi") >= 0;
+          fs.stat(logFile, (error, stats) => {
+            if (error || stats.size > 50 * 1024 * 1024) {
+              return resolve(fwEfi());
             }
+            fs.readFile(logFile, "latin1", (error, content) => {
+              const line = !error ? content.split(`
+`).filter((l) => l.indexOf("Detected boot environment") >= 0).join(`
+`) : "";
+              if (line) {
+                return resolve(line.toLowerCase().indexOf("efi") >= 0);
+              }
+              return resolve(fwEfi());
+            });
           });
         } catch {
           return resolve(false);
@@ -24455,15 +24475,12 @@ echo -n "hardware: "; cat /sys/class/dmi/id/product_uuid 2> /dev/null; echo;`;
           });
         }
         if (_windows) {
-          let sysdir = "%windir%\\System32";
-          if (process.arch === "ia32" && Object.prototype.hasOwnProperty.call(process.env, "PROCESSOR_ARCHITEW6432")) {
-            sysdir = "%windir%\\sysnative\\cmd.exe /c %windir%\\System32";
-          }
+          const sysdir = process.arch === "ia32" && Object.prototype.hasOwnProperty.call(process.env, "PROCESSOR_ARCHITEW6432") ? "Sysnative" : "System32";
           util.powerShell("Get-CimInstance Win32_ComputerSystemProduct | select UUID | fl").then((stdout) => {
             let lines = stdout.split(`\r
 `);
             result.hardware = util.getValue(lines, "uuid", ":").toLowerCase();
-            exec(`${sysdir}\\reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography" /v MachineGuid`, util.execOptsWin, (error, stdout) => {
+            execFile(util.WINDIR + "\\" + sysdir + "\\reg.exe", ["query", "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography", "/v", "MachineGuid"], util.execOptsWin, (error, stdout) => {
               parts = stdout.toString().split(`
 \r`)[0].split("REG_SZ");
               result.os = parts.length > 1 ? parts[1].replace(/\r+|\n+|\s+/gi, "").toLowerCase() : "";
@@ -30189,7 +30206,7 @@ ${BSDName}|"; diskutil info /dev/${BSDName} | grep SMART;`;
             workload.push(util.powerShell("Get-PhysicalDisk | select BusType,MediaType,FriendlyName,Model,SerialNumber,Size | fl"));
             if (util.smartMonToolsInstalled()) {
               try {
-                const smartDev = JSON.parse(execSync("smartctl --scan -j").toString());
+                const smartDev = JSON.parse(execSync("smartctl --scan -j", util.execOptsWin).toString());
                 if (smartDev && smartDev.devices && smartDev.devices.length > 0) {
                   smartDev.devices.forEach((dev) => {
                     if (!/^[\w/.,:\\-]+$/.test(String(dev.name || ""))) {
@@ -31199,6 +31216,17 @@ var require_processes = __commonJS(function(exports) {
     }
     return result;
   }
+  function psServiceName(srv) {
+    const s = String(srv);
+    let name = "";
+    for (let i = 0;i < s.length; i++) {
+      const c = s[i];
+      if (c >= "a" && c <= "z" || c >= "A" && c <= "Z" || c >= "0" && c <= "9" || c === " " || c === "_" || c === "." || c === "-" || c === "@") {
+        name += c;
+      }
+    }
+    return name;
+  }
   function services(srv, callback) {
     callback = util.isFunction(callback) ? callback : null;
     if (util.isFunction(srv) && !callback) {
@@ -31223,6 +31251,7 @@ var require_processes = __commonJS(function(exports) {
             srvString.__proto__.substring = util.stringSubstring;
             srvString.__proto__.trim = util.stringTrim;
             srvString.__proto__.startsWith = util.stringStartWith;
+            srvString.__proto__.split = util.stringSplit;
           } catch (e) {
             Object.setPrototypeOf(srvString, util.stringObj);
           }
@@ -31240,7 +31269,7 @@ var require_processes = __commonJS(function(exports) {
           if (util.isPrototypePolluted() && srvString !== "*") {
             srvString = "------";
           }
-          let srvs = srvString.split("|");
+          let srvs = util.stringSplit.call(srvString, "|");
           const result = [];
           const dataSrv = [];
           if (_linux || _freebsd || _openbsd || _netbsd || _darwin) {
@@ -31429,7 +31458,7 @@ var require_processes = __commonJS(function(exports) {
               if (srvs[0] !== "*") {
                 wincommand += ' -Filter "';
                 srvs.forEach((srv) => {
-                  wincommand += `Name='${srv.replace(/[^a-zA-Z0-9 _.\-@]/g, "")}' or `;
+                  wincommand += `Name='${psServiceName(srv)}' or `;
                 });
                 wincommand = `${wincommand.slice(0, -4)}"`;
               }
@@ -32095,6 +32124,7 @@ var require_processes = __commonJS(function(exports) {
           processesString.__proto__.substring = util.stringSubstring;
           processesString.__proto__.trim = util.stringTrim;
           processesString.__proto__.startsWith = util.stringStartWith;
+          processesString.__proto__.split = util.stringSplit;
         } catch {
           Object.setPrototypeOf(processesString, util.stringObj);
         }
@@ -32112,7 +32142,7 @@ var require_processes = __commonJS(function(exports) {
         if (util.isPrototypePolluted() && processesString !== "*") {
           processesString = "------";
         }
-        const processes = processesString.split("|");
+        const processes = util.stringSplit.call(processesString, "|");
         const result = [];
         const procSanitized = util.isPrototypePolluted() ? "" : util.sanitizeShellString(proc) || "*";
         if (procSanitized && processes.length && processes[0] !== "------") {
@@ -33764,8 +33794,8 @@ var require_docker = __commonJS(function(exports) {
 // node_modules/systeminformation/lib/virtualbox.js
 var require_virtualbox = __commonJS(function(exports) {
   var os = __require("os");
-  var exec = __require("child_process").exec;
   var util = require_util9();
+  var exec = util.execCwd;
   function vboxInfo(callback) {
     callback = util.isFunction(callback) ? callback : null;
     let result = [];
@@ -37544,5 +37574,5 @@ async function server() {
 }
 await server();
 
-//# debugId=7142DCACCC7ED34A64756E2164756E21
+//# debugId=FDD5C7C090B69FD364756E2164756E21
 //# sourceMappingURL=server.bundle.js.map
