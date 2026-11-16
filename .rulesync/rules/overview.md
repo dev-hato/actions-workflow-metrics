@@ -90,9 +90,10 @@ A weakness here can affect every user of the action.
   Do not just repeat the default display.
   For example, step durations are shown as a Mermaid Gantt chart instead of a plain list.
   The chart shows how steps line up over time, which the job logs do not.
-- Explain the background when a change looks unnecessary for this action.
-  For example, GitHub Actions already shows step durations in the job logs.
-  Adding them here only makes sense because they are also needed in the artifact data.
+- After following the item above, the change may still look unnecessary for this action.
+  In that case, also explain the background.
+  For example, the Gantt chart is more useful, but the job logs already show step durations.
+  Adding them here makes sense because they are also needed in the artifact data.
   State such reasons so reviewers do not need to ask.
   Write them in the PR description, in code comments, or both, depending on the case.
   Use code comments when the reason helps future readers of the code.
