@@ -23405,10 +23405,15 @@ var require_escape = __commonJS(function(exports) {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.escape = undefined;
   var escape = (s, { windowsPathsNoEscape = false, magicalBraces = false } = {}) => {
-    if (magicalBraces) {
-      return windowsPathsNoEscape ? s.replace(/[?*()[\]{}]/g, "[$&]") : s.replace(/[?*()[\]\\{}]/g, "\\$&");
+    const e = magicalBraces ? windowsPathsNoEscape ? s.replace(/[?*()[\]{}]/g, "[$&]") : s.replace(/[?*()[\]\\{}]/g, "\\$&") : windowsPathsNoEscape ? s.replace(/[?*()[\]]/g, "[$&]") : s.replace(/[?*()[\]\\]/g, "\\$&");
+    const c = e.charAt(0);
+    if (c === "#") {
+      return (windowsPathsNoEscape ? "[#]" : "\\#") + e.slice(1);
     }
-    return windowsPathsNoEscape ? s.replace(/[?*()[\]]/g, "[$&]") : s.replace(/[?*()[\]\\]/g, "\\$&");
+    if (c === "!") {
+      return (windowsPathsNoEscape ? "@(!)" : "\\!") + e.slice(1);
+    }
+    return e;
   };
   exports.escape = escape;
 });
@@ -23418,6 +23423,9 @@ var require_unescape = __commonJS(function(exports) {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.unescape = undefined;
   var unescape = (s, { windowsPathsNoEscape = false, magicalBraces = true } = {}) => {
+    if (windowsPathsNoEscape && s.startsWith("@(!)")) {
+      return "!" + (0, exports.unescape)(s.slice(4), { windowsPathsNoEscape, magicalBraces });
+    }
     if (magicalBraces) {
       return windowsPathsNoEscape ? s.replace(/\[([^/\\])\]/g, "$1") : s.replace(/((?!\\).|^)\[([^/\\])\]/g, "$1$2").replace(/\\([^/])/g, "$1");
     }
@@ -23435,28 +23443,131 @@ var require_commonjs6 = __commonJS(function(exports) {
   var assert_valid_pattern_js_1 = require_assert_valid_pattern();
   var escape_js_1 = require_escape();
   var unescape_js_1 = require_unescape();
-  var minimatch = (p, pattern, options = {}) => {
+  var DEFAULT_BRACE_EXPAND_MAX = 1e5;
+  var DEFAULT_GLOB_STAR_RECURSION_MAX = 200;
+  var AWE_KEY = "allowWindow" + "sEscape";
+  var minimatch = (p, pattern, options) => {
     (0, assert_valid_pattern_js_1.assertValidPattern)(pattern);
-    if (!options.nocomment && pattern.charAt(0) === "#") {
+    if (!options?.nocomment && pattern.charAt(0) === "#") {
       return false;
     }
     return cachedMinimatch(pattern, options).match(p);
   };
   exports.minimatch = minimatch;
   var cache = new Map;
+  var oldCache = new Map;
+  var cacheSize = 0;
+  var cacheTotalWeight = 0;
   var cacheMax = 256;
-  var cachedMinimatch = (pattern, options) => {
-    const key = pattern + "\x00" + JSON.stringify(options);
-    let mm = cache.get(key);
-    if (mm) {
-      cache.delete(key);
-    } else {
-      mm = new Minimatch(pattern, { ...options });
-      if (cache.size >= cacheMax) {
-        cache.delete(cache.keys().next().value);
+  var cacheMaxWeight = 1 << 15;
+  var cacheMaxEntryWeight = 1 << 12;
+  var cacheWeight = (mm) => {
+    let w = mm.pattern.length;
+    for (const s of mm.globSet) {
+      w += s.length + 1;
+      if (w > cacheMaxEntryWeight)
+        break;
+    }
+    return w;
+  };
+  var tri = (v) => v === undefined ? 0 : v ? 2 : 1;
+  var booleanWeights = new Map(Object.keys({
+    nobrace: 0,
+    nocomment: 0,
+    nonegate: 0,
+    noglobstar: 0,
+    noext: 0,
+    nonull: 0,
+    partial: 0,
+    dot: 0,
+    nocase: 0,
+    nocaseMagicOnly: 0,
+    magicalBraces: 0,
+    matchBase: 0,
+    flipNegate: 0,
+    preserveMultipleSlashes: 0,
+    windowsNoMagicRoot: 0
+  }).map((k, i) => [k, 24 * 3 ** i]));
+  var optionsKey = (o) => {
+    let n = 0;
+    let wpe = false;
+    for (const k in o) {
+      const v = o[k];
+      switch (k) {
+        case "windowsPathsNoEscape":
+          if (v)
+            wpe = true;
+          break;
+        case AWE_KEY:
+          if (v === false)
+            wpe = true;
+          break;
+        case "platform": {
+          const p = v || defaultPlatform;
+          if (p === defaultPlatform)
+            break;
+          if (p === "darwin")
+            n += 3;
+          else if (p === "win32")
+            n += 6;
+          else if (p === "linux")
+            n += 9;
+          else
+            return JSON.stringify(o);
+          break;
+        }
+        case "optimizationLevel":
+          if (v === undefined)
+            break;
+          n += v >= 2 ? 1 : v >= 1 ? 0 : 2;
+          break;
+        case "braceExpandMax":
+          if (v !== undefined && v !== DEFAULT_BRACE_EXPAND_MAX) {
+            return JSON.stringify(o);
+          }
+          break;
+        case "maxGlobstarRecursion":
+          if (v !== undefined && v !== DEFAULT_GLOB_STAR_RECURSION_MAX) {
+            return JSON.stringify(o);
+          }
+          break;
+        case "normalize":
+          if (v !== undefined)
+            return JSON.stringify(o);
+          break;
+        default:
+          n += (booleanWeights.get(k) ?? 0) * tri(v);
       }
     }
-    cache.set(key, mm);
+    return wpe ? n + 12 : n;
+  };
+  var copyOptions = (o) => {
+    const copy = {};
+    for (const k in o)
+      copy[k] = o[k];
+    return copy;
+  };
+  var cachedMinimatch = (pattern, options) => {
+    const key = options ? optionsKey(options) : 0;
+    let mm = cache.get(key)?.get(pattern);
+    if (mm)
+      return mm;
+    mm = oldCache.get(key)?.get(pattern) ?? new Minimatch(pattern, copyOptions(options));
+    const weight = cacheWeight(mm);
+    if (weight > cacheMaxEntryWeight)
+      return mm;
+    if (cacheSize >= cacheMax || cacheTotalWeight + weight > cacheMaxWeight) {
+      oldCache = cache;
+      cache = new Map;
+      cacheSize = 0;
+      cacheTotalWeight = 0;
+    }
+    let byPattern = cache.get(key);
+    if (!byPattern)
+      cache.set(key, byPattern = new Map);
+    byPattern.set(pattern, mm);
+    cacheSize++;
+    cacheTotalWeight += weight;
     return mm;
   };
   var defaultPlatform = typeof process === "object" && process ? process.env?.__MINIMATCH_TESTING_PLATFORM__ || process.platform : "posix";
@@ -23468,7 +23579,10 @@ var require_commonjs6 = __commonJS(function(exports) {
   exports.minimatch.sep = exports.sep;
   exports.GLOBSTAR = Symbol("globstar **");
   exports.minimatch.GLOBSTAR = exports.GLOBSTAR;
-  var filter = (pattern, options = {}) => (p) => (0, exports.minimatch)(p, pattern, options);
+  var filter = (pattern, options) => {
+    let mm;
+    return (p) => (mm ??= cachedMinimatch(pattern, options)).match(p);
+  };
   exports.filter = filter;
   exports.minimatch.filter = exports.filter;
   var ext = (a, b = {}) => Object.assign({}, a, b);
@@ -23504,7 +23618,11 @@ var require_commonjs6 = __commonJS(function(exports) {
     if (options.nobrace || !/\{(?:(?!\{).)*\}/.test(pattern)) {
       return [pattern];
     }
-    return (0, brace_expansion_1.expand)(pattern, { max: options.braceExpandMax });
+    let p = pattern.replace(/\\\\/g, "\\\\\\\\");
+    if (options.windowsPathsNoEscape || options[AWE_KEY] === false) {
+      p = p.replace(/\[([{}])\]/g, "[\\$1]");
+    }
+    return (0, brace_expansion_1.expand)(p, { max: options.braceExpandMax });
   };
   exports.braceExpand = braceExpand;
   exports.minimatch.braceExpand = exports.braceExpand;
@@ -23567,6 +23685,25 @@ var require_commonjs6 = __commonJS(function(exports) {
       }
     }
     return lit;
+  };
+  var MAX_EXTGLOBS = 256;
+  var extglobCount = (pattern) => {
+    let n = 0;
+    for (let i = 0;i < pattern.length - 1; i++) {
+      const c = pattern.charAt(i);
+      if (c === "\\") {
+        i++;
+      } else if ("+@!?*".includes(c) && pattern.charAt(i + 1) === "(") {
+        n++;
+        i++;
+      }
+    }
+    return n;
+  };
+  var assertValidExtglobs = (pattern) => {
+    if (extglobCount(pattern) > MAX_EXTGLOBS) {
+      throw new TypeError("pattern has too many extglobs");
+    }
   };
   var extSafe = (pattern) => {
     if (/^[?*+@]\(\)$/.test(pattern) || pattern.includes("[:"))
@@ -23671,12 +23808,11 @@ var require_commonjs6 = __commonJS(function(exports) {
       (0, assert_valid_pattern_js_1.assertValidPattern)(pattern);
       options = options || {};
       this.options = options;
-      this.maxGlobstarRecursion = options.maxGlobstarRecursion ?? 200;
+      this.maxGlobstarRecursion = options.maxGlobstarRecursion ?? DEFAULT_GLOB_STAR_RECURSION_MAX;
       this.pattern = pattern;
       this.platform = options.platform || defaultPlatform;
       this.isWindows = this.platform === "win32";
-      const awe = "allowWindow" + "sEscape";
-      this.windowsPathsNoEscape = !!options.windowsPathsNoEscape || options[awe] === false;
+      this.windowsPathsNoEscape = !!options.windowsPathsNoEscape || options[AWE_KEY] === false;
       if (this.windowsPathsNoEscape) {
         this.pattern = this.pattern.replace(/\\/g, "/");
       }
@@ -23811,16 +23947,19 @@ var require_commonjs6 = __commonJS(function(exports) {
       let merged = true;
       while (merged) {
         merged = false;
+        if (this.set.length < 2)
+          return;
+        let keys = this.#mergeKeys();
         const len = Math.max(0, ...this.set.map((r) => r.length));
         for (let k = 0;k < len; k++) {
           const groups = new Map;
+          const R = this.set.length + 1;
           this.set.forEach((row, i) => {
             if (!(row[k] instanceof nonrecursive_glob_match_1.Matcher || row[k] === PENDING) || !extSafe(this.globParts[i][k])) {
               return;
             }
-            const parts = [...this.globParts[i]];
-            parts[k] = "";
-            const key = `${row.length}/${parts.join("/")}`;
+            const { pre, suf } = keys[i];
+            const key = pre[k] * R + suf[k + 1];
             const g = groups.get(key);
             if (g)
               g.push(i);
@@ -23834,6 +23973,8 @@ var require_commonjs6 = __commonJS(function(exports) {
             const [first, ...rest] = g;
             const alts = g.map((i) => this.globParts[i][k]);
             const glob = `@(${alts.join("|")})`;
+            if (extglobCount(glob) > MAX_EXTGLOBS)
+              continue;
             this.globParts[first][k] = glob;
             this.set[first][k] = this.parse(glob);
             for (const i of rest)
@@ -23843,9 +23984,54 @@ var require_commonjs6 = __commonJS(function(exports) {
             merged = true;
             this.set = this.set.filter((_2, i) => !drop.has(i));
             this.globParts = this.globParts.filter((_2, i) => !drop.has(i));
+            if (this.set.length < 2)
+              return;
+            keys = this.#mergeKeys();
           }
         }
       }
+    }
+    #mergeKeys() {
+      const partIds = new Map;
+      const ids = this.globParts.map((parts) => parts.map((s) => {
+        let id = partIds.get(s);
+        if (id === undefined)
+          partIds.set(s, id = partIds.size);
+        return id;
+      }));
+      const P = partIds.size;
+      const len = Math.max(0, ...ids.map((r) => r.length));
+      const keys = ids.map((r) => ({
+        pre: [0],
+        suf: new Array(r.length + 1).fill(0)
+      }));
+      for (let k = 0;k < len; k++) {
+        const m = new Map;
+        ids.forEach((r, i) => {
+          if (k >= r.length)
+            return;
+          const { pre } = keys[i];
+          const key = pre[k] * P + r[k];
+          let id = m.get(key);
+          if (id === undefined)
+            m.set(key, id = m.size + 1);
+          pre.push(id);
+        });
+      }
+      for (let k = len - 1;k >= 0; k--) {
+        const m = new Map;
+        ids.forEach((r, i) => {
+          if (k >= r.length)
+            return;
+          const { suf } = keys[i];
+          const key = suf[k + 1] * P + r[k];
+          let id = m.get(key);
+          if (id === undefined)
+            m.set(key, id = m.size + 1);
+          suf[k] = id;
+        });
+      }
+      return keys;
     }
     preprocess(globParts) {
       if (this.options.noglobstar) {
@@ -24079,7 +24265,7 @@ var require_commonjs6 = __commonJS(function(exports) {
       return parts.length === 0 ? [""] : parts;
     }
     firstPhasePreProcess(globParts) {
-      const { braceExpandMax = 1e5 } = this.options;
+      const { braceExpandMax = DEFAULT_BRACE_EXPAND_MAX } = this.options;
       let splitCells = 0;
       const maxSplitCells = 1e6;
       let didSomething = false;
@@ -24442,6 +24628,8 @@ var require_commonjs6 = __commonJS(function(exports) {
         return PENDING;
       let m = this.#matchers.get(pattern);
       if (!m) {
+        if (!noext)
+          assertValidExtglobs(pattern);
         m = new nonrecursive_glob_match_1.Matcher(pattern, {
           nocase,
           noext,
@@ -126493,5 +126681,5 @@ async function index() {
 }
 await index();
 
-//# debugId=59B718DD54296A6964756E2164756E21
+//# debugId=7C1161A052F8DC9864756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
