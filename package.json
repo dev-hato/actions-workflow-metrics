@@ -19,7 +19,7 @@
     "@types/bun": "1.4.4",
     "@types/node": "26.6.6",
     "node-fetch": "2.6.12",
-    "prettier": "3.10.0",
+    "prettier": "3.10.1",
     "rulesync": "43.8.1",
     "textlint": "15.8.0",
     "textlint-filter-rule-comments": "1.3.0",
