@@ -11,22 +11,176 @@ on:
 permissions:
   contents: read
 jobs:
-  update-aqua-checksum:
+  prepare-registry-checksum:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action != 'closed' &&
+      !github.event.pull_request.draft &&
+      github.event.pull_request.user.login == 'renovate[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'renovate/aquaproj-aqua-registry-4.x' &&
+      github.event.pull_request.base.ref == 'main' &&
+      (github.event.sender.login == 'renovate[bot]' || github.event.sender.login == 'dev-hato-app[bot]')
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      direct: ${{ steps.scope.outputs.result }}
+      changed: ${{ steps.checksum.outputs.changed }}
+      contents: ${{ steps.checksum.outputs.contents }}
     steps:
+      - name: Check pilot scope
+        id: scope
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          result-encoding: string
+          script: |
+            const eventPr = context.payload.pull_request;
+            const request = { ...context.repo, pull_number: eventPr.number };
+            const { data: pr } = await github.rest.pulls.get(request);
+            if (pr.state !== 'open' || pr.head.sha !== eventPr.head.sha || pr.base.ref !== eventPr.base.ref) {
+              throw new Error('The registry PR changed before checksum generation.');
+            }
+
+            const { data: files } = await github.rest.pulls.listFiles({ ...request, per_page: 3 });
+            const config = files.find(({ filename, status }) => filename === 'aqua.yaml' && status === 'modified');
+            const configChanges = config?.patch?.split('\n').filter((line) => /^[+-]/u.test(line));
+            const registryRef = /^[+-]\s+ref: v4\.\d+\.\d+ # renovate: depName=aquaproj\/aqua-registry$/u;
+            if (pr.changed_files !== files.length ||
+                config?.additions !== 1 || config.deletions !== 1 ||
+                configChanges?.length !== 2 || !configChanges.every((line) => registryRef.test(line)) ||
+                !configChanges[0].startsWith('-') || !configChanges[1].startsWith('+') ||
+                !files.every(({ filename, status }) => filename === 'aqua.yaml' ||
+                  (filename === 'aqua-checksums.json' && ['added', 'modified'].includes(status)))) {
+              return false;
+            }
+
+            const { data: existing } = await github.rest.pulls.list({
+              ...context.repo,
+              state: 'open',
+              base: pr.head.ref,
+              head: `${context.repo.owner}:fix-aqua-checksum-${pr.head.ref}`,
+            });
+            return existing.length === 0;
+      - if: steps.scope.outputs.result == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - if: steps.scope.outputs.result == 'true'
+        uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
+        with:
+          aqua_version: v2.66.1
+      - name: Prepare checksum
+        if: steps.scope.outputs.result == 'true'
+        id: checksum
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          aqua update-checksum --prune
+          if [[ ! -f aqua-checksums.json || -L aqua-checksums.json ]]; then
+            echo 'Expected aqua-checksums.json to be a regular file.' >&2
+            exit 1
+          fi
+          other_changes="$(git status --porcelain --untracked-files=all -- . ':(exclude)aqua-checksums.json')"
+          if [[ -n "$other_changes" ]]; then
+            echo 'Aqua changed files outside aqua-checksums.json.' >&2
+            exit 1
+          fi
+          checksum_changes="$(git status --porcelain --untracked-files=all -- aqua-checksums.json)"
+          if [[ -n "$checksum_changes" ]]; then
+            contents="$(base64 -w 0 aqua-checksums.json)"
+            echo "contents=$contents" >> "$GITHUB_OUTPUT"
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          fi
+  update-aqua-checksum:
+    needs: prepare-registry-checksum
+    # Keep this required check running even if preparation fails or is skipped.
+    if: ${{ always() }}
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check preparation
+        if: ${{ always() && (cancelled() || needs.prepare-registry-checksum.result == 'failure' || needs.prepare-registry-checksum.result == 'cancelled') }}
+        run: exit 1
+      - name: Verify prepared checksum output
+        if: needs.prepare-registry-checksum.outputs.direct == 'true'
+        env:
+          HAS_CHANGE: ${{ needs.prepare-registry-checksum.outputs.changed }}
+          CHECKSUM_CONTENTS: ${{ needs.prepare-registry-checksum.outputs.contents }}
+        run: |
+          if [[ "$HAS_CHANGE" == false && -z "$CHECKSUM_CONTENTS" ]]; then
+            exit 0
+          fi
+          if [[ "$HAS_CHANGE" != true || -z "$CHECKSUM_CONTENTS" ]]; then
+            echo 'Missing checksum preparation output.' >&2
+            exit 1
+          fi
+          printf '%s' "$CHECKSUM_CONTENTS" | base64 --decode |
+            jq -e '(.checksums | type == "array" and length > 0)' >/dev/null
+        shell: bash
+      - name: Generate a token to update the registry PR
+        id: registry_token
+        if: needs.prepare-registry-checksum.outputs.direct == 'true' && needs.prepare-registry-checksum.outputs.changed == 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.PROJECT_AUTOMATION_APP_CLIENT_ID }} # zizmor: ignore[secrets-outside-env]
+          private-key: ${{ secrets.PROJECT_AUTOMATION_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
+          permission-contents: write
+          permission-pull-requests: read
+      - name: Commit the checksum to the registry PR
+        if: needs.prepare-registry-checksum.outputs.direct == 'true' && needs.prepare-registry-checksum.outputs.changed == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CHECKSUM_CONTENTS: ${{ needs.prepare-registry-checksum.outputs.contents }}
+        with:
+          github-token: ${{ steps.registry_token.outputs.token }}
+          script: |
+            const eventPr = context.payload.pull_request;
+            const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: eventPr.number });
+            if (pr.state !== 'open' || pr.draft || pr.user.login !== 'renovate[bot]' ||
+                pr.base.ref !== 'main' || pr.head.repo?.full_name !== pr.base.repo.full_name ||
+                pr.head.ref !== 'renovate/aquaproj-aqua-registry-4.x' || pr.head.sha !== eventPr.head.sha) {
+              throw new Error('The registry PR changed before the checksum could be committed.');
+            }
+
+            const result = await github.graphql(
+              'mutation ($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }',
+              { input: {
+                branch: {
+                  repositoryNameWithOwner: pr.head.repo.full_name,
+                  branchName: pr.head.ref,
+                },
+                expectedHeadOid: eventPr.head.sha,
+                message: { headline: 'Update Aqua registry checksum' },
+                fileChanges: { additions: [{
+                  path: 'aqua-checksums.json',
+                  contents: process.env.CHECKSUM_CONTENTS,
+                }] },
+              } },
+            );
+            core.setFailed(`Checksum committed as ${result.createCommitOnBranch.commit.oid}. The updated HEAD must pass this check.`);
+      # Keep the existing fix-PR path for changes outside the pilot.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: github.event.action != 'closed'
+        if: needs.prepare-registry-checksum.outputs.direct != 'true' && github.event.action != 'closed'
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: $/
+        if: needs.prepare-registry-checksum.outputs.direct != 'true'
       - uses: aquaproj/aqua-installer@611554c6f0137ba41c8dd15aca8bee82504ea461 # v4.1.1
-        if: github.event.action != 'closed'
+        if: needs.prepare-registry-checksum.outputs.direct != 'true' && github.event.action != 'closed'
         with:
           aqua_version: v2.66.1
-      - if: github.event.action != 'closed'
+      - if: needs.prepare-registry-checksum.outputs.direct != 'true' && github.event.action != 'closed'
         run: aqua update-checksum --prune
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -37,7 +191,10 @@ jobs:
       - name: Generate a token
         id: generate_token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: >-
+          needs.prepare-registry-checksum.outputs.direct != 'true' &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
         with:
           client-id: ${{ secrets.PROJECT_AUTOMATION_APP_CLIENT_ID }} # zizmor: ignore[secrets-outside-env]
           private-key: ${{ secrets.PROJECT_AUTOMATION_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
@@ -45,6 +202,7 @@ jobs:
           permission-pull-requests: write
       # jscpd:ignore-end
       - uses: dev-hato/actions-diff-pr-management@474e401b8a7df75f1c804a60aa987140c1e0548c # v2.5.0
+        if: needs.prepare-registry-checksum.outputs.direct != 'true'
         with:
           github-token: ${{ steps.generate_token.outputs.token || github.token }}
           branch-name-prefix: fix-aqua-checksum
