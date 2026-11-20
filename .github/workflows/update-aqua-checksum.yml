@@ -13,14 +13,7 @@ permissions:
 jobs:
   prepare-registry-checksum:
     if: >-
-      github.event_name == 'pull_request' &&
-      github.event.action != 'closed' &&
-      !github.event.pull_request.draft &&
-      github.event.pull_request.user.login == 'renovate[bot]' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.head.ref == 'renovate/aquaproj-aqua-registry-4.x' &&
-      github.event.pull_request.base.ref == 'main' &&
-      (github.event.sender.login == 'renovate[bot]' || github.event.sender.login == 'dev-hato-app[bot]')
+      github.event_name == 'pull_request' && github.event.action != 'closed' && !github.event.pull_request.draft && github.event.pull_request.user.login == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'renovate/aquaproj-aqua-registry-4.x' && github.event.pull_request.base.ref == 'main' && (github.event.sender.login == 'renovate[bot]' || github.event.sender.login == 'dev-hato-app[bot]')
     timeout-minutes: 10
     runs-on: ubuntu-latest
     permissions:
@@ -192,9 +185,7 @@ jobs:
         id: generate_token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         if: >-
-          needs.prepare-registry-checksum.outputs.direct != 'true' &&
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository
+          needs.prepare-registry-checksum.outputs.direct != 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         with:
           client-id: ${{ secrets.PROJECT_AUTOMATION_APP_CLIENT_ID }} # zizmor: ignore[secrets-outside-env]
           private-key: ${{ secrets.PROJECT_AUTOMATION_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
