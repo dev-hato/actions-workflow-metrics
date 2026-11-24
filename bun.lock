@@ -20,7 +20,7 @@
         "node-fetch": "2.6.12",
         "prettier": "3.10.1",
         "rulesync": "43.9.0",
-        "textlint": "16.1.0",
+        "textlint": "16.1.1",
         "textlint-filter-rule-comments": "1.3.0",
         "textlint-rule-abbr-within-parentheses": "1.0.2",
         "textlint-rule-footnote-order": "1.0.3",
@@ -80,8 +80,6 @@
     "@azure/storage-blob": ["@azure/storage-blob@12.34.0", "https://npm.flatt.tech/@azure/storage-blob/-/storage-blob-12.34.0.tgz", { "dependencies": { "@azure/abort-controller": "^2.1.2", "@azure/core-auth": "^1.9.0", "@azure/core-client": "^1.9.3", "@azure/core-http-compat": "^2.2.0", "@azure/core-lro": "^2.2.0", "@azure/core-paging": "^1.6.2", "@azure/core-rest-pipeline": "^1.19.1", "@azure/core-tracing": "^1.2.0", "@azure/core-util": "^1.11.0", "@azure/core-xml": "^1.4.5", "@azure/logger": "^1.1.4", "@azure/storage-common": "^12.5.0", "apache-arrow": "^21.1.0", "events": "^3.0.0", "tslib": "^2.8.1" } }, "sha512-cXDTCAMwDx8Ng9yUe82kOOd2kPnZ8AQqe4FkLMcpaQ3Mvr3/PXVdvRhyP0FtY5/U5Oh6JGk3EcEibaFOymRLFw=="],
 
     "@azure/storage-common": ["@azure/storage-common@12.5.0", "https://npm.flatt.tech/@azure/storage-common/-/storage-common-12.5.0.tgz", { "dependencies": { "@azure/abort-controller": "^2.1.2", "@azure/core-auth": "^1.9.0", "@azure/core-http-compat": "^2.4.0", "@azure/core-rest-pipeline": "^1.24.0", "@azure/core-tracing": "^1.2.0", "@azure/core-util": "^1.11.0", "@azure/logger": "^1.1.4", "events": "^3.3.0", "tslib": "^2.8.1" } }, "sha512-bttzuhQiCIwrkzjPDA+AtAR7dg19L/CC6ztcqJ5LfvWpXuys9mHp0UQ0udYnoUvv9SCT9KTR5kqFvFr0e6k0lQ=="],
-
-    "@babel/code-frame": ["@babel/code-frame@7.29.7", "https://npm.flatt.tech/@babel/code-frame/-/code-frame-7.29.7.tgz", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
 
     "@babel/helper-string-parser": ["@babel/helper-string-parser@7.29.14", "https://npm.flatt.tech/@babel/helper-string-parser/-/helper-string-parser-7.29.14.tgz", {}, "sha512-CXvKMFvM80ihI7Vox9jb+kQjnyjESQNPM+vB7U0Zz6TWuZA+Z/FL0QPMH300h33qJtIx+REeBhXqWOPW48TcAQ=="],
 
@@ -191,35 +189,35 @@
 
     "@textlint/ast-traverse": ["@textlint/ast-traverse@2.3.5", "https://npm.flatt.tech/@textlint/ast-traverse/-/ast-traverse-2.3.5.tgz", { "dependencies": { "@textlint/ast-node-types": "^4.4.3" } }, "sha512-yo1gIoXDx2bNs1JjC9viRxJpErNsfPtzb585KcVwWxxWmu3tXlT2iz13iKdjj5FMYPJe/PORe7lYqymkSUZ7kg=="],
 
-    "@textlint/config-loader": ["@textlint/config-loader@16.1.0", "https://npm.flatt.tech/@textlint/config-loader/-/config-loader-16.1.0.tgz", { "dependencies": { "@textlint/kernel": "16.1.0", "@textlint/module-interop": "16.1.0", "@textlint/resolver": "16.1.0", "@textlint/types": "16.1.0", "@textlint/utils": "16.1.0", "rc-config-loader": "^4.1.4" } }, "sha512-PGXK3w3DB5eQN6Lpjrek2yr0szUDRHl/+Z2E6FD5D5zxzKZCAFjmqu1Ow4mSopL1R4T0pz7jvCFvFFGPRO/xFQ=="],
+    "@textlint/config-loader": ["@textlint/config-loader@16.1.1", "https://npm.flatt.tech/@textlint/config-loader/-/config-loader-16.1.1.tgz", { "dependencies": { "@textlint/kernel": "16.1.1", "@textlint/module-interop": "16.1.1", "@textlint/resolver": "16.1.1", "@textlint/types": "16.1.1", "@textlint/utils": "16.1.1", "rc-config-loader": "^4.1.4" } }, "sha512-nkmAGoZ3GDgBNiCjeF2+uujCZFpsC0xxUL/81ohVpg8yqwkMjtijW9QV15DQETUCENKxen4Fdvqr4iztuFGcPQ=="],
 
-    "@textlint/feature-flag": ["@textlint/feature-flag@16.1.0", "https://npm.flatt.tech/@textlint/feature-flag/-/feature-flag-16.1.0.tgz", {}, "sha512-8rjC4raP3vyr1hNEDU6n9MOi0x7D6RfjvR0C+/uE37wMtGopaS+vwDWP6igZUelzfzk8WGRnqOOouQVN2UXTKA=="],
+    "@textlint/feature-flag": ["@textlint/feature-flag@16.1.1", "https://npm.flatt.tech/@textlint/feature-flag/-/feature-flag-16.1.1.tgz", {}, "sha512-yr8hAb1DfTe6rHx3ppajYGxsRYeWMrJxgZtJAOZDlc8lnJrTGzmU8pKTBHHWBtG+HAVlgzVUrDIthi2f40sQ1w=="],
 
-    "@textlint/fixer-formatter": ["@textlint/fixer-formatter@16.1.0", "https://npm.flatt.tech/@textlint/fixer-formatter/-/fixer-formatter-16.1.0.tgz", { "dependencies": { "@textlint/module-interop": "16.1.0", "@textlint/resolver": "16.1.0", "@textlint/types": "16.1.0", "debug": "^4.4.3", "diff": "^8.0.4" } }, "sha512-EsObM9LhkDvWrVi3koC7UlhaB8u1dn0IbY66tWWHbG9byJYUHfa3AMEZQZ9GbEWjtO2hF6q/tSWpEIjavBTqog=="],
+    "@textlint/fixer-formatter": ["@textlint/fixer-formatter@16.1.1", "https://npm.flatt.tech/@textlint/fixer-formatter/-/fixer-formatter-16.1.1.tgz", { "dependencies": { "@textlint/module-interop": "16.1.1", "@textlint/resolver": "16.1.1", "@textlint/types": "16.1.1", "debug": "^4.4.3", "diff": "^8.0.4" } }, "sha512-EzRqMNJLZnQ16HBmuVoHFTDzdTgOrc5DstO+QzfMSXXbgnPMxF9PIQgzoVveMBArlI5oJeBTYvRTkR3QPDS42A=="],
 
     "@textlint/kernel": ["@textlint/kernel@3.4.5", "https://npm.flatt.tech/@textlint/kernel/-/kernel-3.4.5.tgz", { "dependencies": { "@textlint/ast-node-types": "^4.4.3", "@textlint/ast-tester": "^2.3.5", "@textlint/ast-traverse": "^2.3.5", "@textlint/feature-flag": "^3.3.5", "@textlint/source-code-fixer": "^3.4.5", "@textlint/types": "^1.5.5", "@textlint/utils": "^1.2.5", "debug": "^4.3.1", "deep-equal": "^1.1.1", "map-like": "^2.0.0", "structured-source": "^3.0.2" } }, "sha512-KGeOq4mbjPe3okDtPw7mbnTX/wP66ndmRKAoOz8gOKDIDRlH8nOG/av6k6xbVhdMk9+ZnomqU8jSSYwTZHzAnA=="],
 
-    "@textlint/linter-formatter": ["@textlint/linter-formatter@16.1.0", "https://npm.flatt.tech/@textlint/linter-formatter/-/linter-formatter-16.1.0.tgz", { "dependencies": { "@textlint/module-interop": "16.1.0", "@textlint/resolver": "16.1.0", "@textlint/types": "16.1.0", "debug": "^4.4.3", "js-yaml": "^5.5.0" } }, "sha512-xzv0f1gdUvsHmUCGWIsH3T4rcBLOHkCSbKq8DAL9tCfFzJgPQMr/SJqW28lFhmw+HMa6mNgkh6h6KENoXnMlVw=="],
+    "@textlint/linter-formatter": ["@textlint/linter-formatter@16.1.1", "https://npm.flatt.tech/@textlint/linter-formatter/-/linter-formatter-16.1.1.tgz", { "dependencies": { "@textlint/module-interop": "16.1.1", "@textlint/resolver": "16.1.1", "@textlint/types": "16.1.1", "debug": "^4.4.3", "js-yaml": "^5.5.0" } }, "sha512-Jv1Z7zK1GmoQLPlcOoVz24uV7xNQgA5V80rNkhs+hvnHvBC+EiMAHpsmMDn+Qo/Uao3+4eAtb/FO+hERkLwFnA=="],
 
-    "@textlint/markdown-to-ast": ["@textlint/markdown-to-ast@16.1.0", "https://npm.flatt.tech/@textlint/markdown-to-ast/-/markdown-to-ast-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0" } }, "sha512-0kpwHbbsD276X8LtX400DKQ4dfjhixnPtKz0DBRUpnQuEnPkvoXEjKLjyCcq9OXcqJ6l+8NZdKJhFroCaWHr/g=="],
+    "@textlint/markdown-to-ast": ["@textlint/markdown-to-ast@16.1.1", "https://npm.flatt.tech/@textlint/markdown-to-ast/-/markdown-to-ast-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1" } }, "sha512-Nfrk2txfvmp3MGiC1GndjPxVoLIUSpMvKRyD0+zAPnczW0FaOxB39xGb8onRAm9lu+35XWzQatA39XczQs3YDg=="],
 
-    "@textlint/module-interop": ["@textlint/module-interop@16.1.0", "https://npm.flatt.tech/@textlint/module-interop/-/module-interop-16.1.0.tgz", {}, "sha512-H6vYONqEdwWArXNkzEpfr2eoxVtsFDYzL/uwfjYf5NoQRJJVqahdwnr9/K3o+e84naeR4QCCvma5R13r4mHzlg=="],
+    "@textlint/module-interop": ["@textlint/module-interop@16.1.1", "https://npm.flatt.tech/@textlint/module-interop/-/module-interop-16.1.1.tgz", {}, "sha512-zNsxcMZAIWzGsrLfTPKtB49ZZMhqiSk2jsbpwnBQjJ4dbiqtUoBbe/yLx0z6G1lstcfxeYeQhIuRP0GxYV0bog=="],
 
     "@textlint/regexp-string-matcher": ["@textlint/regexp-string-matcher@2.0.3", "https://npm.flatt.tech/@textlint/regexp-string-matcher/-/regexp-string-matcher-2.0.3.tgz", {}, "sha512-oLaihTHU+vutFmWOXTJexrIYFTF2f60QMTXQjvWO0/jJmCXQ2yfOq6xic0XO2MjG7A1d0UIk4oBMXTLps3mfsg=="],
 
-    "@textlint/resolver": ["@textlint/resolver@16.1.0", "https://npm.flatt.tech/@textlint/resolver/-/resolver-16.1.0.tgz", {}, "sha512-jeJWhVLjaC/wQbtqinMxiURJFeBG10dDRVh62Jv6s/Cp/BACCv6WIHyBeOFiJaW6eu5Dia9rjrab3iABP+4hpw=="],
+    "@textlint/resolver": ["@textlint/resolver@16.1.1", "https://npm.flatt.tech/@textlint/resolver/-/resolver-16.1.1.tgz", {}, "sha512-IH56DQ03YM0S3bap9KPjjanCZZMpckL5QnbWuBeYBpHphXnJEcr9Tx+W+nGJyiu5CN0nTlHNhT+qXmrABInuwA=="],
 
     "@textlint/source-code-fixer": ["@textlint/source-code-fixer@3.4.5", "https://npm.flatt.tech/@textlint/source-code-fixer/-/source-code-fixer-3.4.5.tgz", { "dependencies": { "@textlint/types": "^1.5.5", "debug": "^4.3.1" } }, "sha512-YUcBg6zs7H5ycLwWdfv5LHWlBx7iBAQL6vHY2uPw8AMPYgzU6/f91NGBU/QR7/FVw0e7v9zMngcRN1hMOxpFCw=="],
 
-    "@textlint/text-to-ast": ["@textlint/text-to-ast@16.1.0", "https://npm.flatt.tech/@textlint/text-to-ast/-/text-to-ast-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0" } }, "sha512-Ax2wl7+WFZixMi4E2UUQFKQjnj+ub3nqjuCoa/XvKgtUPmfF+xbrsJ7eZUlaGGEroIA70Dd9A3x0DXOMuu3mYw=="],
+    "@textlint/text-to-ast": ["@textlint/text-to-ast@16.1.1", "https://npm.flatt.tech/@textlint/text-to-ast/-/text-to-ast-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1" } }, "sha512-jHy+UuFq2hjHbt6XeXxwDmLpeMVoHspcRgA8sY48249WHlee7YEoN7yGiqsCQ2QbnbvtsNQ1Vif8N2Np4P5RNw=="],
 
-    "@textlint/textlint-plugin-markdown": ["@textlint/textlint-plugin-markdown@16.1.0", "https://npm.flatt.tech/@textlint/textlint-plugin-markdown/-/textlint-plugin-markdown-16.1.0.tgz", { "dependencies": { "@textlint/markdown-to-ast": "16.1.0", "@textlint/types": "16.1.0" } }, "sha512-FjpEMhHRtH4urY61E+T2OGMls/eev2oEZ08hFMHhwDxjdR26K3sCgNk4rUpHUYb6FQrl0nBvUUTFdiOtkwZ76Q=="],
+    "@textlint/textlint-plugin-markdown": ["@textlint/textlint-plugin-markdown@16.1.1", "https://npm.flatt.tech/@textlint/textlint-plugin-markdown/-/textlint-plugin-markdown-16.1.1.tgz", { "dependencies": { "@textlint/markdown-to-ast": "16.1.1", "@textlint/types": "16.1.1" } }, "sha512-LrHEQ2okVUMYJsKNqNmvFtmm4UQ0UXIIBVdG+rJcUgsM3P26pevoeuWfCbt+laxVEbH30o/zH9E+So7kvCQAkA=="],
 
-    "@textlint/textlint-plugin-text": ["@textlint/textlint-plugin-text@16.1.0", "https://npm.flatt.tech/@textlint/textlint-plugin-text/-/textlint-plugin-text-16.1.0.tgz", { "dependencies": { "@textlint/text-to-ast": "16.1.0", "@textlint/types": "16.1.0" } }, "sha512-xVK8nha9QFuSO6aoDE2zAqq3aooPiCXbOwZ/EtPXh5Lfp359OPgaH+fb8vAELWucudr517kgwXQgGf2NurQWwg=="],
+    "@textlint/textlint-plugin-text": ["@textlint/textlint-plugin-text@16.1.1", "https://npm.flatt.tech/@textlint/textlint-plugin-text/-/textlint-plugin-text-16.1.1.tgz", { "dependencies": { "@textlint/text-to-ast": "16.1.1", "@textlint/types": "16.1.1" } }, "sha512-gj8ncZ3aJrCfGdszkGCfVbi8hPDSPdTIQoJjgzjyMlUr6GolCEFBUDWRvWpCmsduE0gvAy/jBaDp1OUCnh9NIg=="],
 
     "@textlint/types": ["@textlint/types@1.5.5", "https://npm.flatt.tech/@textlint/types/-/types-1.5.5.tgz", { "dependencies": { "@textlint/ast-node-types": "^4.4.3" } }, "sha512-80P6fcqgsG9bP6JgR6W/E/oIx+71pplaicYCvvB4vMIeGk0OnWls4Q21kCpDYmq/C/ABtZ/Gy/Ov/8ExQPeQ7A=="],
 
-    "@textlint/utils": ["@textlint/utils@16.1.0", "https://npm.flatt.tech/@textlint/utils/-/utils-16.1.0.tgz", {}, "sha512-0J5Q/MNr3IXgf02xJfBJd7JvcCTwrH8rPy+7yp5IrWP5FTIhEINuawCQy8cNLRH7PayUS1TR18pa/eCRTfH0Sw=="],
+    "@textlint/utils": ["@textlint/utils@16.1.1", "https://npm.flatt.tech/@textlint/utils/-/utils-16.1.1.tgz", {}, "sha512-hiQVXlRGrGbKF9gfa3+agIR1En7zxe7AyZaRKM9/gD32y7Yo57sJb1bxiORx3ogkatlBlc5zVuWfL+i7qg7dwA=="],
 
     "@toon-format/toon": ["@toon-format/toon@4.4.0", "https://npm.flatt.tech/@toon-format/toon/-/toon-4.4.0.tgz", {}, "sha512-A6UcsVoWbNdhdLNhJbe6JpRlocmf/DZGG57fur3bd8oQtsjBaKWo2hHbOU2zTuy+byUmLIOyP1xJeitopCZzpQ=="],
 
@@ -236,8 +234,6 @@
     "@types/mocha": ["@types/mocha@10.0.10", "https://npm.flatt.tech/@types/mocha/-/mocha-10.0.10.tgz", {}, "sha512-xPyYSz1cMPnJQhl0CLMH68j3gprKZaTjG3s5Vi+fDgx+uhG9NOXwbVt52eFS8ECyXhyKcjDLCBEqBExKuiZb7Q=="],
 
     "@types/node": ["@types/node@26.6.6", "https://npm.flatt.tech/@types/node/-/node-26.6.6.tgz", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog=="],
-
-    "@types/normalize-package-data": ["@types/normalize-package-data@2.4.4", "https://npm.flatt.tech/@types/normalize-package-data/-/normalize-package-data-2.4.4.tgz", {}, "sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA=="],
 
     "@types/unist": ["@types/unist@2.0.11", "https://npm.flatt.tech/@types/unist/-/unist-2.0.11.tgz", {}, "sha512-CmBKiL6NNo/OqgmMn95Fk9Whlp2mtvIv+KNpQKN2F4SjvrEesubTRWGYSg+BnWZOnlCaSTU1sMpsBOzgbYhnsA=="],
 
@@ -535,8 +531,6 @@
 
     "finalhandler": ["finalhandler@2.1.1", "https://npm.flatt.tech/finalhandler/-/finalhandler-2.1.1.tgz", { "dependencies": { "debug": "^4.4.0", "encodeurl": "^2.0.0", "escape-html": "^1.0.3", "on-finished": "^2.4.1", "parseurl": "^1.3.3", "statuses": "^2.0.1" } }, "sha512-S8KoZgRZN+a5rNwqTxlZZePjT/4cnm0ROV70LedRHZ0p8u9fRID0hJUZQpkKLzro8LfmC8sx23bY6tVNxv8pQA=="],
 
-    "find-up-simple": ["find-up-simple@1.0.1", "https://npm.flatt.tech/find-up-simple/-/find-up-simple-1.0.1.tgz", {}, "sha512-afd4O7zpqHeRyg4PfDQsXmlDe2PfdHtJt6Akt8jOWaApLOZk5JXs6VMR29lz03pRe9mpykrRCYIYxaJYcfpncQ=="],
-
     "flat-cache": ["flat-cache@6.1.23", "https://npm.flatt.tech/flat-cache/-/flat-cache-6.1.23.tgz", { "dependencies": { "cacheable": "^2.5.0", "flatted": "^3.4.2", "hookified": "^1.15.0" } }, "sha512-f++BY9pTk+983xK1FLzlLpmM0i0z+jHmx3QESGkURMXujQZz1k5wzwX6hjnQ8goaD0B+sYnDK1yZ6MTyZfUaqA=="],
 
     "flatbuffers": ["flatbuffers@25.9.23", "https://npm.flatt.tech/flatbuffers/-/flatbuffers-25.9.23.tgz", {}, "sha512-MI1qs7Lo4Syw0EOzUl0xjs2lsoeqFku44KpngfIduHBYvzm8h2+7K8YMQh1JtVVVrUvhLpNwqVi4DERegUJhPQ=="],
@@ -603,8 +597,6 @@
 
     "hookified": ["hookified@1.15.1", "https://npm.flatt.tech/hookified/-/hookified-1.15.1.tgz", {}, "sha512-MvG/clsADq1GPM2KGo2nyfaWVyn9naPiXrqIe4jYjXNZQt238kWyOGrsyc/DmRAQ+Re6yeo6yX/yoNCG5KAEVg=="],
 
-    "hosted-git-info": ["hosted-git-info@7.0.2", "https://npm.flatt.tech/hosted-git-info/-/hosted-git-info-7.0.2.tgz", { "dependencies": { "lru-cache": "^10.0.1" } }, "sha512-puUZAUKT5m8Zzvs72XWy3HtvVbTWljRE66cP60bxJzAqf2DgICo7lYTY2IHUmLnNpjYvw5bvmoHvPc0QO2a62w=="],
-
     "http-errors": ["http-errors@2.0.1", "https://npm.flatt.tech/http-errors/-/http-errors-2.0.1.tgz", { "dependencies": { "depd": "~2.0.0", "inherits": "~2.0.4", "setprototypeof": "~1.2.0", "statuses": "~2.0.2", "toidentifier": "~1.0.1" } }, "sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ=="],
 
     "http-proxy-agent": ["http-proxy-agent@9.1.0", "https://npm.flatt.tech/http-proxy-agent/-/http-proxy-agent-9.1.0.tgz", { "dependencies": { "agent-base": "9.0.0", "debug": "^4.3.4", "proxy-agent-negotiate": "1.1.0" } }, "sha512-2NxoveTT58mjYT4n3RPTEfCZGLMbidoO8XEieXfpSYxu+PQJ1qpx4ypwH6N+uF9twBPIvRRgvkvW5HUTYWENig=="],
@@ -618,8 +610,6 @@
     "ignore": ["ignore@5.3.2", "https://npm.flatt.tech/ignore/-/ignore-5.3.2.tgz", {}, "sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g=="],
 
     "imurmurhash": ["imurmurhash@0.1.4", "https://npm.flatt.tech/imurmurhash/-/imurmurhash-0.1.4.tgz", {}, "sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA=="],
-
-    "index-to-position": ["index-to-position@1.2.0", "https://npm.flatt.tech/index-to-position/-/index-to-position-1.2.0.tgz", {}, "sha512-Yg7+ztRkqslMAS2iFaU+Oa4KTSidr63OsFGlOrJoW981kIYO3CGCS3wA95P1mUi/IVSJkn0D479KTJpVpvFNuw=="],
 
     "inherits": ["inherits@2.0.4", "https://npm.flatt.tech/inherits/-/inherits-2.0.4.tgz", {}, "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ=="],
 
@@ -722,8 +712,6 @@
     "japanese-numerals-to-number": ["japanese-numerals-to-number@1.0.2", "https://npm.flatt.tech/japanese-numerals-to-number/-/japanese-numerals-to-number-1.0.2.tgz", {}, "sha512-rgs/V7G8Gfy8Z4XtnVBYXzWMAb9oUWp1pDdRmwHmh0hcjcy1kOu+DOpC5rwoHUAN4TqANwb7WD6z5W2v7v7PQQ=="],
 
     "jose": ["jose@6.2.17", "https://npm.flatt.tech/jose/-/jose-6.2.17.tgz", {}, "sha512-wOuK9V1yujQFH5S0ZWmLcDZN7+IKh9bUCC2ZPCf2HDlol3WWHy+PPyNjEI75FXRLMp3vDKQcupP59xhVU95hcg=="],
-
-    "js-tokens": ["js-tokens@4.0.0", "https://npm.flatt.tech/js-tokens/-/js-tokens-4.0.0.tgz", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
 
     "js-yaml": ["js-yaml@3.15.2", "https://npm.flatt.tech/js-yaml/-/js-yaml-3.15.2.tgz", { "dependencies": { "argparse": "^1.0.7", "esprima": "^4.0.0" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-6EuL879VkRA+1Cz578mKMiKvjPNEuk6+r1JaFzoSWejZmtf7xWbIyw1e3KkxlkzTIt9Taw6JBhEppG7utc1P+w=="],
 
@@ -865,8 +853,6 @@
 
     "node-localstorage": ["node-localstorage@2.2.1", "https://npm.flatt.tech/node-localstorage/-/node-localstorage-2.2.1.tgz", { "dependencies": { "write-file-atomic": "^1.1.4" } }, "sha512-vv8fJuOUCCvSPjDjBLlMqYMHob4aGjkmrkaE42/mZr0VT+ZAU10jRF8oTnX9+pgU9/vYJ8P7YT3Vd6ajkmzSCw=="],
 
-    "normalize-package-data": ["normalize-package-data@6.0.2", "https://npm.flatt.tech/normalize-package-data/-/normalize-package-data-6.0.2.tgz", { "dependencies": { "hosted-git-info": "^7.0.0", "semver": "^7.3.5", "validate-npm-package-license": "^3.0.4" } }, "sha512-V6gygoYb/5EmNI+MEGrWkC+e6+Rr7mTmfHrxDbLzxQogBkgzo76rkok0Am6thgSF7Mv2nLOajAJj5vDJZEFn7g=="],
-
     "normalize-path": ["normalize-path@3.0.0", "https://npm.flatt.tech/normalize-path/-/normalize-path-3.0.0.tgz", {}, "sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA=="],
 
     "object-assign": ["object-assign@3.0.0", "https://npm.flatt.tech/object-assign/-/object-assign-3.0.0.tgz", {}, "sha512-jHP15vXVGeVh1HuaA2wY6lxk+whK/x4KBG88VXeRma7CCun7iGD5qPc4eYykQ9sdQvg8jkwFKsSxHln2ybW3xQ=="],
@@ -895,8 +881,6 @@
 
     "parse-entities": ["parse-entities@2.0.0", "https://npm.flatt.tech/parse-entities/-/parse-entities-2.0.0.tgz", { "dependencies": { "character-entities": "^1.0.0", "character-entities-legacy": "^1.0.0", "character-reference-invalid": "^1.0.0", "is-alphanumerical": "^1.0.0", "is-decimal": "^1.0.0", "is-hexadecimal": "^1.0.0" } }, "sha512-kkywGpCcRYhqQIchaWqZ875wzpS/bMKhz5HnN3p7wveJTkTtyAB/AlnS0f8DFSqYW1T82t6yEAkEcB+A1I3MbQ=="],
 
-    "parse-json": ["parse-json@8.3.0", "https://npm.flatt.tech/parse-json/-/parse-json-8.3.0.tgz", { "dependencies": { "@babel/code-frame": "^7.26.2", "index-to-position": "^1.1.0", "type-fest": "^4.39.1" } }, "sha512-ybiGyvspI+fAoRQbIPRddCcSTV9/LsJbf0e/S85VLowVGzRmokfneg2kwVW/KU5rOXrPSbF1qAKPMgNTqqROQQ=="],
-
     "parse5": ["parse5@5.1.1", "https://npm.flatt.tech/parse5/-/parse5-5.1.1.tgz", {}, "sha512-ugq4DFI0Ptb+WWjAdOK16+u/nHfiIrcE+sh8kZMaM0WllQKLI9rOUq6c2b7cwPkXdzfQESqvoqK6ug7U/Yyzug=="],
 
     "parseurl": ["parseurl@1.3.3", "https://npm.flatt.tech/parseurl/-/parseurl-1.3.3.tgz", {}, "sha512-CiyeOxFT/JZyN5m0z9PfXw4SCBJ6Sygz1Dpl0wqjlhDEGGBP1GnsUVEL0p63hoG1fcj3fHynXi9NYO4nWOL+qQ=="],
@@ -912,8 +896,6 @@
     "path-to-regexp": ["path-to-regexp@8.4.2", "https://npm.flatt.tech/path-to-regexp/-/path-to-regexp-8.4.2.tgz", {}, "sha512-qRcuIdP69NPm4qbACK+aDogI5CBDMi1jKe0ry5rSQJz8JVLsC7jV8XpiJjGRLLol3N+R5ihGYcrPLTno6pAdBA=="],
 
     "path-type": ["path-type@4.0.0", "https://npm.flatt.tech/path-type/-/path-type-4.0.0.tgz", {}, "sha512-gDKb8aZMDeD/tZWs9P6+q0J9Mwkdl6xMV8TjnGP3qJVJ06bdMgkbBlLU8IdfOsIsFz2BW1rNVT3XuNEl8zPAvw=="],
-
-    "picocolors": ["picocolors@1.1.1", "https://npm.flatt.tech/picocolors/-/picocolors-1.1.1.tgz", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
     "picomatch": ["picomatch@2.3.2", "https://npm.flatt.tech/picomatch/-/picomatch-2.3.2.tgz", {}, "sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA=="],
 
@@ -948,10 +930,6 @@
     "raw-body": ["raw-body@3.0.2", "https://npm.flatt.tech/raw-body/-/raw-body-3.0.2.tgz", { "dependencies": { "bytes": "~3.1.2", "http-errors": "~2.0.1", "iconv-lite": "~0.7.0", "unpipe": "~1.0.0" } }, "sha512-K5zQjDllxWkf7Z5xJdV0/B0WTNqx6vxG70zJE4N0kBs4LovmEYWJzQGxC9bS9RAKu3bgM40lrd5zoLJ12MQ5BA=="],
 
     "rc-config-loader": ["rc-config-loader@4.2.0", "https://npm.flatt.tech/rc-config-loader/-/rc-config-loader-4.2.0.tgz", { "dependencies": { "debug": "^4.4.3", "js-yaml": "^5.5.0", "json5": "^2.2.3", "require-from-string": "^2.0.2" } }, "sha512-PoQabZw5RBxSW9jJhI1WJ8hpLYCjF4PrkhqkkjXYKRpWTo1cn3ovdXku2spdS79dnD3pT/axXeEUnwbG8qxz9A=="],
-
-    "read-package-up": ["read-package-up@11.0.0", "https://npm.flatt.tech/read-package-up/-/read-package-up-11.0.0.tgz", { "dependencies": { "find-up-simple": "^1.0.0", "read-pkg": "^9.0.0", "type-fest": "^4.6.0" } }, "sha512-MbgfoNPANMdb4oRBNg5eqLbB2t2r+o5Ua1pNt8BqGp4I0FJZhuVSOj3PaBPni4azWuSzEdNn2evevzVmEk1ohQ=="],
-
-    "read-pkg": ["read-pkg@9.0.1", "https://npm.flatt.tech/read-pkg/-/read-pkg-9.0.1.tgz", { "dependencies": { "@types/normalize-package-data": "^2.4.3", "normalize-package-data": "^6.0.0", "parse-json": "^8.0.0", "type-fest": "^4.6.0", "unicorn-magic": "^0.1.0" } }, "sha512-9viLL4/n1BJUCT1NXVTdS1jtm80yDEgR5T4yCelII49Mbj0v1rZdKqj7zCiYdbB0CuCgdrvHcNogAKTFPBocFA=="],
 
     "readable-stream": ["readable-stream@4.8.0", "https://npm.flatt.tech/readable-stream/-/readable-stream-4.8.0.tgz", { "dependencies": { "abort-controller": "^3.0.0", "buffer": "^6.0.3", "events": "^3.3.0", "process": "^0.11.10", "string_decoder": "^1.3.0" } }, "sha512-2jhTTU3Eilp/2DMT71gbcoqC35eQHasMJH0RHkYxwlxIv3+FR6Y5xAFZIwEGLxKkjZYEFlsiMNIdwUqjK2lLHQ=="],
 
@@ -1005,8 +983,6 @@
 
     "section-matter": ["section-matter@1.0.0", "https://npm.flatt.tech/section-matter/-/section-matter-1.0.0.tgz", { "dependencies": { "extend-shallow": "^2.0.1", "kind-of": "^6.0.0" } }, "sha512-vfD3pmTzGpufjScBh50YHKzEu2lxBWhVEHsNGoEXmCmn2hKGfeNLYMzCJpe8cD7gqX7TJluOVpBkAequ6dgMmA=="],
 
-    "semver": ["semver@7.8.6", "https://npm.flatt.tech/semver/-/semver-7.8.6.tgz", { "bin": { "semver": "bin/semver.js" } }, "sha512-9lpSSU4Mly3mrtruwLs1eLK6+gzbzqeBFwRNjIjE+9LuDpWdYctrQlQ3ej1Ilgi7gknpsTRnPoLP8DpCHqHIJw=="],
-
     "send": ["send@1.2.1", "https://npm.flatt.tech/send/-/send-1.2.1.tgz", { "dependencies": { "debug": "^4.4.3", "encodeurl": "^2.0.0", "escape-html": "^1.0.3", "etag": "^1.8.1", "fresh": "^2.0.0", "http-errors": "^2.0.1", "mime-types": "^3.0.2", "ms": "^2.1.3", "on-finished": "^2.4.1", "range-parser": "^1.2.1", "statuses": "^2.0.2" } }, "sha512-1gnZf7DFcoIcajTjTwjwuDjzuz4PPcY2StKPlsGAQ1+YH20IRVrBaXSWmdjowTJ6u8Rc01PoYOGHXfP1mYcZNQ=="],
 
     "sentence-splitter": ["sentence-splitter@5.1.0", "https://npm.flatt.tech/sentence-splitter/-/sentence-splitter-5.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "^15.8.0" } }, "sha512-Zt4F1K7KF3QQQOVgdJ0Of6WYGI9t3aSiGRI6/DpXj1FXvL5wiOobhRbYceDZnNmnuYWfwd4l+wfyLB+nUax5ow=="],
@@ -1043,14 +1019,6 @@
 
     "space-separated-tokens": ["space-separated-tokens@1.1.5", "https://npm.flatt.tech/space-separated-tokens/-/space-separated-tokens-1.1.5.tgz", {}, "sha512-q/JSVd1Lptzhf5bkYm4ob4iWPjx0KiRe3sRFBNrVqbJkFaBm5vbbowy1mymoPNLRa52+oadOhJ+K49wsSeSjTA=="],
 
-    "spdx-correct": ["spdx-correct@3.2.0", "https://npm.flatt.tech/spdx-correct/-/spdx-correct-3.2.0.tgz", { "dependencies": { "spdx-expression-parse": "^3.0.0", "spdx-license-ids": "^3.0.0" } }, "sha512-kN9dJbvnySHULIluDHy32WHRUu3Og7B9sbY7tsFLctQkIqnMh3hErYgdMjTYuqmcXX+lK5T1lnUt3G7zNswmZA=="],
-
-    "spdx-exceptions": ["spdx-exceptions@2.5.0", "https://npm.flatt.tech/spdx-exceptions/-/spdx-exceptions-2.5.0.tgz", {}, "sha512-PiU42r+xO4UbUS1buo3LPJkjlO7430Xn5SVAhdpzzsPHsjbYVflnnFdATgabnLude+Cqu25p6N+g2lw/PFsa4w=="],
-
-    "spdx-expression-parse": ["spdx-expression-parse@3.0.1", "https://npm.flatt.tech/spdx-expression-parse/-/spdx-expression-parse-3.0.1.tgz", { "dependencies": { "spdx-exceptions": "^2.1.0", "spdx-license-ids": "^3.0.0" } }, "sha512-cbqHunsQWnJNE6KhVSMsMeH5H/L9EpymbzqTQ3uLwNCLZ1Q481oWaofqH7nO6V07xlXwY6PhQdQ2IedWx/ZK4Q=="],
-
-    "spdx-license-ids": ["spdx-license-ids@3.0.24", "https://npm.flatt.tech/spdx-license-ids/-/spdx-license-ids-3.0.24.tgz", {}, "sha512-cLS9TtWkIQFyLkJ3/5aFQAOHOSKTlOs/7WDut/XPSdjom1fJhUdkepeJAKXa9Y05+FabHd0sti+Et559vDtkpQ=="],
-
     "sprintf-js": ["sprintf-js@1.0.3", "https://npm.flatt.tech/sprintf-js/-/sprintf-js-1.0.3.tgz", {}, "sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g=="],
 
     "statuses": ["statuses@2.0.2", "https://npm.flatt.tech/statuses/-/statuses-2.0.2.tgz", {}, "sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw=="],
@@ -1083,7 +1051,7 @@
 
     "text-decoder": ["text-decoder@1.2.7", "https://npm.flatt.tech/text-decoder/-/text-decoder-1.2.7.tgz", { "dependencies": { "b4a": "^1.6.4" } }, "sha512-vlLytXkeP4xvEq2otHeJfSQIRyWxo/oZGEbXrtEEF9Hnmrdly59sUbzZ/QgyWuLYHctCHxFF4tRQZNQ9k60ExQ=="],
 
-    "textlint": ["textlint@16.1.0", "https://npm.flatt.tech/textlint/-/textlint-16.1.0.tgz", { "dependencies": { "@modelcontextprotocol/server": "^2.4.0", "@textlint/config-loader": "16.1.0", "@textlint/feature-flag": "16.1.0", "@textlint/fixer-formatter": "16.1.0", "@textlint/kernel": "16.1.0", "@textlint/linter-formatter": "16.1.0", "@textlint/module-interop": "16.1.0", "@textlint/resolver": "16.1.0", "@textlint/textlint-plugin-markdown": "16.1.0", "@textlint/textlint-plugin-text": "16.1.0", "@textlint/types": "16.1.0", "@textlint/utils": "16.1.0", "debug": "^4.4.3", "file-entry-cache": "^10.1.4", "glob": "^13.0.7", "optionator": "^0.9.4", "path-to-glob-pattern": "^2.0.1", "read-package-up": "^11.0.0", "zod": "^4.6.7" }, "bin": { "textlint": "bin/textlint.js" } }, "sha512-o5pPW5XWFXL6+qAFbYP7XyEcqbjgmFS0xQ4MCuUy2KE8B3Ts4b21h7EyznApNPoNApzMcbZoSBuXav5+uyy4LQ=="],
+    "textlint": ["textlint@16.1.1", "https://npm.flatt.tech/textlint/-/textlint-16.1.1.tgz", { "dependencies": { "@modelcontextprotocol/server": "^2.4.0", "@textlint/config-loader": "16.1.1", "@textlint/feature-flag": "16.1.1", "@textlint/fixer-formatter": "16.1.1", "@textlint/kernel": "16.1.1", "@textlint/linter-formatter": "16.1.1", "@textlint/module-interop": "16.1.1", "@textlint/resolver": "16.1.1", "@textlint/textlint-plugin-markdown": "16.1.1", "@textlint/textlint-plugin-text": "16.1.1", "@textlint/types": "16.1.1", "@textlint/utils": "16.1.1", "debug": "^4.4.3", "file-entry-cache": "^10.1.4", "glob": "^13.0.7", "optionator": "^0.9.4", "path-to-glob-pattern": "^2.0.1", "zod": "^4.6.7" }, "bin": { "textlint": "bin/textlint.js" } }, "sha512-oZfdcmRdfhBCr8v2KG35hDt3kQydFX0NoRI1c74vXp0Ey+iSi/gUKU/GHFoCGCi2fgPp2H/PeFFTyXlzfJKGFQ=="],
 
     "textlint-filter-rule-comments": ["textlint-filter-rule-comments@1.3.0", "https://npm.flatt.tech/textlint-filter-rule-comments/-/textlint-filter-rule-comments-1.3.0.tgz", {}, "sha512-kSk/XcZYKYe4sb44XhYAYPeMFtqKJIMtcju/jwyZxpkn8gRuRMZ4+rB0wJmGRrD0c8tx3hHDAH1JY9ccahMKcA=="],
 
@@ -1249,8 +1217,6 @@
 
     "util-deprecate": ["util-deprecate@1.0.2", "https://npm.flatt.tech/util-deprecate/-/util-deprecate-1.0.2.tgz", {}, "sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw=="],
 
-    "validate-npm-package-license": ["validate-npm-package-license@3.0.4", "https://npm.flatt.tech/validate-npm-package-license/-/validate-npm-package-license-3.0.4.tgz", { "dependencies": { "spdx-correct": "^3.0.0", "spdx-expression-parse": "^3.0.0" } }, "sha512-DpKm2Ui/xN7/HQKCtpZxoRWBhZ9Z0kqtygG8XCgNQ8ZlDnxuQmWhj566j8fN4Cu3/JmbhsDo7fcAJq4s9h27Ew=="],
-
     "vary": ["vary@1.1.2", "https://npm.flatt.tech/vary/-/vary-1.1.2.tgz", {}, "sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg=="],
 
     "vfile": ["vfile@4.2.1", "https://npm.flatt.tech/vfile/-/vfile-4.2.1.tgz", { "dependencies": { "@types/unist": "^2.0.0", "is-buffer": "^2.0.0", "unist-util-stringify-position": "^2.0.0", "vfile-message": "^2.0.0" } }, "sha512-O6AE4OskCG5S1emQ/4gl8zK586RqA3srz3nfK/Viy0UPToBc5Trp9BVFb1u0CjsKrAWwnpr4ifM/KBXPWwJbCA=="],
@@ -1317,27 +1283,27 @@
 
     "@octokit/types/@octokit/openapi-types": ["@octokit/openapi-types@27.0.0", "https://npm.flatt.tech/@octokit/openapi-types/-/openapi-types-27.0.0.tgz", {}, "sha512-whrdktVs1h6gtR+09+QsNk2+FO+49j6ga1c55YZudfEG+oKJVvJLQi3zkOm5JjiUXAagWK2tI2kTGKJ2Ys7MGA=="],
 
-    "@textlint/config-loader/@textlint/kernel": ["@textlint/kernel@16.1.0", "https://npm.flatt.tech/@textlint/kernel/-/kernel-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0", "@textlint/ast-tester": "16.1.0", "@textlint/ast-traverse": "16.1.0", "@textlint/feature-flag": "16.1.0", "@textlint/source-code-fixer": "16.1.0", "@textlint/types": "16.1.0", "@textlint/utils": "16.1.0", "debug": "^4.4.3", "fast-equals": "^4.0.3" } }, "sha512-VYWA0SMUfZHEiTFuQrH7bPEHzTG/xI6wF2/ZQGaqHrIPeV3h9PSOKhM7MQuyy85TkwCmFBWAexUDpSdFs5yILQ=="],
+    "@textlint/config-loader/@textlint/kernel": ["@textlint/kernel@16.1.1", "https://npm.flatt.tech/@textlint/kernel/-/kernel-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1", "@textlint/ast-tester": "16.1.1", "@textlint/ast-traverse": "16.1.1", "@textlint/feature-flag": "16.1.1", "@textlint/source-code-fixer": "16.1.1", "@textlint/types": "16.1.1", "@textlint/utils": "16.1.1", "debug": "^4.4.3", "fast-equals": "^4.0.3" } }, "sha512-WwLbRa7u3uz9NKx6hZoRd9BzjSbW6oD1Dy0cvDAMEHSd+eaIPKuAn3rFTacZPA4oTqJenkos4J9F7CQoPTY08w=="],
 
-    "@textlint/config-loader/@textlint/types": ["@textlint/types@16.1.0", "https://npm.flatt.tech/@textlint/types/-/types-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0" } }, "sha512-lJQ1nTyOyFoQeH6wGnKPilGrQdaTpkhY50TXgiMAcL+b1OhQVhHDmpATmIxCiYF1qS/P5JNrS7KawNjyYdN+fQ=="],
+    "@textlint/config-loader/@textlint/types": ["@textlint/types@16.1.1", "https://npm.flatt.tech/@textlint/types/-/types-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1" } }, "sha512-K8VmOG8ZnNtTlH4iS4TygnU6cMQr9zciHB55sg/c892xPgnELdld2UngibS5V3vT+SDHf5glxuhWcbYeQFYW7A=="],
 
-    "@textlint/fixer-formatter/@textlint/types": ["@textlint/types@16.1.0", "https://npm.flatt.tech/@textlint/types/-/types-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0" } }, "sha512-lJQ1nTyOyFoQeH6wGnKPilGrQdaTpkhY50TXgiMAcL+b1OhQVhHDmpATmIxCiYF1qS/P5JNrS7KawNjyYdN+fQ=="],
+    "@textlint/fixer-formatter/@textlint/types": ["@textlint/types@16.1.1", "https://npm.flatt.tech/@textlint/types/-/types-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1" } }, "sha512-K8VmOG8ZnNtTlH4iS4TygnU6cMQr9zciHB55sg/c892xPgnELdld2UngibS5V3vT+SDHf5glxuhWcbYeQFYW7A=="],
 
     "@textlint/kernel/@textlint/feature-flag": ["@textlint/feature-flag@3.3.5", "https://npm.flatt.tech/@textlint/feature-flag/-/feature-flag-3.3.5.tgz", { "dependencies": { "map-like": "^2.0.0" } }, "sha512-S4JhbDQGu1Sutnvqs96nwxqwaErHrL49/QQDR8i/YNsINlurfKJbmktotb+w+qzeSibDibKzB8feOMVBXmO9Ww=="],
 
     "@textlint/kernel/@textlint/utils": ["@textlint/utils@1.2.5", "https://npm.flatt.tech/@textlint/utils/-/utils-1.2.5.tgz", {}, "sha512-2vgz4x3tKK+R9N0OlOovJClRCHubxZi86ki218cvRVpoU9pPrHwkwZud+rjItDl2xFBj7Gujww7c0W1wyytWVQ=="],
 
-    "@textlint/linter-formatter/@textlint/types": ["@textlint/types@16.1.0", "https://npm.flatt.tech/@textlint/types/-/types-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0" } }, "sha512-lJQ1nTyOyFoQeH6wGnKPilGrQdaTpkhY50TXgiMAcL+b1OhQVhHDmpATmIxCiYF1qS/P5JNrS7KawNjyYdN+fQ=="],
+    "@textlint/linter-formatter/@textlint/types": ["@textlint/types@16.1.1", "https://npm.flatt.tech/@textlint/types/-/types-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1" } }, "sha512-K8VmOG8ZnNtTlH4iS4TygnU6cMQr9zciHB55sg/c892xPgnELdld2UngibS5V3vT+SDHf5glxuhWcbYeQFYW7A=="],
 
     "@textlint/linter-formatter/js-yaml": ["js-yaml@5.5.0", "https://npm.flatt.tech/js-yaml/-/js-yaml-5.5.0.tgz", { "dependencies": { "argparse": "^3.0.3" }, "bin": { "js-yaml": "bin/js-yaml.mjs" } }, "sha512-paNr4LFIFPjeeSmwNYdrb8FafLLG/Cr2Af3GjbsHJ5CxIjH4r0c2emlmRdAtpPAieP1gRVzk6buBbVP5gBMGAg=="],
 
-    "@textlint/markdown-to-ast/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.0", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.0.tgz", {}, "sha512-c2u7BvhHAoGXL47fNVMAzJM23kRnXQpqF8IulaAM0+nwQuwVteiKKaysqSm3N9rvcbcO1NdIaXmTJ9cozBe1Gg=="],
+    "@textlint/markdown-to-ast/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.1", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.1.tgz", {}, "sha512-61wYGuMgBRPZM+3w7Bx0ipnxv9/ltw+7p7esc1kTZxlo84pE96D5ktgj/HbVPwXxk1IGaa3mVds58IkBaP1pvw=="],
 
-    "@textlint/text-to-ast/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.0", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.0.tgz", {}, "sha512-c2u7BvhHAoGXL47fNVMAzJM23kRnXQpqF8IulaAM0+nwQuwVteiKKaysqSm3N9rvcbcO1NdIaXmTJ9cozBe1Gg=="],
+    "@textlint/text-to-ast/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.1", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.1.tgz", {}, "sha512-61wYGuMgBRPZM+3w7Bx0ipnxv9/ltw+7p7esc1kTZxlo84pE96D5ktgj/HbVPwXxk1IGaa3mVds58IkBaP1pvw=="],
 
-    "@textlint/textlint-plugin-markdown/@textlint/types": ["@textlint/types@16.1.0", "https://npm.flatt.tech/@textlint/types/-/types-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0" } }, "sha512-lJQ1nTyOyFoQeH6wGnKPilGrQdaTpkhY50TXgiMAcL+b1OhQVhHDmpATmIxCiYF1qS/P5JNrS7KawNjyYdN+fQ=="],
+    "@textlint/textlint-plugin-markdown/@textlint/types": ["@textlint/types@16.1.1", "https://npm.flatt.tech/@textlint/types/-/types-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1" } }, "sha512-K8VmOG8ZnNtTlH4iS4TygnU6cMQr9zciHB55sg/c892xPgnELdld2UngibS5V3vT+SDHf5glxuhWcbYeQFYW7A=="],
 
-    "@textlint/textlint-plugin-text/@textlint/types": ["@textlint/types@16.1.0", "https://npm.flatt.tech/@textlint/types/-/types-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0" } }, "sha512-lJQ1nTyOyFoQeH6wGnKPilGrQdaTpkhY50TXgiMAcL+b1OhQVhHDmpATmIxCiYF1qS/P5JNrS7KawNjyYdN+fQ=="],
+    "@textlint/textlint-plugin-text/@textlint/types": ["@textlint/types@16.1.1", "https://npm.flatt.tech/@textlint/types/-/types-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1" } }, "sha512-K8VmOG8ZnNtTlH4iS4TygnU6cMQr9zciHB55sg/c892xPgnELdld2UngibS5V3vT+SDHf5glxuhWcbYeQFYW7A=="],
 
     "apache-arrow/@types/node": ["@types/node@25.9.9", "https://npm.flatt.tech/@types/node/-/node-25.9.9.tgz", { "dependencies": { "undici-types": ">=7.24.0 <7.24.7" } }, "sha512-b4e2xxj/yMeT2hNlD6x7zNFiQK2Dlmkb9CQ6v3/1G2RezKN4YS2lcEv8lzGm1mhs4f2lM4yNAMI/zUDBZBBt7w=="],
 
@@ -1346,8 +1312,6 @@
     "cors/object-assign": ["object-assign@4.1.1", "https://npm.flatt.tech/object-assign/-/object-assign-4.1.1.tgz", {}, "sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg=="],
 
     "express/content-type": ["content-type@2.1.0", "https://npm.flatt.tech/content-type/-/content-type-2.1.0.tgz", {}, "sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag=="],
-
-    "hosted-git-info/lru-cache": ["lru-cache@10.4.3", "https://npm.flatt.tech/lru-cache/-/lru-cache-10.4.3.tgz", {}, "sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ=="],
 
     "kuromoji/async": ["async@2.6.4", "https://npm.flatt.tech/async/-/async-2.6.4.tgz", { "dependencies": { "lodash": "^4.17.14" } }, "sha512-mzo5dfJYwAn29PeiJ0zvwTo04zj8HDJj0Mn8TD7sno7q12prdbnasKJHhkm2c1LgrhlJ0teaea8860oxi51mGA=="],
 
@@ -1369,8 +1333,6 @@
 
     "rc-config-loader/js-yaml": ["js-yaml@5.5.0", "https://npm.flatt.tech/js-yaml/-/js-yaml-5.5.0.tgz", { "dependencies": { "argparse": "^3.0.3" }, "bin": { "js-yaml": "bin/js-yaml.mjs" } }, "sha512-paNr4LFIFPjeeSmwNYdrb8FafLLG/Cr2Af3GjbsHJ5CxIjH4r0c2emlmRdAtpPAieP1gRVzk6buBbVP5gBMGAg=="],
 
-    "read-pkg/unicorn-magic": ["unicorn-magic@0.1.0", "https://npm.flatt.tech/unicorn-magic/-/unicorn-magic-0.1.0.tgz", {}, "sha512-lRfVq8fE8gz6QMBuDM6a+LO3IAzTi05H6gCVaUpir2E1Rwpo4ZUog45KpNXKC/Mn3Yb9UDuHumeFTo9iV/D9FQ=="],
-
     "regex-not/extend-shallow": ["extend-shallow@3.0.2", "https://npm.flatt.tech/extend-shallow/-/extend-shallow-3.0.2.tgz", { "dependencies": { "assign-symbols": "^1.0.0", "is-extendable": "^1.0.1" } }, "sha512-BwY5b5Ql4+qZoefgMj2NUmx+tehVTH/Kf4k1ZEtOHNFcm2wSxMRo992l6X3TIgni2eZVTZ85xMOjF31fwZAj6Q=="],
 
     "rulesync/globby": ["globby@16.2.4", "https://npm.flatt.tech/globby/-/globby-16.2.4.tgz", { "dependencies": { "@sindresorhus/merge-streams": "^4.0.0", "fast-glob": "^3.3.3", "ignore": "^7.0.5", "is-path-inside": "^4.0.0", "micromatch": "^4.0.8", "slash": "^5.1.0", "unicorn-magic": "^0.4.0" } }, "sha512-c8B/VNLmxRcmqqenRA9t+9IyOjf9+V6lTxPaUJLqOCONdQkWZ0ETYgX0qbtJqPsgCNusT9MZ5Jeidw8Eb9tn2g=="],
@@ -1383,9 +1345,9 @@
 
     "sentence-splitter/@textlint/ast-node-types": ["@textlint/ast-node-types@15.8.0", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-15.8.0.tgz", {}, "sha512-5CiH9COYmovWmExQgs7763DzX6Gy9zjkjJ7JxCC95wyTcjwQn/8poNF6fv3qzRlmx8CRRde8DHr9FcgAAiPzgw=="],
 
-    "textlint/@textlint/kernel": ["@textlint/kernel@16.1.0", "https://npm.flatt.tech/@textlint/kernel/-/kernel-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0", "@textlint/ast-tester": "16.1.0", "@textlint/ast-traverse": "16.1.0", "@textlint/feature-flag": "16.1.0", "@textlint/source-code-fixer": "16.1.0", "@textlint/types": "16.1.0", "@textlint/utils": "16.1.0", "debug": "^4.4.3", "fast-equals": "^4.0.3" } }, "sha512-VYWA0SMUfZHEiTFuQrH7bPEHzTG/xI6wF2/ZQGaqHrIPeV3h9PSOKhM7MQuyy85TkwCmFBWAexUDpSdFs5yILQ=="],
+    "textlint/@textlint/kernel": ["@textlint/kernel@16.1.1", "https://npm.flatt.tech/@textlint/kernel/-/kernel-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1", "@textlint/ast-tester": "16.1.1", "@textlint/ast-traverse": "16.1.1", "@textlint/feature-flag": "16.1.1", "@textlint/source-code-fixer": "16.1.1", "@textlint/types": "16.1.1", "@textlint/utils": "16.1.1", "debug": "^4.4.3", "fast-equals": "^4.0.3" } }, "sha512-WwLbRa7u3uz9NKx6hZoRd9BzjSbW6oD1Dy0cvDAMEHSd+eaIPKuAn3rFTacZPA4oTqJenkos4J9F7CQoPTY08w=="],
 
-    "textlint/@textlint/types": ["@textlint/types@16.1.0", "https://npm.flatt.tech/@textlint/types/-/types-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0" } }, "sha512-lJQ1nTyOyFoQeH6wGnKPilGrQdaTpkhY50TXgiMAcL+b1OhQVhHDmpATmIxCiYF1qS/P5JNrS7KawNjyYdN+fQ=="],
+    "textlint/@textlint/types": ["@textlint/types@16.1.1", "https://npm.flatt.tech/@textlint/types/-/types-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1" } }, "sha512-K8VmOG8ZnNtTlH4iS4TygnU6cMQr9zciHB55sg/c892xPgnELdld2UngibS5V3vT+SDHf5glxuhWcbYeQFYW7A=="],
 
     "textlint-rule-general-novel-style-ja/textlint-rule-helper": ["textlint-rule-helper@1.2.0", "https://npm.flatt.tech/textlint-rule-helper/-/textlint-rule-helper-1.2.0.tgz", { "dependencies": { "unist-util-visit": "^1.1.0" } }, "sha512-yJmVbmyuUPOndKsxOijpx/G7mwybXXf4M10U2up0BeIZSN+6drUl+aSKAoC+RUHY7bG4ogLwRcmWoNG1lSrRIQ=="],
 
@@ -1451,25 +1413,25 @@
 
     "@octokit/plugin-retry/@octokit/types/@octokit/openapi-types": ["@octokit/openapi-types@28.0.0", "https://npm.flatt.tech/@octokit/openapi-types/-/openapi-types-28.0.0.tgz", {}, "sha512-0rFyLuyHvIj6uuZWuDslxkowFYdPXoNIkeAv4b27dzm2Tf4vGWXnPsMcxs7d65kLdMERgP3wc1AEPlqMz8e1cQ=="],
 
-    "@textlint/config-loader/@textlint/kernel/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.0", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.0.tgz", {}, "sha512-c2u7BvhHAoGXL47fNVMAzJM23kRnXQpqF8IulaAM0+nwQuwVteiKKaysqSm3N9rvcbcO1NdIaXmTJ9cozBe1Gg=="],
+    "@textlint/config-loader/@textlint/kernel/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.1", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.1.tgz", {}, "sha512-61wYGuMgBRPZM+3w7Bx0ipnxv9/ltw+7p7esc1kTZxlo84pE96D5ktgj/HbVPwXxk1IGaa3mVds58IkBaP1pvw=="],
 
-    "@textlint/config-loader/@textlint/kernel/@textlint/ast-tester": ["@textlint/ast-tester@16.1.0", "https://npm.flatt.tech/@textlint/ast-tester/-/ast-tester-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0", "debug": "^4.4.3" } }, "sha512-AYQoIk8m227i2OuoalHQ6DWfp97YLHLy4T4T4zjaxdvStgDymGSm7mOPRSkyPs9HydYq9TXALxJWTupaNEYEiQ=="],
+    "@textlint/config-loader/@textlint/kernel/@textlint/ast-tester": ["@textlint/ast-tester@16.1.1", "https://npm.flatt.tech/@textlint/ast-tester/-/ast-tester-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1", "debug": "^4.4.3" } }, "sha512-e52+hLlhYHUL6Dcza+CgCjU/w2kRc2rhTAEguJKMtcgZuIct2e4l85XBewkVuPsP1B7C4LW3US3/2avvwK7VUQ=="],
 
-    "@textlint/config-loader/@textlint/kernel/@textlint/ast-traverse": ["@textlint/ast-traverse@16.1.0", "https://npm.flatt.tech/@textlint/ast-traverse/-/ast-traverse-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0" } }, "sha512-9g8lR4+RhRbzVXXGc0G/u2EuNAHE8BvylOcmjshRMbxmh9geH84ZN3QXekIBSHzh05kSYj7Os2EEQlipj+Iu5A=="],
+    "@textlint/config-loader/@textlint/kernel/@textlint/ast-traverse": ["@textlint/ast-traverse@16.1.1", "https://npm.flatt.tech/@textlint/ast-traverse/-/ast-traverse-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1" } }, "sha512-cLQAFW53dYcEfMD8luMe9u4lIAa2EnMKfHQn/lU4ReNfvOOVLpQsk9M52WuI6+5o1HhB6gVh+dV5sEjw5U9/1A=="],
 
-    "@textlint/config-loader/@textlint/kernel/@textlint/source-code-fixer": ["@textlint/source-code-fixer@16.1.0", "https://npm.flatt.tech/@textlint/source-code-fixer/-/source-code-fixer-16.1.0.tgz", { "dependencies": { "@textlint/types": "16.1.0", "debug": "^4.4.3" } }, "sha512-AndyG0ajlHpOpBt1eqYRjRn+RFYFKZ+7OMVLaWk5uNG8Ee5jETR1l2LwoXj+aZXV6jiX+wSJl4cR6oBQsepwDw=="],
+    "@textlint/config-loader/@textlint/kernel/@textlint/source-code-fixer": ["@textlint/source-code-fixer@16.1.1", "https://npm.flatt.tech/@textlint/source-code-fixer/-/source-code-fixer-16.1.1.tgz", { "dependencies": { "@textlint/types": "16.1.1", "debug": "^4.4.3" } }, "sha512-Zh1oxbr9I9zeXz15wKnADmHWnt7vo91Q0wB+pTHSTMFXgx8xhWuXzZORgZRkfh4dIVTz3jeCvDnQb19wkitliQ=="],
 
-    "@textlint/config-loader/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.0", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.0.tgz", {}, "sha512-c2u7BvhHAoGXL47fNVMAzJM23kRnXQpqF8IulaAM0+nwQuwVteiKKaysqSm3N9rvcbcO1NdIaXmTJ9cozBe1Gg=="],
+    "@textlint/config-loader/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.1", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.1.tgz", {}, "sha512-61wYGuMgBRPZM+3w7Bx0ipnxv9/ltw+7p7esc1kTZxlo84pE96D5ktgj/HbVPwXxk1IGaa3mVds58IkBaP1pvw=="],
 
-    "@textlint/fixer-formatter/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.0", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.0.tgz", {}, "sha512-c2u7BvhHAoGXL47fNVMAzJM23kRnXQpqF8IulaAM0+nwQuwVteiKKaysqSm3N9rvcbcO1NdIaXmTJ9cozBe1Gg=="],
+    "@textlint/fixer-formatter/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.1", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.1.tgz", {}, "sha512-61wYGuMgBRPZM+3w7Bx0ipnxv9/ltw+7p7esc1kTZxlo84pE96D5ktgj/HbVPwXxk1IGaa3mVds58IkBaP1pvw=="],
 
-    "@textlint/linter-formatter/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.0", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.0.tgz", {}, "sha512-c2u7BvhHAoGXL47fNVMAzJM23kRnXQpqF8IulaAM0+nwQuwVteiKKaysqSm3N9rvcbcO1NdIaXmTJ9cozBe1Gg=="],
+    "@textlint/linter-formatter/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.1", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.1.tgz", {}, "sha512-61wYGuMgBRPZM+3w7Bx0ipnxv9/ltw+7p7esc1kTZxlo84pE96D5ktgj/HbVPwXxk1IGaa3mVds58IkBaP1pvw=="],
 
     "@textlint/linter-formatter/js-yaml/argparse": ["argparse@3.0.4", "https://npm.flatt.tech/argparse/-/argparse-3.0.4.tgz", {}, "sha512-fwWK3Zq22l4XJJjx5mcBHGikIk+hJqO+32dPm0Jur7+rtG5x1scOjSfdT9ZKeWHPpsya/l0HHK4tDImBkTrtvA=="],
 
-    "@textlint/textlint-plugin-markdown/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.0", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.0.tgz", {}, "sha512-c2u7BvhHAoGXL47fNVMAzJM23kRnXQpqF8IulaAM0+nwQuwVteiKKaysqSm3N9rvcbcO1NdIaXmTJ9cozBe1Gg=="],
+    "@textlint/textlint-plugin-markdown/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.1", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.1.tgz", {}, "sha512-61wYGuMgBRPZM+3w7Bx0ipnxv9/ltw+7p7esc1kTZxlo84pE96D5ktgj/HbVPwXxk1IGaa3mVds58IkBaP1pvw=="],
 
-    "@textlint/textlint-plugin-text/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.0", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.0.tgz", {}, "sha512-c2u7BvhHAoGXL47fNVMAzJM23kRnXQpqF8IulaAM0+nwQuwVteiKKaysqSm3N9rvcbcO1NdIaXmTJ9cozBe1Gg=="],
+    "@textlint/textlint-plugin-text/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.1", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.1.tgz", {}, "sha512-61wYGuMgBRPZM+3w7Bx0ipnxv9/ltw+7p7esc1kTZxlo84pE96D5ktgj/HbVPwXxk1IGaa3mVds58IkBaP1pvw=="],
 
     "apache-arrow/@types/node/undici-types": ["undici-types@7.24.6", "https://npm.flatt.tech/undici-types/-/undici-types-7.24.6.tgz", {}, "sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg=="],
 
@@ -1559,15 +1521,15 @@
 
     "textlint-tester/@textlint/textlint-plugin-text/@textlint/text-to-ast": ["@textlint/text-to-ast@13.4.1", "https://npm.flatt.tech/@textlint/text-to-ast/-/text-to-ast-13.4.1.tgz", { "dependencies": { "@textlint/ast-node-types": "^13.4.1" } }, "sha512-vCA7uMmbjRv06sEHPbwxTV5iS8OQedC5s7qwmXnWAn2LLWxg4Yp98mONPS1o4D5cPomzYyKNCSfbLwu6yJBUQA=="],
 
-    "textlint/@textlint/kernel/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.0", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.0.tgz", {}, "sha512-c2u7BvhHAoGXL47fNVMAzJM23kRnXQpqF8IulaAM0+nwQuwVteiKKaysqSm3N9rvcbcO1NdIaXmTJ9cozBe1Gg=="],
+    "textlint/@textlint/kernel/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.1", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.1.tgz", {}, "sha512-61wYGuMgBRPZM+3w7Bx0ipnxv9/ltw+7p7esc1kTZxlo84pE96D5ktgj/HbVPwXxk1IGaa3mVds58IkBaP1pvw=="],
 
-    "textlint/@textlint/kernel/@textlint/ast-tester": ["@textlint/ast-tester@16.1.0", "https://npm.flatt.tech/@textlint/ast-tester/-/ast-tester-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0", "debug": "^4.4.3" } }, "sha512-AYQoIk8m227i2OuoalHQ6DWfp97YLHLy4T4T4zjaxdvStgDymGSm7mOPRSkyPs9HydYq9TXALxJWTupaNEYEiQ=="],
+    "textlint/@textlint/kernel/@textlint/ast-tester": ["@textlint/ast-tester@16.1.1", "https://npm.flatt.tech/@textlint/ast-tester/-/ast-tester-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1", "debug": "^4.4.3" } }, "sha512-e52+hLlhYHUL6Dcza+CgCjU/w2kRc2rhTAEguJKMtcgZuIct2e4l85XBewkVuPsP1B7C4LW3US3/2avvwK7VUQ=="],
 
-    "textlint/@textlint/kernel/@textlint/ast-traverse": ["@textlint/ast-traverse@16.1.0", "https://npm.flatt.tech/@textlint/ast-traverse/-/ast-traverse-16.1.0.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.0" } }, "sha512-9g8lR4+RhRbzVXXGc0G/u2EuNAHE8BvylOcmjshRMbxmh9geH84ZN3QXekIBSHzh05kSYj7Os2EEQlipj+Iu5A=="],
+    "textlint/@textlint/kernel/@textlint/ast-traverse": ["@textlint/ast-traverse@16.1.1", "https://npm.flatt.tech/@textlint/ast-traverse/-/ast-traverse-16.1.1.tgz", { "dependencies": { "@textlint/ast-node-types": "16.1.1" } }, "sha512-cLQAFW53dYcEfMD8luMe9u4lIAa2EnMKfHQn/lU4ReNfvOOVLpQsk9M52WuI6+5o1HhB6gVh+dV5sEjw5U9/1A=="],
 
-    "textlint/@textlint/kernel/@textlint/source-code-fixer": ["@textlint/source-code-fixer@16.1.0", "https://npm.flatt.tech/@textlint/source-code-fixer/-/source-code-fixer-16.1.0.tgz", { "dependencies": { "@textlint/types": "16.1.0", "debug": "^4.4.3" } }, "sha512-AndyG0ajlHpOpBt1eqYRjRn+RFYFKZ+7OMVLaWk5uNG8Ee5jETR1l2LwoXj+aZXV6jiX+wSJl4cR6oBQsepwDw=="],
+    "textlint/@textlint/kernel/@textlint/source-code-fixer": ["@textlint/source-code-fixer@16.1.1", "https://npm.flatt.tech/@textlint/source-code-fixer/-/source-code-fixer-16.1.1.tgz", { "dependencies": { "@textlint/types": "16.1.1", "debug": "^4.4.3" } }, "sha512-Zh1oxbr9I9zeXz15wKnADmHWnt7vo91Q0wB+pTHSTMFXgx8xhWuXzZORgZRkfh4dIVTz3jeCvDnQb19wkitliQ=="],
 
-    "textlint/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.0", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.0.tgz", {}, "sha512-c2u7BvhHAoGXL47fNVMAzJM23kRnXQpqF8IulaAM0+nwQuwVteiKKaysqSm3N9rvcbcO1NdIaXmTJ9cozBe1Gg=="],
+    "textlint/@textlint/types/@textlint/ast-node-types": ["@textlint/ast-node-types@16.1.1", "https://npm.flatt.tech/@textlint/ast-node-types/-/ast-node-types-16.1.1.tgz", {}, "sha512-61wYGuMgBRPZM+3w7Bx0ipnxv9/ltw+7p7esc1kTZxlo84pE96D5ktgj/HbVPwXxk1IGaa3mVds58IkBaP1pvw=="],
 
     "to-regex/extend-shallow/is-extendable": ["is-extendable@1.0.1", "https://npm.flatt.tech/is-extendable/-/is-extendable-1.0.1.tgz", { "dependencies": { "is-plain-object": "^2.0.4" } }, "sha512-arnXMxT1hhoKo9k1LZdmlNyJdDDfy2v0fXjFlmok4+i8ul/6WlbVge9bhM74OpNPQPMGUToDtz+KXa1PneJxOA=="],
 
