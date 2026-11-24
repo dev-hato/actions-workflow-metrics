@@ -23628,6 +23628,24 @@ var require_commonjs6 = __commonJS(function(exports) {
   exports.minimatch.braceExpand = exports.braceExpand;
   var RANGE_MIN = 100;
   var rangeRe = /(?<![\\$])\{(-?\d+)\.\.(-?\d+)\}/g;
+  var inRepeatOrNegExt = (portion, mark) => {
+    const stack = [];
+    for (let i = 0;i < portion.length; i++) {
+      const c = portion.charAt(i);
+      if (c === "\\") {
+        i++;
+      } else if (c === mark) {
+        if (stack.some((t) => t !== "@" && t !== "?"))
+          return true;
+      } else if (portion.charAt(i + 1) === "(" && "!?+*@".includes(c)) {
+        stack.push(c);
+        i++;
+      } else if (c === ")") {
+        stack.pop();
+      }
+    }
+    return false;
+  };
   var match = (list, pattern, options = {}) => {
     const mm = new Minimatch(pattern, options);
     list = list.filter((f) => mm.match(f));
@@ -24604,6 +24622,9 @@ var require_commonjs6 = __commonJS(function(exports) {
         for (const portion of p.split("/")) {
           const c = portion.indexOf("[");
           if (c !== -1 && c < portion.lastIndexOf(mark)) {
+            return this.braceExpand();
+          }
+          if (!this.options.noext && inRepeatOrNegExt(portion, mark)) {
             return this.braceExpand();
           }
         }
@@ -126681,5 +126702,5 @@ async function index() {
 }
 await index();
 
-//# debugId=BD8D79EE90E952FB64756E2164756E21
+//# debugId=6DF49764CBDFD43664756E2164756E21
 //# sourceMappingURL=index.bundle.js.map
